@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsup",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepare": "node scripts/ensure-dist.mjs"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
