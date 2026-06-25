@@ -1,0 +1,74 @@
+{
+  "name": "framework_sdk_worker",
+  "version": "0.1.1",
+  "description": "Cloudflare Worker 公共基座 SDK",
+  "type": "module",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./notify": {
+      "import": "./dist/notify/client.js",
+      "types": "./dist/notify/client.d.ts"
+    },
+    "./auth": {
+      "import": "./dist/auth/middleware.js",
+      "types": "./dist/auth/middleware.d.ts"
+    },
+    "./hono": {
+      "import": "./dist/hono/create-app.js",
+      "types": "./dist/hono/create-app.d.ts"
+    },
+    "./http": {
+      "import": "./dist/http/parse-json.js",
+      "types": "./dist/http/parse-json.d.ts"
+    },
+    "./r2": {
+      "import": "./dist/r2/put.js",
+      "types": "./dist/r2/put.d.ts"
+    },
+    "./r2/gold-price": {
+      "import": "./dist/r2/gold-price.js",
+      "types": "./dist/r2/gold-price.d.ts"
+    },
+    "./kv": {
+      "import": "./dist/kv/dedup.js",
+      "types": "./dist/kv/dedup.d.ts"
+    },
+    "./time": {
+      "import": "./dist/time/shanghai.js",
+      "types": "./dist/time/shanghai.d.ts"
+    },
+    "./ai": {
+      "import": "./dist/ai/gateway.js",
+      "types": "./dist/ai/gateway.d.ts"
+    },
+    "./logger": {
+      "import": "./dist/logger/index.js",
+      "types": "./dist/logger/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types/env.js",
+      "types": "./dist/types/env.d.ts"
+    }
+  },
+  "peerDependencies": {
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250617.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "files": [
+    "dist"
+  ]
+}
