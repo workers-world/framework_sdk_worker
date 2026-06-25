@@ -38,6 +38,6 @@ cnpm install
 - `framework_sdk_worker/r2` — R2 写入封装
 - `framework_sdk_worker/r2/gold-price` — 金价 R2 读取
 - `framework_sdk_worker/kv` — KV 去重
-- `framework_sdk_worker/time` — 上海时区工具
+- `framework_sdk_worker/time` — 上海时区工具（`shanghaiYmd` / `shanghaiYmdDash` / `shanghaiIsoString` / `shanghaiYmPath` / `shanghaiMinuteBucket`）
 - `framework_sdk_worker/ai` — AI Gateway 配置
 - `framework_sdk_worker/logger` — 结构化日志
