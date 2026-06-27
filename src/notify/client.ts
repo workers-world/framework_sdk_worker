@@ -1,6 +1,9 @@
 export interface NotifyPayload {
   subject: string;
-  body: string;
+  /** 纯文本正文；与 html 至少提供一个 */
+  body?: string;
+  /** HTML 正文；与 body 至少提供一个 */
+  html?: string;
   to?: string;
   dedupKey?: string;
 }
