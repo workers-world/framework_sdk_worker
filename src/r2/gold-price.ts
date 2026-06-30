@@ -4,38 +4,77 @@ export const DEFAULT_GOLD_R2_PREFIX = 'gold/AU9999_CNY/TMINI/';
 
 export interface FetchLatestGoldPriceOptions {
   prefix?: string;
-  listLimit?: number;
+}
+
+export interface LatestGoldPrice {
+  price: number;
+  priceTime: string;
 }
 
 /**
- * 从 R2 读取当日最新金价（customMetadata.p）。
+ * 从 R2 读取当日最新金价（cursor 分页扫完当天全部 key，取 priceTime 最大者）。
  */
 export async function fetchLatestGoldPrice(
   bucket: R2Bucket,
   options?: FetchLatestGoldPriceOptions,
 ): Promise<number | null> {
+  const latest = await fetchLatestGoldPriceDetail(bucket, options);
+  return latest?.price ?? null;
+}
+
+export async function fetchLatestGoldPriceDetail(
+  bucket: R2Bucket,
+  options?: FetchLatestGoldPriceOptions,
+): Promise<LatestGoldPrice | null> {
   const prefix = (options?.prefix ?? DEFAULT_GOLD_R2_PREFIX) + shanghaiYmd() + '/';
-  const limit = options?.listLimit ?? 10;
 
   try {
-    const listed = await bucket.list({ prefix, limit });
-    let latestKey = '';
+    let latestKey: string | null = null;
     let latestTime = '';
+    let latestMeta: Record<string, string> | undefined;
+    let cursor: string | undefined;
 
-    for (const obj of listed.objects) {
-      const t = obj.key.match(/(\d{4})\.json$/)?.[1];
-      if (t && t > latestTime) {
-        latestTime = t;
+    do {
+      const listed = await bucket.list({
+        prefix,
+        cursor,
+        include: ['customMetadata'],
+      } as R2ListOptions);
+      for (const obj of listed.objects) {
+        const priceTime = priceTimeFromGoldKey(obj.key);
+        if (!priceTime || priceTime <= latestTime) {
+          continue;
+        }
+        latestTime = priceTime;
         latestKey = obj.key;
+        latestMeta = obj.customMetadata;
       }
-    }
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
 
     if (!latestKey) {
       return null;
     }
 
-    const meta = (await bucket.head(latestKey))?.customMetadata;
-    return meta?.p ? Number(meta.p) : null;
+    if (latestMeta?.p) {
+      const price = Number(latestMeta.p);
+      if (Number.isFinite(price)) {
+        return { price, priceTime: latestTime };
+      }
+    }
+
+    const body = await bucket.get(latestKey);
+    if (!body) {
+      return null;
+    }
+    const parsed = JSON.parse(await body.text()) as { price?: number; priceTime?: string };
+    if (parsed.price == null || !Number.isFinite(parsed.price)) {
+      return null;
+    }
+    return {
+      price: parsed.price,
+      priceTime: parsed.priceTime ?? latestTime,
+    };
   } catch {
     return null;
   }
