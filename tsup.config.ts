@@ -3,6 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
+    'async/sleep': 'src/async/sleep.ts',
     'notify/client': 'src/notify/client.ts',
     'auth/bearer': 'src/auth/bearer.ts',
     'auth/middleware': 'src/auth/middleware.ts',

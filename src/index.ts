@@ -1,3 +1,4 @@
+export * from './async/sleep.js';
 export * from './notify/client.js';
 export * from './auth/bearer.js';
 export * from './auth/middleware.js';
