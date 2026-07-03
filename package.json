@@ -15,6 +15,10 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./async": {
+      "import": "./dist/async/sleep.js",
+      "types": "./dist/async/sleep.d.ts"
+    },
     "./notify": {
       "import": "./dist/notify/client.js",
       "types": "./dist/notify/client.d.ts"
