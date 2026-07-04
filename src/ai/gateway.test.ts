@@ -49,4 +49,18 @@ describe('runAiModel', () => {
       aiGatewayRunOptions(undefined),
     );
   });
+
+  it('skips gateway for @cf JSON image inputs that return binary', async () => {
+    const ai = {
+      run: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+    } as unknown as Ai;
+
+    await runAiModel(ai, '@cf/stabilityai/stable-diffusion-xl-base-1.0', { prompt: 'cat' });
+
+    expect(ai.run).toHaveBeenCalledWith(
+      '@cf/stabilityai/stable-diffusion-xl-base-1.0',
+      { prompt: 'cat' },
+      {},
+    );
+  });
 });

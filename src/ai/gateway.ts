@@ -48,6 +48,19 @@ export function inputsUseReadableStream(inputs: Record<string, unknown>): boolea
   return Object.values(inputs).some(valueUsesReadableStream);
 }
 
+export function shouldUseAiGateway(model: string, inputs: Record<string, unknown>): boolean {
+  if (inputsUseReadableStream(inputs)) {
+    return false;
+  }
+  if (isPrunaModel(model)) {
+    return true;
+  }
+  if (model.startsWith('@cf/')) {
+    return false;
+  }
+  return true;
+}
+
 function buildGatewayExtraHeaders(config?: AiGatewayConfig): Record<string, string> {
   const headers: Record<string, string> = {};
   const token = config?.authToken?.trim();
@@ -91,9 +104,9 @@ export async function runAiModel(
   inputs: Record<string, unknown>,
   config?: AiGatewayConfig,
 ): Promise<unknown> {
-  const options = inputsUseReadableStream(inputs)
-    ? buildExtraHeadersOnly(config)
-    : aiGatewayRunOptions(config);
+  const options = shouldUseAiGateway(model, inputs)
+    ? aiGatewayRunOptions(config)
+    : buildExtraHeadersOnly(config);
 
   return ai.run(
     model as any,
