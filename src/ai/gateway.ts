@@ -25,14 +25,30 @@ export function isPrunaModel(model: string): boolean {
   return model.startsWith('pruna/');
 }
 
-export function aiGatewayRunOptions(config?: AiGatewayConfig) {
-  const options: {
-    gateway: { id: string };
-    extraHeaders?: Record<string, string>;
-  } = {
-    gateway: { id: resolveGatewayId(config?.gatewayId) },
-  };
+function isReadableStream(value: unknown): value is ReadableStream {
+  return value instanceof ReadableStream;
+}
 
+function isFormData(value: unknown): value is FormData {
+  return value instanceof FormData;
+}
+
+function valueUsesReadableStream(value: unknown): boolean {
+  if (isReadableStream(value) || isFormData(value)) {
+    return true;
+  }
+  if (value && typeof value === 'object' && 'body' in value) {
+    const body = (value as { body?: unknown }).body;
+    return isReadableStream(body) || isFormData(body);
+  }
+  return false;
+}
+
+export function inputsUseReadableStream(inputs: Record<string, unknown>): boolean {
+  return Object.values(inputs).some(valueUsesReadableStream);
+}
+
+function buildGatewayExtraHeaders(config?: AiGatewayConfig): Record<string, string> {
   const headers: Record<string, string> = {};
   const token = config?.authToken?.trim();
   if (token) {
@@ -42,6 +58,26 @@ export function aiGatewayRunOptions(config?: AiGatewayConfig) {
   if (alias) {
     headers['cf-aig-byok-alias'] = alias;
   }
+  return headers;
+}
+
+function buildExtraHeadersOnly(config?: AiGatewayConfig) {
+  const headers = buildGatewayExtraHeaders(config);
+  if (Object.keys(headers).length === 0) {
+    return {};
+  }
+  return { extraHeaders: headers };
+}
+
+export function aiGatewayRunOptions(config?: AiGatewayConfig) {
+  const options: {
+    gateway: { id: string };
+    extraHeaders?: Record<string, string>;
+  } = {
+    gateway: { id: resolveGatewayId(config?.gatewayId) },
+  };
+
+  const headers = buildGatewayExtraHeaders(config);
   if (Object.keys(headers).length > 0) {
     options.extraHeaders = headers;
   }
@@ -55,9 +91,13 @@ export async function runAiModel(
   inputs: Record<string, unknown>,
   config?: AiGatewayConfig,
 ): Promise<unknown> {
+  const options = inputsUseReadableStream(inputs)
+    ? buildExtraHeadersOnly(config)
+    : aiGatewayRunOptions(config);
+
   return ai.run(
     model as any,
     inputs as any,
-    aiGatewayRunOptions(config) as any,
+    options as any,
   );
 }
