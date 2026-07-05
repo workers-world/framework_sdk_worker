@@ -55,6 +55,10 @@
       "import": "./dist/ai/gateway.js",
       "types": "./dist/ai/gateway.d.ts"
     },
+    "./ai/neuron-quota": {
+      "import": "./dist/ai/neuron-quota.js",
+      "types": "./dist/ai/neuron-quota.d.ts"
+    },
     "./logger": {
       "import": "./dist/logger/index.js",
       "types": "./dist/logger/index.d.ts"

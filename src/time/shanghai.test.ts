@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   pad2,
+  secondsUntilNextShanghaiDay,
   shanghaiIsoString,
   shanghaiMinuteBucket,
   shanghaiYmPath,
@@ -34,5 +35,9 @@ describe('shanghai time', () => {
 
   it('shanghaiMinuteBucket returns YYYYMMDDHHmm', () => {
     expect(shanghaiMinuteBucket(sample)).toBe('202601151800');
+  });
+
+  it('secondsUntilNextShanghaiDay returns positive seconds', () => {
+    expect(secondsUntilNextShanghaiDay(sample)).toBeGreaterThan(0);
   });
 });

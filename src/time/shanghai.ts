@@ -43,3 +43,10 @@ export function shanghaiMinuteBucket(date: Date = new Date()): string {
   const { year, month, day, hour, minute } = shanghaiParts(date);
   return `${year}${month}${day}${hour}${minute}`;
 }
+
+/** 距上海时区次日 00:05 秒数（日配额用尽时 defer） */
+export function secondsUntilNextShanghaiDay(now: Date = new Date()): number {
+  const sh = new Date(now.getTime() + SHANGHAI_OFFSET_MS);
+  const secToday = sh.getUTCHours() * 3600 + sh.getUTCMinutes() * 60 + sh.getUTCSeconds();
+  return 86400 - secToday + 5 * 60;
+}

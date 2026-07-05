@@ -15,6 +15,7 @@ export default defineConfig({
     'kv/dedup': 'src/kv/dedup.ts',
     'time/shanghai': 'src/time/shanghai.ts',
     'ai/gateway': 'src/ai/gateway.ts',
+    'ai/neuron-quota': 'src/ai/neuron-quota.ts',
     'logger/index': 'src/logger/index.ts',
     'types/env': 'src/types/env.ts',
   },
