@@ -18,6 +18,7 @@ export default defineConfig({
     'ai/neuron-quota': 'src/ai/neuron-quota.ts',
     'logger/index': 'src/logger/index.ts',
     'types/env': 'src/types/env.ts',
+    'id-generator/index': 'src/id-generator/index.ts',
   },
   format: ['esm'],
   dts: true,
