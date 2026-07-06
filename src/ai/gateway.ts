@@ -48,6 +48,11 @@ export function inputsUseReadableStream(inputs: Record<string, unknown>): boolea
   return Object.values(inputs).some(valueUsesReadableStream);
 }
 
+export function inputsUseChatMessages(inputs: Record<string, unknown>): boolean {
+  const messages = inputs.messages;
+  return Array.isArray(messages) && messages.length > 0;
+}
+
 export function shouldUseAiGateway(model: string, inputs: Record<string, unknown>): boolean {
   if (inputsUseReadableStream(inputs)) {
     return false;
@@ -56,7 +61,7 @@ export function shouldUseAiGateway(model: string, inputs: Record<string, unknown
     return true;
   }
   if (model.startsWith('@cf/')) {
-    return false;
+    return inputsUseChatMessages(inputs);
   }
   return true;
 }
@@ -98,7 +103,7 @@ export function aiGatewayRunOptions(config?: AiGatewayConfig) {
   return options;
 }
 
-export async function runAiModel(
+export async function callAiModel(
   ai: Ai,
   model: string,
   inputs: Record<string, unknown>,
