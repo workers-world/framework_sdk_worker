@@ -19,6 +19,8 @@ export default defineConfig({
     'logger/index': 'src/logger/index.ts',
     'types/env': 'src/types/env.ts',
     'id-generator/index': 'src/id-generator/index.ts',
+    'email/decode-mime-header': 'src/email/decode-mime-header.ts',
+    'email/regex-pattern': 'src/email/regex-pattern.ts',
   },
   format: ['esm'],
   dts: true,
