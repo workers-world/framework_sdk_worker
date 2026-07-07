@@ -78,6 +78,10 @@
     "./email/regex-pattern": {
       "import": "./dist/email/regex-pattern.js",
       "types": "./dist/email/regex-pattern.d.ts"
+    },
+    "./email/probe": {
+      "import": "./dist/email/probe.js",
+      "types": "./dist/email/probe.d.ts"
     }
   },
   "peerDependencies": {

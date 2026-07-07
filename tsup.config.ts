@@ -21,6 +21,7 @@ export default defineConfig({
     'id-generator/index': 'src/id-generator/index.ts',
     'email/decode-mime-header': 'src/email/decode-mime-header.ts',
     'email/regex-pattern': 'src/email/regex-pattern.ts',
+    'email/probe': 'src/email/probe.ts',
   },
   format: ['esm'],
   dts: true,
