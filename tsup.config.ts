@@ -23,6 +23,7 @@ export default defineConfig({
     'email/regex-pattern': 'src/email/regex-pattern.ts',
     'email/probe': 'src/email/probe.ts',
     'resilience/circuit-breaker': 'src/resilience/circuit-breaker.ts',
+    'email/escape-html': 'src/email/escape-html.ts',
   },
   format: ['esm'],
   dts: true,
