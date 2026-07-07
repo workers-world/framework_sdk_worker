@@ -22,6 +22,7 @@ export default defineConfig({
     'email/decode-mime-header': 'src/email/decode-mime-header.ts',
     'email/regex-pattern': 'src/email/regex-pattern.ts',
     'email/probe': 'src/email/probe.ts',
+    'resilience/circuit-breaker': 'src/resilience/circuit-breaker.ts',
   },
   format: ['esm'],
   dts: true,

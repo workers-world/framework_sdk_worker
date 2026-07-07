@@ -82,6 +82,10 @@
     "./email/probe": {
       "import": "./dist/email/probe.js",
       "types": "./dist/email/probe.d.ts"
+    },
+    "./resilience/circuit-breaker": {
+      "import": "./dist/resilience/circuit-breaker.js",
+      "types": "./dist/resilience/circuit-breaker.d.ts"
     }
   },
   "peerDependencies": {
