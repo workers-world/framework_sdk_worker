@@ -86,6 +86,10 @@
     "./resilience/circuit-breaker": {
       "import": "./dist/resilience/circuit-breaker.js",
       "types": "./dist/resilience/circuit-breaker.d.ts"
+    },
+    "./email/escape-html": {
+      "import": "./dist/email/escape-html.js",
+      "types": "./dist/email/escape-html.d.ts"
     }
   },
   "peerDependencies": {
