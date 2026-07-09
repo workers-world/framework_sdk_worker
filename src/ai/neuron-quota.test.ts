@@ -1,12 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import {
+  fetchTodayNeuronsUsed,
   hasNeuronQuotaRemaining,
   isNeuronQuotaError,
   isWorkersAiMetric,
   neuronQuotaStatus,
+  utcDayRangeIso,
+  utcYmdDash,
 } from './neuron-quota.js';
 
 describe('neuron-quota', () => {
+  it('utcYmdDash uses UTC calendar day', () => {
+    const date = new Date('2026-07-09T02:00:00Z');
+    expect(utcYmdDash(date)).toBe('2026-07-09');
+  });
+
+  it('utcDayRangeIso covers UTC natural day', () => {
+    const date = new Date('2026-07-09T15:30:00Z');
+    expect(utcDayRangeIso(date)).toEqual({
+      start: '2026-07-09T00:00:00Z',
+      end: '2026-07-10T00:00:00Z',
+    });
+  });
+
   it('isWorkersAiMetric matches neuron metrics', () => {
     expect(isWorkersAiMetric({ x_BillableMetricId: 'workers_ai_neurons' })).toBe(true);
     expect(isWorkersAiMetric({ ServiceName: 'Workers AI' })).toBe(true);
@@ -30,5 +46,43 @@ describe('neuron-quota', () => {
       exceeded: false,
     });
     expect(neuronQuotaStatus(9800, 10000, 500).exceeded).toBe(true);
+  });
+
+  it('fetchTodayNeuronsUsed sums GraphQL totalNeurons', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      data: {
+        viewer: {
+          accounts: [{
+            aiInferenceAdaptiveGroups: [
+              { sum: { totalNeurons: 1200.5 } },
+              { sum: { totalNeurons: 799.5 } },
+            ],
+          }],
+        },
+      },
+    }), { status: 200 });
+
+    try {
+      const result = await fetchTodayNeuronsUsed('acct', 'token', new Date('2026-07-09T12:00:00Z'));
+      expect(result).toEqual({ ok: true, used: 2000 });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('fetchTodayNeuronsUsed surfaces GraphQL errors', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      errors: [{ message: 'auth failed' }],
+    }), { status: 200 });
+
+    try {
+      const result = await fetchTodayNeuronsUsed('acct', 'token');
+      expect(result.ok).toBe(false);
+      expect(result.error).toContain('graphql neurons query failed');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
