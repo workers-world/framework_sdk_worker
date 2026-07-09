@@ -1,3 +1,5 @@
+import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+
 export interface NotifyPayload {
   subject: string;
   /** 纯文本正文；与 html 至少提供一个 */
@@ -56,16 +58,18 @@ export type DigestItem = DigestItemLlm | DigestItemRaw;
 /**
  * 通过 Service Binding 调用 notify-worker 发邮件。
  * host 填 https://notify 即可，Service Binding 会路由到 notify-worker，不走公网。
+ * token 支持 string（.dev.vars）或 Secrets Store binding。
  */
 export async function sendNotify(
   notify: Fetcher | undefined,
-  token: string | undefined,
+  token: SecretLike | undefined,
   payload: NotifyPayload,
 ): Promise<NotifyResult> {
   if (!notify) {
     return { ok: false, error: 'NOTIFY service binding not configured' };
   }
-  if (!token) {
+  const resolved = await resolveSecret(token);
+  if (!resolved) {
     return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
   }
 
@@ -73,7 +77,7 @@ export async function sendNotify(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${resolved}`,
     },
     body: JSON.stringify(payload),
   });
@@ -95,13 +99,14 @@ export async function sendNotify(
  */
 export async function sendNotifyAsync(
   notify: Fetcher | undefined,
-  token: string | undefined,
+  token: SecretLike | undefined,
   item: DigestItem,
 ): Promise<NotifyAsyncResult> {
   if (!notify) {
     return { ok: false, error: 'NOTIFY service binding not configured' };
   }
-  if (!token) {
+  const resolved = await resolveSecret(token);
+  if (!resolved) {
     return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
   }
 
@@ -109,7 +114,7 @@ export async function sendNotifyAsync(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${resolved}`,
       ...(item.source ? { 'X-Notify-Source': item.source } : {}),
     },
     body: JSON.stringify(item),

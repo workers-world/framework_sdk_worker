@@ -16,6 +16,8 @@ export default defineConfig({
     'time/shanghai': 'src/time/shanghai.ts',
     'ai/gateway': 'src/ai/gateway.ts',
     'ai/neuron-quota': 'src/ai/neuron-quota.ts',
+    'ai/client': 'src/ai/client.ts',
+    'secrets/resolve': 'src/secrets/resolve.ts',
     'logger/index': 'src/logger/index.ts',
     'types/env': 'src/types/env.ts',
     'id-generator/index': 'src/id-generator/index.ts',
