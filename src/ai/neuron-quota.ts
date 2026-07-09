@@ -1,5 +1,3 @@
-import { shanghaiYmdDash } from '../time/shanghai.js';
-
 export interface BillableUsageRecord {
   ConsumedQuantity?: number;
   x_BillableMetricId?: string;
@@ -12,6 +10,27 @@ export interface FetchNeuronsResult {
   error?: string;
 }
 
+/** UTC 当日 YYYY-MM-DD（Workers AI 日配额按 UTC 00:00 重置） */
+export function utcYmdDash(date: Date = new Date()): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** UTC 自然日 [start, end) ISO 8601，用于 GraphQL datetime 过滤 */
+export function utcDayRangeIso(date: Date = new Date()): { start: string; end: string } {
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth();
+  const d = date.getUTCDate();
+  const start = new Date(Date.UTC(y, m, d, 0, 0, 0));
+  const end = new Date(Date.UTC(y, m, d + 1, 0, 0, 0));
+  return {
+    start: start.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    end: end.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+  };
+}
+
 /** 判断 billable/usage 返回的记录是否属于 Workers AI（Neurons 计费） */
 export function isWorkersAiMetric(record: BillableUsageRecord): boolean {
   const metric = (record.x_BillableMetricId || '').toLowerCase();
@@ -22,19 +41,44 @@ export function isWorkersAiMetric(record: BillableUsageRecord): boolean {
     || service.includes('workers ai');
 }
 
-/** 拉取当日 Workers AI Neurons 用量（Billable Usage API） */
+/** 拉取 UTC 当日 Workers AI Neurons 用量（GraphQL aiInferenceAdaptiveGroups） */
 export async function fetchTodayNeuronsUsed(
   accountId: string,
   apiToken: string,
   date: Date = new Date(),
 ): Promise<FetchNeuronsResult> {
-  const today = shanghaiYmdDash(date);
-  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId.trim()}/billable/usage?from=${today}&to=${today}`;
+  const { start, end } = utcDayRangeIso(date);
+  const query = `
+    query NeuronsUsedToday($accountId: String!, $start: Time!, $end: Time!) {
+      viewer {
+        accounts(filter: { accountTag: $accountId }) {
+          aiInferenceAdaptiveGroups(
+            filter: { datetime_geq: $start, datetime_lt: $end }
+            limit: 10000
+          ) {
+            sum { totalNeurons }
+          }
+        }
+      }
+    }
+  `;
 
   let resp: Response;
   try {
-    resp = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiToken.trim()}` },
+    resp = await fetch('https://api.cloudflare.com/client/v4/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiToken.trim()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables: {
+          accountId: accountId.trim(),
+          start,
+          end,
+        },
+      }),
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -42,24 +86,36 @@ export async function fetchTodayNeuronsUsed(
   }
 
   const data = await resp.json() as {
-    success?: boolean;
-    result?: BillableUsageRecord[];
+    data?: {
+      viewer?: {
+        accounts?: Array<{
+          aiInferenceAdaptiveGroups?: Array<{ sum?: { totalNeurons?: number } }>;
+        }>;
+      };
+    };
     errors?: unknown[];
   };
 
-  if (!resp.ok || !data.success) {
+  if (!resp.ok) {
     return {
       ok: false,
       used: 0,
-      error: `billable usage API failed: ${JSON.stringify(data.errors || resp.status)}`,
+      error: `graphql neurons query failed: HTTP ${resp.status}`,
     };
   }
 
+  if (data.errors?.length) {
+    return {
+      ok: false,
+      used: 0,
+      error: `graphql neurons query failed: ${JSON.stringify(data.errors)}`,
+    };
+  }
+
+  const groups = data.data?.viewer?.accounts?.[0]?.aiInferenceAdaptiveGroups ?? [];
   let used = 0;
-  for (const record of data.result || []) {
-    if (isWorkersAiMetric(record)) {
-      used += record.ConsumedQuantity || 0;
-    }
+  for (const group of groups) {
+    used += group.sum?.totalNeurons ?? 0;
   }
 
   return { ok: true, used };
