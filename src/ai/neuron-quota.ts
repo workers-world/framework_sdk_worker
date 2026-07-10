@@ -31,6 +31,13 @@ export function utcDayRangeIso(date: Date = new Date()): { start: string; end: s
   };
 }
 
+/** 距 UTC 次日 00:05 秒数（Workers AI Neurons 日配额按 UTC 00:00 重置） */
+export function secondsUntilNextUtcDay(now: Date = new Date(), bufferSec = 5 * 60): number {
+  const { end } = utcDayRangeIso(now);
+  const endMs = new Date(end).getTime();
+  return Math.max(1, Math.ceil((endMs - now.getTime()) / 1000) + bufferSec);
+}
+
 /** 判断 billable/usage 返回的记录是否属于 Workers AI（Neurons 计费） */
 export function isWorkersAiMetric(record: BillableUsageRecord): boolean {
   const metric = (record.x_BillableMetricId || '').toLowerCase();

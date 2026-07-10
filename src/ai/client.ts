@@ -22,11 +22,14 @@ export interface LlmChatResponse {
 }
 
 export interface NeuronQuotaSnapshot {
+  ok?: boolean;
   checked: boolean;
   exceeded: boolean;
   used: number;
   limit: number;
   remaining: number;
+  error?: string;
+  latched?: boolean;
 }
 
 export interface LlmGatewayEnv {
@@ -140,11 +143,14 @@ export async function checkNeuronQuota(
       return fallback;
     }
     return {
+      ok: data.ok !== false,
       checked: data.checked === true,
       exceeded: data.exceeded === true,
       used: data.used ?? 0,
       limit: data.limit ?? fallbackLimit,
       remaining: data.remaining ?? fallbackLimit,
+      error: data.error,
+      latched: data.latched === true,
     };
   } catch {
     return fallback;
