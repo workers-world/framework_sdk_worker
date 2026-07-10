@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -98,6 +98,10 @@
     "./email/escape-html": {
       "import": "./dist/email/escape-html.js",
       "types": "./dist/email/escape-html.d.ts"
+    },
+    "./env": {
+      "import": "./dist/env/validate.js",
+      "types": "./dist/env/validate.d.ts"
     }
   },
   "peerDependencies": {
