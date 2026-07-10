@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  extractAiErrorMessage,
   fetchTodayNeuronsUsed,
   hasNeuronQuotaRemaining,
   isNeuronQuotaError,
@@ -33,6 +34,23 @@ describe('neuron-quota', () => {
     expect(isNeuronQuotaError('4006: daily free allocation')).toBe(true);
     expect(isNeuronQuotaError('NEURON_QUOTA_EXCEEDED')).toBe(true);
     expect(isNeuronQuotaError('network timeout')).toBe(false);
+  });
+
+  it('extractAiErrorMessage handles AiError objects', () => {
+    const aiError = {
+      name: 'AiError',
+      internalCode: 4006,
+      message: 'AiError: AiError: you have used up your daily free allocation of 10,000 neurons',
+      description: 'you have used up your daily free allocation of 10,000 neurons',
+    };
+    expect(extractAiErrorMessage(aiError)).toContain('daily free allocation');
+    expect(isNeuronQuotaError(aiError)).toBe(true);
+    expect(isNeuronQuotaError({ internalCode: 4006 })).toBe(true);
+  });
+
+  it('extractAiErrorMessage falls back for plain objects', () => {
+    expect(extractAiErrorMessage({ foo: 'bar' })).toBe('{"foo":"bar"}');
+    expect(extractAiErrorMessage(null)).toBe('');
   });
 
   it('hasNeuronQuotaRemaining reserves headroom', () => {
