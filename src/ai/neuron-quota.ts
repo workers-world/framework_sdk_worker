@@ -121,13 +121,54 @@ export async function fetchTodayNeuronsUsed(
   return { ok: true, used };
 }
 
-/** 识别 Workers AI 日 Neurons 额度错误（4006 等） */
-export function isNeuronQuotaError(message: string): boolean {
+/** 从 Error / AiError 对象 / 字符串提取可匹配的错误文案 */
+export function extractAiErrorMessage(value: unknown): string {
+  if (value == null) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value instanceof Error) {
+    return value.message;
+  }
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if (typeof record.message === 'string' && record.message.trim()) {
+      return record.message;
+    }
+    if (typeof record.description === 'string' && record.description.trim()) {
+      return record.description;
+    }
+    if (record.internalCode === 4006) {
+      return JSON.stringify(record);
+    }
+    try {
+      return JSON.stringify(record);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+function isNeuronQuotaMessage(message: string): boolean {
   const lower = message.toLowerCase();
   return lower.includes('4006')
     || lower.includes('neuron_quota_exceeded')
     || lower.includes('daily free allocation')
     || (lower.includes('neurons') && lower.includes('upgrade'));
+}
+
+/** 识别 Workers AI 日 Neurons 额度错误（4006 等） */
+export function isNeuronQuotaError(value: unknown): boolean {
+  if (typeof value === 'object' && value != null && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    if (record.internalCode === 4006) {
+      return true;
+    }
+  }
+  return isNeuronQuotaMessage(extractAiErrorMessage(value));
 }
 
 export function hasNeuronQuotaRemaining(

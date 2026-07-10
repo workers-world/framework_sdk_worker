@@ -88,13 +88,14 @@ async function chatAt(
   const data = (await resp.json().catch(() => ({}))) as {
     choices?: Array<{ message?: { content?: string } }>;
     error?: string;
+    detail?: string;
   };
 
   if (!resp.ok) {
     return {
       ok: false,
       status: resp.status,
-      error: data.error || resp.statusText || `HTTP ${resp.status}`,
+      error: data.error || data.detail || resp.statusText || `HTTP ${resp.status}`,
       raw: data,
     };
   }
