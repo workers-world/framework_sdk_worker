@@ -26,6 +26,7 @@ export default defineConfig({
     'email/probe': 'src/email/probe.ts',
     'resilience/circuit-breaker': 'src/resilience/circuit-breaker.ts',
     'email/escape-html': 'src/email/escape-html.ts',
+    'env/validate': 'src/env/validate.ts',
   },
   format: ['esm'],
   dts: true,
