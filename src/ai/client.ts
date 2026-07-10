@@ -115,23 +115,26 @@ export async function checkNeuronQuota(
   env: LlmGatewayEnv,
   fallbackLimit = 10_000,
 ): Promise<NeuronQuotaSnapshot> {
-  const fallback: NeuronQuotaSnapshot = {
+  const unavailable = (error?: string): NeuronQuotaSnapshot => ({
+    ok: false,
     checked: false,
     exceeded: false,
     used: 0,
     limit: fallbackLimit,
     remaining: fallbackLimit,
-  };
+    error,
+  });
 
   if (!env.SVC_LLM_GATEWAY) {
-    return fallback;
+    return unavailable('SVC_LLM_GATEWAY 未配置');
   }
 
   let auth: Record<string, string>;
   try {
     auth = await authHeader(env.LLM_GATEWAY_AUTH_TOKEN);
-  } catch {
-    return fallback;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return unavailable(msg);
   }
 
   try {
@@ -140,7 +143,7 @@ export async function checkNeuronQuota(
     });
     const data = (await resp.json()) as Partial<NeuronQuotaSnapshot>;
     if (!resp.ok) {
-      return fallback;
+      return unavailable(data.error || `usage neurons HTTP ${resp.status}`);
     }
     return {
       ok: data.ok !== false,
@@ -152,7 +155,8 @@ export async function checkNeuronQuota(
       error: data.error,
       latched: data.latched === true,
     };
-  } catch {
-    return fallback;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return unavailable(msg);
   }
 }
