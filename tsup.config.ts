@@ -27,6 +27,7 @@ export default defineConfig({
     'resilience/circuit-breaker': 'src/resilience/circuit-breaker.ts',
     'email/escape-html': 'src/email/escape-html.ts',
     'env/validate': 'src/env/validate.ts',
+    'ops-error/index': 'src/ops-error/index.ts',
   },
   format: ['esm'],
   dts: true,

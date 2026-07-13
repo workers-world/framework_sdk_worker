@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -102,6 +102,10 @@
     "./env": {
       "import": "./dist/env/validate.js",
       "types": "./dist/env/validate.d.ts"
+    },
+    "./ops-error": {
+      "import": "./dist/ops-error/index.js",
+      "types": "./dist/ops-error/index.d.ts"
     }
   },
   "peerDependencies": {
