@@ -35,7 +35,8 @@ export async function checkDuplicate(
   if (!dedupKey || !kv) {
     return false;
   }
-  const existing = await kv.get(dedupKey);
+  const safeKey = await normalizeKvDedupKey(dedupKey);
+  const existing = await kv.get(safeKey);
   return existing != null;
 }
 
@@ -47,10 +48,11 @@ export async function markSent(
   if (!dedupKey || !kv) {
     return;
   }
-  await kv.put(dedupKey, `sent:${new Date().toISOString()}`, { expirationTtl: ttlSeconds });
+  const safeKey = await normalizeKvDedupKey(dedupKey);
+  await kv.put(safeKey, `sent:${new Date().toISOString()}`, { expirationTtl: ttlSeconds });
 }
 
-/** 发信前占位 pending，阻止并发/重试窗口内重复发送 */
+/** 发信前占位 pending，阻止并发/重试窗口内重复发送。key 超长自动 SHA-256 截断 */
 export async function claimSendSlot(
   kv: KVNamespace | undefined,
   dedupKey: string | undefined,
@@ -59,11 +61,12 @@ export async function claimSendSlot(
   if (!dedupKey || !kv) {
     return 'skipped';
   }
-  const existing = await kv.get(dedupKey);
+  const safeKey = await normalizeKvDedupKey(dedupKey);
+  const existing = await kv.get(safeKey);
   if (existing != null) {
     return 'duplicate';
   }
-  await kv.put(dedupKey, `pending:${new Date().toISOString()}`, {
+  await kv.put(safeKey, `pending:${new Date().toISOString()}`, {
     expirationTtl: pendingTtlSeconds,
   });
   return 'claimed';
@@ -78,7 +81,11 @@ export async function confirmSent(
   await markSent(kv, dedupKey, sentTtlSeconds);
 }
 
-/** 明确失败时释放占位，允许后续重试 */
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** 明确失败时释放占位，允许后续重试。KV.delete 失败重试 1 次 */
 export async function releaseClaim(
   kv: KVNamespace | undefined,
   dedupKey: string | undefined,
@@ -86,7 +93,20 @@ export async function releaseClaim(
   if (!dedupKey || !kv) {
     return;
   }
-  await kv.delete(dedupKey);
+  const safeKey = await normalizeKvDedupKey(dedupKey);
+  try {
+    await kv.delete(safeKey);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`kv releaseClaim first attempt failed dedupKey=${dedupKey} error=${msg}`);
+    await sleepMs(200);
+    try {
+      await kv.delete(safeKey);
+    } catch (e2: unknown) {
+      const msg2 = e2 instanceof Error ? e2.message : String(e2);
+      console.error(`kv releaseClaim retry also failed dedupKey=${dedupKey} error=${msg2}`);
+    }
+  }
 }
 
 /** @deprecated  Prefer claimSendSlot + confirmSent / releaseClaim */
