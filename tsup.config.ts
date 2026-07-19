@@ -34,6 +34,7 @@ export default defineConfig({
     'fund/eastmoney-estimate': 'src/fund/eastmoney-estimate.ts',
     'fund/quote': 'src/fund/quote.ts',
     'monitor/threshold': 'src/monitor/threshold.ts',
+    'test/fake-bindings': 'src/test/fake-bindings.ts',
   },
   format: ['esm'],
   dts: true,
