@@ -1,11 +1,13 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.1.1",
+  "version": "0.1.9",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
     "build": "tsup",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "prepare": "node scripts/ensure-dist.mjs"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,6 +15,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./async": {
+      "import": "./dist/async/sleep.js",
+      "types": "./dist/async/sleep.d.ts"
     },
     "./notify": {
       "import": "./dist/notify/client.js",
@@ -50,6 +56,18 @@
       "import": "./dist/ai/gateway.js",
       "types": "./dist/ai/gateway.d.ts"
     },
+    "./ai/neuron-quota": {
+      "import": "./dist/ai/neuron-quota.js",
+      "types": "./dist/ai/neuron-quota.d.ts"
+    },
+    "./ai/client": {
+      "import": "./dist/ai/client.js",
+      "types": "./dist/ai/client.d.ts"
+    },
+    "./secrets": {
+      "import": "./dist/secrets/resolve.js",
+      "types": "./dist/secrets/resolve.d.ts"
+    },
     "./logger": {
       "import": "./dist/logger/index.js",
       "types": "./dist/logger/index.d.ts"
@@ -57,6 +75,74 @@
     "./types": {
       "import": "./dist/types/env.js",
       "types": "./dist/types/env.d.ts"
+    },
+    "./id-generator": {
+      "import": "./dist/id-generator/index.js",
+      "types": "./dist/id-generator/index.d.ts"
+    },
+    "./email/decode-mime-header": {
+      "import": "./dist/email/decode-mime-header.js",
+      "types": "./dist/email/decode-mime-header.d.ts"
+    },
+    "./email/regex-pattern": {
+      "import": "./dist/email/regex-pattern.js",
+      "types": "./dist/email/regex-pattern.d.ts"
+    },
+    "./email/probe": {
+      "import": "./dist/email/probe.js",
+      "types": "./dist/email/probe.d.ts"
+    },
+    "./resilience/circuit-breaker": {
+      "import": "./dist/resilience/circuit-breaker.js",
+      "types": "./dist/resilience/circuit-breaker.d.ts"
+    },
+    "./email/escape-html": {
+      "import": "./dist/email/escape-html.js",
+      "types": "./dist/email/escape-html.d.ts"
+    },
+    "./env": {
+      "import": "./dist/env/validate.js",
+      "types": "./dist/env/validate.d.ts"
+    },
+    "./ops-error": {
+      "import": "./dist/ops-error/index.js",
+      "types": "./dist/ops-error/index.d.ts"
+    },
+    "./fund/types": {
+      "import": "./dist/fund/types.js",
+      "types": "./dist/fund/types.d.ts"
+    },
+    "./fund/normalize-code": {
+      "import": "./dist/fund/normalize-code.js",
+      "types": "./dist/fund/normalize-code.d.ts"
+    },
+    "./fund/tencent-nav": {
+      "import": "./dist/fund/tencent-nav.js",
+      "types": "./dist/fund/tencent-nav.d.ts"
+    },
+    "./fund/eastmoney-estimate": {
+      "import": "./dist/fund/eastmoney-estimate.js",
+      "types": "./dist/fund/eastmoney-estimate.d.ts"
+    },
+    "./fund/quote": {
+      "import": "./dist/fund/quote.js",
+      "types": "./dist/fund/quote.d.ts"
+    },
+    "./monitor/threshold": {
+      "import": "./dist/monitor/threshold.js",
+      "types": "./dist/monitor/threshold.d.ts"
+    },
+    "./test/fake-bindings": {
+      "import": "./dist/test/fake-bindings.js",
+      "types": "./dist/test/fake-bindings.d.ts"
+    },
+    "./perf": {
+      "import": "./dist/perf.js",
+      "types": "./dist/perf.d.ts"
+    },
+    "./text/cap-input": {
+      "import": "./dist/text/cap-input.js",
+      "types": "./dist/text/cap-input.d.ts"
     }
   },
   "peerDependencies": {
@@ -64,6 +150,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250617.0",
+    "@vitest/coverage-v8": "^3.2.6",
     "tsup": "^8.5.0",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4"
