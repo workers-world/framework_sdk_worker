@@ -35,6 +35,8 @@ export default defineConfig({
     'fund/quote': 'src/fund/quote.ts',
     'monitor/threshold': 'src/monitor/threshold.ts',
     'test/fake-bindings': 'src/test/fake-bindings.ts',
+    perf: 'src/perf.ts',
+    'text/cap-input': 'src/text/cap-input.ts',
   },
   format: ['esm'],
   dts: true,

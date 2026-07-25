@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -135,6 +135,14 @@
     "./test/fake-bindings": {
       "import": "./dist/test/fake-bindings.js",
       "types": "./dist/test/fake-bindings.d.ts"
+    },
+    "./perf": {
+      "import": "./dist/perf.js",
+      "types": "./dist/perf.d.ts"
+    },
+    "./text/cap-input": {
+      "import": "./dist/text/cap-input.js",
+      "types": "./dist/text/cap-input.d.ts"
     }
   },
   "peerDependencies": {
