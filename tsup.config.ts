@@ -37,6 +37,7 @@ export default defineConfig({
     'test/fake-bindings': 'src/test/fake-bindings.ts',
     perf: 'src/perf.ts',
     'text/cap-input': 'src/text/cap-input.ts',
+    'desk/desk-signal': 'src/desk/desk-signal.ts',
   },
   format: ['esm'],
   dts: true,
