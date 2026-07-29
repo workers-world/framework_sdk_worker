@@ -33,6 +33,8 @@ describe('desk-signal', () => {
 
   it('validates DeskSignal shape', () => {
     expect(isDeskSignal({ type: 'invest_event', eventId: 'e', underlying: 'X', importance: 1 })).toBe(true);
+    expect(isDeskSignal({ type: 'invest_event', eventId: 'e', underlying: 'X', importance: 1, traceId: 't1' })).toBe(true);
+    expect(isDeskSignal({ type: 'invest_event', eventId: 'e', underlying: 'X', importance: 1, traceId: '' })).toBe(false);
     expect(isDeskSignal({ type: 'advice_lead', adviceId: 1, underlying: 'X', confidence: 0.5 })).toBe(false);
     expect(isDeskSignal({
       type: 'advice_lead',
