@@ -15,6 +15,8 @@ export type DeskSignalInvestEvent = {
   aiSummary: string | null;
   createdAt: number;
   marketRegion?: string | null;
+  /** 旁路投递操作关联 ID，写入 signal_buffer.tech_trace_id */
+  traceId?: string;
 };
 
 export type DeskSignalAdviceLead = {
@@ -26,6 +28,7 @@ export type DeskSignalAdviceLead = {
   confidence: number;
   sourceId: string;
   name?: string;
+  traceId?: string;
 };
 
 export type DeskSignal = DeskSignalInvestEvent | DeskSignalAdviceLead;
@@ -43,6 +46,10 @@ export function deskSignalImportance(signal: DeskSignal): number {
   return signal.confidence;
 }
 
+function isOptionalTraceId(value: unknown): boolean {
+  return value === undefined || (typeof value === 'string' && value.length > 0);
+}
+
 export function isDeskSignal(value: unknown): value is DeskSignal {
   if (!value || typeof value !== 'object') return false;
   const t = (value as { type?: unknown }).type;
@@ -50,7 +57,8 @@ export function isDeskSignal(value: unknown): value is DeskSignal {
     const s = value as DeskSignalInvestEvent;
     return typeof s.eventId === 'string'
       && typeof s.underlying === 'string'
-      && typeof s.importance === 'number';
+      && typeof s.importance === 'number'
+      && isOptionalTraceId(s.traceId);
   }
   if (t === 'advice_lead') {
     const s = value as DeskSignalAdviceLead;
@@ -59,7 +67,8 @@ export function isDeskSignal(value: unknown): value is DeskSignal {
       && typeof s.confidence === 'number'
       && typeof s.action === 'string'
       && typeof s.rationale === 'string'
-      && typeof s.sourceId === 'string';
+      && typeof s.sourceId === 'string'
+      && isOptionalTraceId(s.traceId);
   }
   return false;
 }

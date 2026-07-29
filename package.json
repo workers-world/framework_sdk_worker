@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -147,6 +147,10 @@
     "./desk/desk-signal": {
       "import": "./dist/desk/desk-signal.js",
       "types": "./dist/desk/desk-signal.d.ts"
+    },
+    "./desk/resolve-underlying": {
+      "import": "./dist/desk/resolve-underlying.js",
+      "types": "./dist/desk/resolve-underlying.d.ts"
     }
   },
   "peerDependencies": {

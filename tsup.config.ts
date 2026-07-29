@@ -38,6 +38,7 @@ export default defineConfig({
     perf: 'src/perf.ts',
     'text/cap-input': 'src/text/cap-input.ts',
     'desk/desk-signal': 'src/desk/desk-signal.ts',
+    'desk/resolve-underlying': 'src/desk/resolve-underlying.ts',
   },
   format: ['esm'],
   dts: true,
