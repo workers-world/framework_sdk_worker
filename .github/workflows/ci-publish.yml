@@ -3,10 +3,10 @@ name: CI and Publish
 
 on:
   push:
-    branches: [master]
+    branches: ["dev_*"]
     tags: ["v*"]
   pull_request:
-    branches: [master]
+    branches: ["dev_*"]
   workflow_dispatch:
 
 permissions:

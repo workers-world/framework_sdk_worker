@@ -1,0 +1,26 @@
+name: Promote to master
+
+# 任意 dev_* 上 CI（push）绿 → FF 该分支到 master；切新轨无需改本文件。
+on:
+  workflow_run:
+    workflows: ["CI and Publish"]
+    types: [completed]
+    branches: ["dev_*"]
+  workflow_dispatch:
+    inputs:
+      release_branch:
+        description: 要 promote 的发布轨分支（如 dev_00_12_00）
+        required: true
+        type: string
+
+jobs:
+  promote:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       startsWith(github.event.workflow_run.head_branch, 'dev_'))
+    uses: workers-world/.github/.github/workflows/worker-promote.yml@master
+    with:
+      release_branch: ${{ github.event_name == 'workflow_dispatch' && inputs.release_branch || github.event.workflow_run.head_branch }}
+    secrets: inherit
