@@ -3,10 +3,10 @@ name: CI and Publish
 
 on:
   push:
-    branches: [master]
+    branches: ["dev_*"]
     tags: ["v*"]
   pull_request:
-    branches: [master]
+    branches: ["dev_*"]
   workflow_dispatch:
 
 permissions:
@@ -17,9 +17,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -33,9 +33,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
