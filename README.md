@@ -18,7 +18,7 @@ cnpm run build
 ```json
 {
   "dependencies": {
-    "framework_sdk_worker": "file:../../framework_sdk_worker"
+    "framework_sdk_worker": "file:../framework_sdk_worker"
   }
 }
 ```
