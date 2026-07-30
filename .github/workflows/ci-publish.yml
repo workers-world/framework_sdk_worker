@@ -1,3 +1,4 @@
+# action: 发布到GitHub Packages供其他worker下载。
 name: CI and Publish
 
 on:
