@@ -5,19 +5,19 @@
 export type SecretLike = string | { get(): Promise<string> };
 
 export async function resolveSecret(
-  value: SecretLike | undefined | null,
+    value: SecretLike | undefined | null,
 ): Promise<string | undefined> {
-  if (value == null) {
+    if (value == null) {
+        return undefined;
+    }
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+    }
+    if (typeof value.get === 'function') {
+        const resolved = await value.get();
+        const trimmed = typeof resolved === 'string' ? resolved.trim() : '';
+        return trimmed.length > 0 ? trimmed : undefined;
+    }
     return undefined;
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-  if (typeof value.get === 'function') {
-    const resolved = await value.get();
-    const trimmed = typeof resolved === 'string' ? resolved.trim() : '';
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-  return undefined;
 }
