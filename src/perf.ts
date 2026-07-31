@@ -6,8 +6,8 @@
 export const DEFAULT_CPU_BUDGET_MS = 5;
 
 export interface CpuBudgetOptions {
-  /** 超过该毫秒数打 warn；默认 5 */
-  thresholdMs?: number;
+    /** 超过该毫秒数打 warn；默认 5 */
+    thresholdMs?: number;
 }
 
 /**
@@ -15,26 +15,26 @@ export interface CpuBudgetOptions {
  * @returns fn 的返回值
  */
 export function withCpuBudget<T>(
-  label: string,
-  fn: () => T,
-  options?: CpuBudgetOptions,
+    label: string,
+    fn: () => T,
+    options?: CpuBudgetOptions,
 ): T {
-  const thresholdMs = options?.thresholdMs ?? DEFAULT_CPU_BUDGET_MS;
-  const start = performance.now();
-  try {
-    return fn();
-  } finally {
-    const elapsedMs = performance.now() - start;
-    if (elapsedMs >= thresholdMs) {
-      console.warn(
-        JSON.stringify({
-          event: 'cpu_budget_exceeded',
-          msg: '同步段超过 CPU 预算阈值',
-          label,
-          elapsedMs: Math.round(elapsedMs * 100) / 100,
-          thresholdMs,
-        }),
-      );
+    const thresholdMs = options?.thresholdMs ?? DEFAULT_CPU_BUDGET_MS;
+    const start = performance.now();
+    try {
+        return fn();
+    } finally {
+        const elapsedMs = performance.now() - start;
+        if (elapsedMs >= thresholdMs) {
+            console.warn(
+                JSON.stringify({
+                    event: 'cpu_budget_exceeded',
+                    msg: '同步段超过 CPU 预算阈值',
+                    label,
+                    elapsedMs: Math.round(elapsedMs * 100) / 100,
+                    thresholdMs,
+                }),
+            );
+        }
     }
-  }
 }

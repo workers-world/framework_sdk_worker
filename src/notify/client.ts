@@ -1,56 +1,56 @@
-import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
 
 export interface NotifyPayload {
-  subject: string;
-  /** 纯文本正文；与 html 至少提供一个 */
-  body?: string;
-  /** HTML 正文；与 body 至少提供一个 */
-  html?: string;
-  to?: string;
-  dedupKey?: string;
+    subject: string;
+    /** 纯文本正文；与 html 至少提供一个 */
+    body?: string;
+    /** HTML 正文；与 body 至少提供一个 */
+    html?: string;
+    to?: string;
+    dedupKey?: string;
 }
 
 export interface NotifyResult {
-  ok: boolean;
-  skipped?: boolean;
-  reason?: string;
-  id?: string;
-  error?: string;
-  status?: number;
+    ok: boolean;
+    skipped?: boolean;
+    reason?: string;
+    id?: string;
+    error?: string;
+    status?: number;
 }
 
 export interface NotifyAsyncResult {
-  ok: boolean;
-  queued?: boolean;
-  skipped?: boolean;
-  reason?: string;
-  error?: string;
-  status?: number;
+    ok: boolean;
+    queued?: boolean;
+    skipped?: boolean;
+    reason?: string;
+    error?: string;
+    status?: number;
 }
 
 export interface DigestItemBase {
-  ruleId: string;
-  subjectPrefix: string;
-  to: string;
-  itemDedupKey?: string;
-  source?: string;
+    ruleId: string;
+    subjectPrefix: string;
+    to: string;
+    itemDedupKey?: string;
+    source?: string;
 }
 
 /** HN 等：LLM 摘要片段，由 notify-worker 窗口内合并为 digest */
 export interface DigestItemLlm extends DigestItemBase {
-  itemFormat: 'llm';
-  title: string;
-  summary: string;
-  url: string;
+    itemFormat: 'llm';
+    title: string;
+    summary: string;
+    url: string;
 }
 
 /** 其他订阅：原邮件原文，窗口内合并为 digest，不做改写 */
 export interface DigestItemRaw extends DigestItemBase {
-  itemFormat: 'raw';
-  originalSubject: string;
-  originalFrom: string;
-  originalText: string;
-  originalHtml: string;
+    itemFormat: 'raw';
+    originalSubject: string;
+    originalFrom: string;
+    originalText: string;
+    originalHtml: string;
 }
 
 export type DigestItem = DigestItemLlm | DigestItemRaw;
@@ -61,36 +61,36 @@ export type DigestItem = DigestItemLlm | DigestItemRaw;
  * token 支持 string（.dev.vars）或 Secrets Store binding。
  */
 export async function sendNotify(
-  notify: Fetcher | undefined,
-  token: SecretLike | undefined,
-  payload: NotifyPayload,
+    notify: Fetcher | undefined,
+    token: SecretLike | undefined,
+    payload: NotifyPayload,
 ): Promise<NotifyResult> {
-  if (!notify) {
-    return { ok: false, error: 'NOTIFY service binding not configured' };
-  }
-  const resolved = await resolveSecret(token);
-  if (!resolved) {
-    return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
-  }
+    if (!notify) {
+        return {ok: false, error: 'NOTIFY service binding not configured'};
+    }
+    const resolved = await resolveSecret(token);
+    if (!resolved) {
+        return {ok: false, error: 'NOTIFY_AUTH_TOKEN not configured'};
+    }
 
-  const resp = await notify.fetch('https://notify/v1/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${resolved}`,
-    },
-    body: JSON.stringify(payload),
-  });
+    const resp = await notify.fetch('https://notify/v1/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${resolved}`,
+        },
+        body: JSON.stringify(payload),
+    });
 
-  const data = (await resp.json()) as NotifyResult;
-  if (!resp.ok) {
-    return {
-      ok: false,
-      error: data.error || resp.statusText,
-      status: resp.status,
-    };
-  }
-  return data;
+    const data = (await resp.json()) as NotifyResult;
+    if (!resp.ok) {
+        return {
+            ok: false,
+            error: data.error || resp.statusText,
+            status: resp.status,
+        };
+    }
+    return data;
 }
 
 /**
@@ -98,35 +98,35 @@ export async function sendNotify(
  * 由 notify-worker 在 30 分钟窗口内按 ruleId+to 合并后发送。
  */
 export async function sendNotifyAsync(
-  notify: Fetcher | undefined,
-  token: SecretLike | undefined,
-  item: DigestItem,
+    notify: Fetcher | undefined,
+    token: SecretLike | undefined,
+    item: DigestItem,
 ): Promise<NotifyAsyncResult> {
-  if (!notify) {
-    return { ok: false, error: 'NOTIFY service binding not configured' };
-  }
-  const resolved = await resolveSecret(token);
-  if (!resolved) {
-    return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
-  }
+    if (!notify) {
+        return {ok: false, error: 'NOTIFY service binding not configured'};
+    }
+    const resolved = await resolveSecret(token);
+    if (!resolved) {
+        return {ok: false, error: 'NOTIFY_AUTH_TOKEN not configured'};
+    }
 
-  const resp = await notify.fetch('https://notify/v1/send/async', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${resolved}`,
-      ...(item.source ? { 'X-Notify-Source': item.source } : {}),
-    },
-    body: JSON.stringify(item),
-  });
+    const resp = await notify.fetch('https://notify/v1/send/async', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${resolved}`,
+            ...(item.source ? {'X-Notify-Source': item.source} : {}),
+        },
+        body: JSON.stringify(item),
+    });
 
-  const data = (await resp.json()) as NotifyAsyncResult;
-  if (!resp.ok) {
-    return {
-      ok: false,
-      error: data.error || resp.statusText,
-      status: resp.status,
-    };
-  }
-  return data;
+    const data = (await resp.json()) as NotifyAsyncResult;
+    if (!resp.ok) {
+        return {
+            ok: false,
+            error: data.error || resp.statusText,
+            status: resp.status,
+        };
+    }
+    return data;
 }
