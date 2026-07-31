@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -49,8 +49,12 @@
       "types": "./dist/kv/dedup.d.ts"
     },
     "./time": {
-      "import": "./dist/time/shanghai.js",
-      "types": "./dist/time/shanghai.d.ts"
+      "import": "./dist/time/index.js",
+      "types": "./dist/time/index.d.ts"
+    },
+    "./url": {
+      "import": "./dist/url/index.js",
+      "types": "./dist/url/index.d.ts"
     },
     "./ai": {
       "import": "./dist/ai/gateway.js",

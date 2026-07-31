@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {
+    isShanghaiWeekend,
     pad2,
     secondsUntilNextShanghaiDay,
     shanghaiIsoString,
@@ -39,5 +40,10 @@ describe('shanghai time', () => {
 
     it('secondsUntilNextShanghaiDay returns positive seconds', () => {
         expect(secondsUntilNextShanghaiDay(sample)).toBeGreaterThan(0);
+    });
+
+    it('isShanghaiWeekend is false for Thursday sample', () => {
+        // 2026-01-15 is Thursday in Shanghai
+        expect(isShanghaiWeekend(sample)).toBe(false);
     });
 });

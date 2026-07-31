@@ -44,6 +44,13 @@ export function shanghaiMinuteBucket(date: Date = new Date()): string {
     return `${year}${month}${day}${hour}${minute}`;
 }
 
+/** 上海时区是否为周六或周日（UTC+8） */
+export function isShanghaiWeekend(date: Date = new Date()): boolean {
+    const sh = new Date(date.getTime() + SHANGHAI_OFFSET_MS);
+    const day = sh.getUTCDay();
+    return day === 0 || day === 6;
+}
+
 /** 距上海时区次日 00:05 秒数（日配额用尽时 defer） */
 export function secondsUntilNextShanghaiDay(now: Date = new Date()): number {
     const sh = new Date(now.getTime() + SHANGHAI_OFFSET_MS);
