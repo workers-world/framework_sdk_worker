@@ -43,6 +43,7 @@ export default defineConfig({
         'text/cap-input': 'src/text/cap-input.ts',
         'desk/desk-signal': 'src/desk/desk-signal.ts',
         'desk/resolve-underlying': 'src/desk/resolve-underlying.ts',
+        'evaluation/content-filter': 'src/evaluation/content-filter.ts',
     },
     format: ['esm'],
     dts: true,
