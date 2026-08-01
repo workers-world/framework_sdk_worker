@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -155,6 +155,10 @@
     "./desk/resolve-underlying": {
       "import": "./dist/desk/resolve-underlying.js",
       "types": "./dist/desk/resolve-underlying.d.ts"
+    },
+    "./evaluation/content-filter": {
+      "import": "./dist/evaluation/content-filter.js",
+      "types": "./dist/evaluation/content-filter.d.ts"
     }
   },
   "peerDependencies": {
