@@ -3,10 +3,12 @@ import {
     contentFilterKvKey,
     defaultActionForStage,
     dispatchContentFilterAction,
+    emptyContentFilterConfig,
     evaluateContentFilter,
     normalizeActionForStage,
     shouldContinuePipeline,
     shouldStopPipeline,
+    validateContentFilterConfig,
     type ContentFilterConfig,
 } from './content-filter.js';
 
@@ -152,5 +154,60 @@ describe('shouldContinuePipeline / shouldStopPipeline', () => {
 describe('contentFilterKvKey', () => {
     it('builds scoped key', () => {
         expect(contentFilterKvKey('before', 'hacker-news')).toBe('content-filter:before:hacker-news');
+    });
+});
+
+describe('emptyContentFilterConfig', () => {
+    it('returns version 1 with empty rules', () => {
+        expect(emptyContentFilterConfig()).toEqual({version: 1, rules: []});
+    });
+});
+
+describe('validateContentFilterConfig', () => {
+    it('accepts valid config', () => {
+        expect(() => validateContentFilterConfig(sampleConfig)).not.toThrow();
+    });
+
+    it('rejects duplicate rule ids', () => {
+        const bad: ContentFilterConfig = {
+            version: 1,
+            rules: [
+                {
+                    id: 'dup',
+                    enabled: true,
+                    stage: 'before',
+                    match: {type: 'keyword', fields: ['title'], values: ['x']},
+                },
+                {
+                    id: 'dup',
+                    enabled: true,
+                    stage: 'before',
+                    match: {type: 'keyword', fields: ['title'], values: ['y']},
+                },
+            ],
+        };
+        expect(() => validateContentFilterConfig(bad)).toThrow(/重复规则 id/);
+    });
+
+    it('enforces stage option when saving scoped config', () => {
+        const beforeOnly: ContentFilterConfig = {
+            version: 1,
+            rules: [sampleConfig.rules[0]],
+        };
+        expect(() => validateContentFilterConfig(beforeOnly, {stage: 'before'})).not.toThrow();
+        expect(() => validateContentFilterConfig(beforeOnly, {stage: 'after'})).toThrow(/stage 须为 after/);
+    });
+
+    it('rejects invalid regex', () => {
+        const bad: ContentFilterConfig = {
+            version: 1,
+            rules: [{
+                id: 'bad-regex',
+                enabled: true,
+                stage: 'before',
+                match: {type: 'regex', fields: ['title'], pattern: '[unclosed'},
+            }],
+        };
+        expect(() => validateContentFilterConfig(bad)).toThrow(/正则无效/);
     });
 });
