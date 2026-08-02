@@ -1,6 +1,7 @@
 import {sleep} from '../async/sleep.js';
 import type {FundEstimate} from './types.js';
 import {normalizeFundCode} from './normalize-code.js';
+import {formatNavDate, parseDecimal, parsePct} from './parse-utils.js';
 import {
     DEFAULT_FUND_FETCH_TIMEOUT_MS,
     FUND_TRANSIENT_RETRY_DELAYS_MS,
@@ -94,38 +95,4 @@ export async function fetchEastmoneyEstimateWithRetry(
         }
     }
     throw lastError ?? new Error('fundgz fetch failed');
-}
-
-function parseDecimal(raw?: string): number | null {
-    if (raw == null || raw === '') {
-        return null;
-    }
-    const n = Number(String(raw).trim());
-    if (!Number.isFinite(n)) {
-        return null;
-    }
-    return Math.round(n * 10000) / 10000;
-}
-
-function parsePct(raw?: string): number | null {
-    if (raw == null || raw === '') {
-        return null;
-    }
-    const cleaned = String(raw).trim().replace('%', '');
-    const n = Number(cleaned);
-    if (!Number.isFinite(n)) {
-        return null;
-    }
-    return Math.round(n * 10000) / 10000 / 100;
-}
-
-function formatNavDate(raw?: string): string {
-    const text = String(raw ?? '').trim();
-    if (/^\d{8}$/.test(text)) {
-        return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`;
-    }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-        return text;
-    }
-    return text || '';
 }

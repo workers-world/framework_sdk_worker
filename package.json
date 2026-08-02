@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.1.14",
+  "version": "0.2.0",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -119,6 +119,10 @@
     "./fund/normalize-code": {
       "import": "./dist/fund/normalize-code.js",
       "types": "./dist/fund/normalize-code.d.ts"
+    },
+    "./fund/parse-utils": {
+      "import": "./dist/fund/parse-utils.js",
+      "types": "./dist/fund/parse-utils.d.ts"
     },
     "./fund/tencent-nav": {
       "import": "./dist/fund/tencent-nav.js",

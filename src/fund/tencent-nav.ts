@@ -1,9 +1,11 @@
 import {sleep} from '../async/sleep.js';
 import type {FundNav} from './types.js';
 import {normalizeFundCode} from './normalize-code.js';
+import {formatNavDate, parseDecimal, parsePct} from './parse-utils.js';
 
 export const DEFAULT_FUND_FETCH_TIMEOUT_MS = 10_000;
 export const FUND_TRANSIENT_RETRY_DELAYS_MS = [2000, 4000];
+const BATCH_CONCURRENCY = 5;
 
 export function isTransientFundError(status?: number, message = ''): boolean {
     if (status && status >= 500) {
@@ -97,42 +99,19 @@ export async function fetchTencentNavBatch(
 ): Promise<FundNav[]> {
     const unique = [...new Set(codes.map((c) => normalizeFundCode(c)))];
     const results: FundNav[] = [];
-    for (const code of unique) {
-        results.push(await fetchTencentNavWithRetry(code, timeoutMs));
+    for (let i = 0; i < unique.length; i += BATCH_CONCURRENCY) {
+        const batch = unique.slice(i, i + BATCH_CONCURRENCY);
+        const settled = await Promise.allSettled(
+            batch.map((code) => fetchTencentNavWithRetry(code, timeoutMs)),
+        );
+        for (const r of settled) {
+            if (r.status === 'fulfilled') {
+                results.push(r.value);
+            } else {
+                const msg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+                console.warn(`tencent nav batch skip: ${msg}`);
+            }
+        }
     }
     return results;
-}
-
-function parseDecimal(raw?: string): number | null {
-    if (raw == null || raw === '') {
-        return null;
-    }
-    const n = Number(String(raw).trim());
-    if (!Number.isFinite(n)) {
-        return null;
-    }
-    return Math.round(n * 10000) / 10000;
-}
-
-function parsePct(raw?: string): number | null {
-    if (raw == null || raw === '') {
-        return null;
-    }
-    const cleaned = String(raw).trim().replace('%', '');
-    const n = Number(cleaned);
-    if (!Number.isFinite(n)) {
-        return null;
-    }
-    return Math.round(n * 10000) / 10000 / 100;
-}
-
-function formatNavDate(raw?: string): string {
-    const text = String(raw ?? '').trim();
-    if (/^\d{8}$/.test(text)) {
-        return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`;
-    }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-        return text;
-    }
-    return text || '';
 }
