@@ -1,9 +1,11 @@
-# action: 发布到GitHub Packages供其他worker下载。
+# dev_*：开发轨，仅 verify（build + test）；CI 绿后 promote.yml FF 到 master。
+# master：发布轨，push 触发 verify + publish（GitHub Packages）。
+# 勿向 master 开 PR Merge，否则 promote FF 会失败。
 name: CI and Publish
 
 on:
   push:
-    branches: ["dev_*"]
+    branches: ["dev_*", "master"]
     tags: ["v*"]
   pull_request:
     branches: ["dev_*"]
