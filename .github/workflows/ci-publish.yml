@@ -58,7 +58,10 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
+      # 发布轨：始终从 master 取代码（dev push 路径在 promote FF 之后与 dev tip 同 SHA）
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref || 'refs/heads/master' }}
 
       - uses: actions/setup-node@v5
         with:
