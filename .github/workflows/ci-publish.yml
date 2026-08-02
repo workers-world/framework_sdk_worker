@@ -1,5 +1,6 @@
-# dev_*：开发轨，仅 verify（build + test）；CI 绿后 promote.yml FF 到 master。
-# master：发布轨，push 触发 verify + publish（GitHub Packages）。
+# dev_* push：verify → promote（FF master）→ publish（同一次 workflow）。
+# master push / tag / dispatch：verify → publish。
+# promote 用 GITHUB_TOKEN push 时 GitHub 不会触发 master 上的新 workflow，故 publish 须在 dev 链内完成。
 # 勿向 master 开 PR Merge，否则 promote FF 会失败。
 name: CI and Publish
 
@@ -30,9 +31,31 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  publish:
+  promote:
     needs: verify
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/dev_')
+    permissions:
+      contents: write
+    uses: workers-world/.github/.github/workflows/worker-promote.yml@master
+    with:
+      release_branch: ${{ github.ref_name }}
+    secrets: inherit
+
+  publish:
+    needs: [verify, promote]
+    if: >
+      always() &&
+      needs.verify.result == 'success' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        startsWith(github.ref, 'refs/tags/v') ||
+        github.ref == 'refs/heads/master' ||
+        (
+          github.event_name == 'push' &&
+          startsWith(github.ref, 'refs/heads/dev_') &&
+          needs.promote.result == 'success'
+        )
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
