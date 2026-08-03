@@ -18,7 +18,7 @@ export function createBearerAuthMiddleware(envKey: string, options?: BearerAuthM
             json(body: unknown, status?: number): Response;
         },
         next: () => Promise<void>,
-    ): Promise<Response | undefined> => {
+    ): Promise<Response | void> => {
         const envRecord = c.env as Record<string, unknown>;
         const token = await resolveSecret(envRecord[envKey] as SecretLike | undefined);
         const result = checkBearerToken(c.req.header('Authorization'), token, {
@@ -30,7 +30,7 @@ export function createBearerAuthMiddleware(envKey: string, options?: BearerAuthM
             return c.json({ error: result.error }, result.status ?? 401);
         }
 
-        return next();
+        await next();
     };
 }
 
@@ -41,7 +41,7 @@ export function registerBearerAuthRoutes(
     app: {
         use: (
             path: string,
-            handler: (c: any, next: () => Promise<void>) => Promise<Response | undefined>,
+            handler: (c: any, next: () => Promise<void>) => Promise<Response | void>,
         ) => unknown;
     },
     paths: string[],
