@@ -166,7 +166,8 @@
     "./evaluation/content-filter": {
       "import": "./dist/evaluation/content-filter.js",
       "types": "./dist/evaluation/content-filter.d.ts"
-    }
+    },
+    "./biome": "./biome-shared.json"
   },
   "peerDependencies": {
     "hono": "^4.0.0"
@@ -179,7 +180,8 @@
     "vitest": "^3.2.4"
   },
   "files": [
-    "dist"
+    "dist",
+    "biome-shared.json"
   ],
   "repository": {
     "type": "git",
