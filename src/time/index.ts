@@ -17,3 +17,5 @@ export {
     resolveGoldTradeSessions,
     type TradingSession,
 } from './trading-session.js';
+
+export {secondsUntilNextUtcDay, utcDayRangeIso, utcYmdDash} from './utc.js';
