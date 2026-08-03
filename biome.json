@@ -20,7 +20,9 @@
         "useNodejsImportProtocol": "off"
       },
       "suspicious": {
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noAssignInExpressions": "off",
+        "noImplicitAnyLet": "off"
       },
       "correctness": {
         "useExhaustiveDependencies": "off"
