@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {buildDedupKey, computeNotifyTier, withinAlertBand} from './threshold.js';
+import { describe, expect, it } from 'vitest';
+import { buildDedupKey, computeNotifyTier, withinAlertBand } from './threshold.js';
 
 describe('withinAlertBand', () => {
     describe('buy', () => {
@@ -93,9 +93,7 @@ describe('buildDedupKey', () => {
     });
 
     it('supports tier 0', () => {
-        expect(buildDedupKey('gold', 'AU9999', '2026-07-19', 0)).toBe(
-            'gold:AU9999:2026-07-19:t0',
-        );
+        expect(buildDedupKey('gold', 'AU9999', '2026-07-19', 0)).toBe('gold:AU9999:2026-07-19:t0');
     });
 
     it('keeps scope strings opaque', () => {

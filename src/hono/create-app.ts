@@ -1,5 +1,5 @@
-import {Hono} from 'hono';
-import {cors} from 'hono/cors';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 
 export interface CreateWorkerAppOptions {
     cors?: boolean;
@@ -18,13 +18,13 @@ export function createWorkerApp(options?: CreateWorkerAppOptions): any {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerHealthRoute(app: any): void {
-    app.get('/health', (c: { json: (body: unknown) => Response }) => c.json({ok: true}));
+    app.get('/health', (c: { json: (body: unknown) => Response }) => c.json({ ok: true }));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerNotFoundRoute(app: any): void {
     app.get('*', (c: { json: (body: unknown, status?: number) => Response }) =>
-        c.json({error: 'Not Found'}, 404),
+        c.json({ error: 'Not Found' }, 404),
     );
 }
 
@@ -36,6 +36,6 @@ export function registerGlobalErrorHandler(
 ): void {
     app.onError((err: unknown, c: { json: (body: unknown, status?: number) => Response }) => {
         console.error(err);
-        return c.json({error: message, code}, 500);
+        return c.json({ error: message, code }, 500);
     });
 }

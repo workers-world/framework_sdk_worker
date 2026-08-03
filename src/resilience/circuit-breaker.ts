@@ -8,7 +8,7 @@ interface CircuitState {
 }
 
 function createState(): CircuitState {
-    return {failures: 0, lastFailureTime: 0, open: false};
+    return { failures: 0, lastFailureTime: 0, open: false };
 }
 
 const states = new Map<string, CircuitState>();
@@ -51,6 +51,8 @@ export function recordCircuitFailure(name = 'default'): void {
     state.lastFailureTime = Date.now();
     if (state.failures >= FAILURE_THRESHOLD && !state.open) {
         state.open = true;
-        console.log(`circuit open name=${name} failures=${state.failures} reason=consecutive_failures`);
+        console.log(
+            `circuit open name=${name} failures=${state.failures} reason=consecutive_failures`,
+        );
     }
 }

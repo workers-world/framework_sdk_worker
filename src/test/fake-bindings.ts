@@ -1,20 +1,13 @@
 export function makeFakeFetcher(
-    handler?: (
-        url: string | URL | Request,
-        init?: RequestInit,
-    ) => Response | Promise<Response>,
+    handler?: (url: string | URL | Request, init?: RequestInit) => Response | Promise<Response>,
 ): Fetcher {
-    const fallback = () => new Response('Not Found', {status: 404});
+    const fallback = () => new Response('Not Found', { status: 404 });
     const resolve = handler ?? fallback;
 
     return {
         fetch(input: string | URL | Request, init?: RequestInit) {
             const url =
-                typeof input === 'string'
-                    ? input
-                    : input instanceof URL
-                        ? input.href
-                        : input.url;
+                typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
             return Promise.resolve(resolve(url, init));
         },
     } as Fetcher;

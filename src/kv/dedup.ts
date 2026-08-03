@@ -49,7 +49,7 @@ export async function markSent(
         return;
     }
     const safeKey = await normalizeKvDedupKey(dedupKey);
-    await kv.put(safeKey, `sent:${new Date().toISOString()}`, {expirationTtl: ttlSeconds});
+    await kv.put(safeKey, `sent:${new Date().toISOString()}`, { expirationTtl: ttlSeconds });
 }
 
 /** 发信前占位 pending，阻止并发/重试窗口内重复发送。key 超长自动 SHA-256 截断 */

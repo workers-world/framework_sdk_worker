@@ -42,7 +42,9 @@ export function buildDeskSignalId(signal: DeskSignal): string {
 }
 
 export function deskSignalImportance(signal: DeskSignal): number {
-    if (signal.type === 'invest_event') return signal.importance;
+    if (signal.type === 'invest_event') {
+        return signal.importance;
+    }
     return signal.confidence;
 }
 
@@ -51,24 +53,30 @@ function isOptionalTraceId(value: unknown): boolean {
 }
 
 export function isDeskSignal(value: unknown): value is DeskSignal {
-    if (!value || typeof value !== 'object') return false;
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
     const t = (value as { type?: unknown }).type;
     if (t === 'invest_event') {
         const s = value as DeskSignalInvestEvent;
-        return typeof s.eventId === 'string'
-            && typeof s.underlying === 'string'
-            && typeof s.importance === 'number'
-            && isOptionalTraceId(s.traceId);
+        return (
+            typeof s.eventId === 'string' &&
+            typeof s.underlying === 'string' &&
+            typeof s.importance === 'number' &&
+            isOptionalTraceId(s.traceId)
+        );
     }
     if (t === 'advice_lead') {
         const s = value as DeskSignalAdviceLead;
-        return typeof s.adviceId === 'number'
-            && typeof s.underlying === 'string'
-            && typeof s.confidence === 'number'
-            && typeof s.action === 'string'
-            && typeof s.rationale === 'string'
-            && typeof s.sourceId === 'string'
-            && isOptionalTraceId(s.traceId);
+        return (
+            typeof s.adviceId === 'number' &&
+            typeof s.underlying === 'string' &&
+            typeof s.confidence === 'number' &&
+            typeof s.action === 'string' &&
+            typeof s.rationale === 'string' &&
+            typeof s.sourceId === 'string' &&
+            isOptionalTraceId(s.traceId)
+        );
     }
     return false;
 }

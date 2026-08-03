@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {InMemoryIdSequenceStore} from './store.js';
+import { describe, expect, it } from 'vitest';
+import { InMemoryIdSequenceStore } from './store.js';
 
 describe('InMemoryIdSequenceStore', () => {
     it('should increment per prefix and date', async () => {

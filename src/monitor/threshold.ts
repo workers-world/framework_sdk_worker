@@ -28,11 +28,6 @@ export function computeNotifyTier(
     return Math.ceil(diffPct / stepPct);
 }
 
-export function buildDedupKey(
-    prefix: string,
-    scope: string,
-    today: string,
-    tier: number,
-): string {
+export function buildDedupKey(prefix: string, scope: string, today: string, tier: number): string {
     return `${prefix}:${scope}:${today}:t${tier}`;
 }

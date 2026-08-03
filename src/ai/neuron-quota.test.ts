@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
     extractAiErrorMessage,
     fetchTodayNeuronsUsed,
@@ -31,9 +31,9 @@ describe('neuron-quota', () => {
     });
 
     it('isWorkersAiMetric matches neuron metrics', () => {
-        expect(isWorkersAiMetric({x_BillableMetricId: 'workers_ai_neurons'})).toBe(true);
-        expect(isWorkersAiMetric({ServiceName: 'Workers AI'})).toBe(true);
-        expect(isWorkersAiMetric({ServiceName: 'R2'})).toBe(false);
+        expect(isWorkersAiMetric({ x_BillableMetricId: 'workers_ai_neurons' })).toBe(true);
+        expect(isWorkersAiMetric({ ServiceName: 'Workers AI' })).toBe(true);
+        expect(isWorkersAiMetric({ ServiceName: 'R2' })).toBe(false);
     });
 
     it('isNeuronQuotaError detects 4006', () => {
@@ -46,16 +46,17 @@ describe('neuron-quota', () => {
         const aiError = {
             name: 'AiError',
             internalCode: 4006,
-            message: 'AiError: AiError: you have used up your daily free allocation of 10,000 neurons',
+            message:
+                'AiError: AiError: you have used up your daily free allocation of 10,000 neurons',
             description: 'you have used up your daily free allocation of 10,000 neurons',
         };
         expect(extractAiErrorMessage(aiError)).toContain('daily free allocation');
         expect(isNeuronQuotaError(aiError)).toBe(true);
-        expect(isNeuronQuotaError({internalCode: 4006})).toBe(true);
+        expect(isNeuronQuotaError({ internalCode: 4006 })).toBe(true);
     });
 
     it('extractAiErrorMessage falls back for plain objects', () => {
-        expect(extractAiErrorMessage({foo: 'bar'})).toBe('{"foo":"bar"}');
+        expect(extractAiErrorMessage({ foo: 'bar' })).toBe('{"foo":"bar"}');
         expect(extractAiErrorMessage(null)).toBe('');
     });
 
@@ -74,22 +75,32 @@ describe('neuron-quota', () => {
 
     it('fetchTodayNeuronsUsed sums GraphQL totalNeurons', async () => {
         const originalFetch = globalThis.fetch;
-        globalThis.fetch = async () => new Response(JSON.stringify({
-            data: {
-                viewer: {
-                    accounts: [{
-                        aiInferenceAdaptiveGroups: [
-                            {sum: {totalNeurons: 1200.5}},
-                            {sum: {totalNeurons: 799.5}},
-                        ],
-                    }],
-                },
-            },
-        }), {status: 200});
+        globalThis.fetch = async () =>
+            new Response(
+                JSON.stringify({
+                    data: {
+                        viewer: {
+                            accounts: [
+                                {
+                                    aiInferenceAdaptiveGroups: [
+                                        { sum: { totalNeurons: 1200.5 } },
+                                        { sum: { totalNeurons: 799.5 } },
+                                    ],
+                                },
+                            ],
+                        },
+                    },
+                }),
+                { status: 200 },
+            );
 
         try {
-            const result = await fetchTodayNeuronsUsed('acct', 'token', new Date('2026-07-09T12:00:00Z'));
-            expect(result).toEqual({ok: true, used: 2000});
+            const result = await fetchTodayNeuronsUsed(
+                'acct',
+                'token',
+                new Date('2026-07-09T12:00:00Z'),
+            );
+            expect(result).toEqual({ ok: true, used: 2000 });
         } finally {
             globalThis.fetch = originalFetch;
         }
@@ -97,9 +108,13 @@ describe('neuron-quota', () => {
 
     it('fetchTodayNeuronsUsed surfaces GraphQL errors', async () => {
         const originalFetch = globalThis.fetch;
-        globalThis.fetch = async () => new Response(JSON.stringify({
-            errors: [{message: 'auth failed'}],
-        }), {status: 200});
+        globalThis.fetch = async () =>
+            new Response(
+                JSON.stringify({
+                    errors: [{ message: 'auth failed' }],
+                }),
+                { status: 200 },
+            );
 
         try {
             const result = await fetchTodayNeuronsUsed('acct', 'token');

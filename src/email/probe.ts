@@ -7,7 +7,7 @@ export interface EmailProbe {
     messageId: string;
 }
 
-import {decodeMimeHeader} from './decode-mime-header.js';
+import { decodeMimeHeader } from './decode-mime-header.js';
 
 export function buildEmailProbe(message: ForwardableEmailMessage): EmailProbe {
     const rawSubject = message.headers.get('subject')?.trim() || '';

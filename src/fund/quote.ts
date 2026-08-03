@@ -1,7 +1,7 @@
-import {fetchEastmoneyEstimateWithRetry} from './eastmoney-estimate.js';
-import {fetchTencentNavWithRetry} from './tencent-nav.js';
-import type {FundQuote} from './types.js';
-import {normalizeFundCode} from './normalize-code.js';
+import { fetchEastmoneyEstimateWithRetry } from './eastmoney-estimate.js';
+import { normalizeFundCode } from './normalize-code.js';
+import { fetchTencentNavWithRetry } from './tencent-nav.js';
+import type { FundQuote } from './types.js';
 
 export function markPriceFromQuote(quote: Pick<FundQuote, 'estimatedNav' | 'nav'>): number | null {
     const estimate = quote.estimatedNav;

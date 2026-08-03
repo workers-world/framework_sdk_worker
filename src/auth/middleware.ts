@@ -1,5 +1,5 @@
-import {checkBearerToken} from './bearer.js';
-import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+import { checkBearerToken } from './bearer.js';
 
 export interface BearerAuthMiddlewareOptions {
     requireConfigured?: boolean;
@@ -9,16 +9,16 @@ export interface BearerAuthMiddlewareOptions {
 /**
  * 按 Env 字段名取 Bearer token（string 或 Secrets Store）。
  */
-export function createBearerAuthMiddleware(
-    envKey: string,
-    options?: BearerAuthMiddlewareOptions,
-) {
-    return async (c: {
-        // Hono Bindings Env 通常无 index signature；用宽松类型兼容
-        env: object;
-        req: { header(name: string): string | undefined };
-        json(body: unknown, status?: number): Response;
-    }, next: () => Promise<void>): Promise<Response | void> => {
+export function createBearerAuthMiddleware(envKey: string, options?: BearerAuthMiddlewareOptions) {
+    return async (
+        c: {
+            // Hono Bindings Env 通常无 index signature；用宽松类型兼容
+            env: object;
+            req: { header(name: string): string | undefined };
+            json(body: unknown, status?: number): Response;
+        },
+        next: () => Promise<void>,
+    ): Promise<Response | undefined> => {
         const envRecord = c.env as Record<string, unknown>;
         const token = await resolveSecret(envRecord[envKey] as SecretLike | undefined);
         const result = checkBearerToken(c.req.header('Authorization'), token, {
@@ -27,7 +27,7 @@ export function createBearerAuthMiddleware(
         });
 
         if (!result.ok) {
-            return c.json({error: result.error}, result.status ?? 401);
+            return c.json({ error: result.error }, result.status ?? 401);
         }
 
         return next();
@@ -41,7 +41,7 @@ export function registerBearerAuthRoutes(
     app: {
         use: (
             path: string,
-            handler: (c: any, next: () => Promise<void>) => Promise<Response | void>,
+            handler: (c: any, next: () => Promise<void>) => Promise<Response | undefined>,
         ) => unknown;
     },
     paths: string[],
@@ -57,5 +57,5 @@ export function registerBearerAuthRoutes(
     }
 }
 
-export {checkBearerToken, authorizeRequest} from './bearer.js';
-export {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+export { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+export { authorizeRequest, checkBearerToken } from './bearer.js';

@@ -1,9 +1,5 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {
-    isCircuitOpen,
-    recordCircuitFailure,
-    recordCircuitSuccess,
-} from './circuit-breaker.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { isCircuitOpen, recordCircuitFailure, recordCircuitSuccess } from './circuit-breaker.js';
 
 describe('circuit-breaker', () => {
     beforeEach(() => {

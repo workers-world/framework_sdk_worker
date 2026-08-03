@@ -1,4 +1,4 @@
-import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 
 export type EnvMode = 'dev' | 'prod';
 
@@ -51,10 +51,7 @@ function isEmptyValue(value: unknown): boolean {
     return false;
 }
 
-async function isRuleMissing(
-    env: EnvLike,
-    rule: EnvRule,
-): Promise<boolean> {
+async function isRuleMissing(env: EnvLike, rule: EnvRule): Promise<boolean> {
     const value = env[rule.key];
     if (rule.secret) {
         const resolved = await resolveSecret(value as SecretLike | undefined);
@@ -118,10 +115,7 @@ export async function assertEnvOnce(
 }
 
 /** dev 且无 RESEND_API_KEY 时走 console dryRun */
-export function shouldResendDryRun(
-    env: object,
-    apiKey?: string,
-): boolean {
+export function shouldResendDryRun(env: object, apiKey?: string): boolean {
     if (apiKey?.trim()) {
         return false;
     }

@@ -1,6 +1,6 @@
-import type {OpsErrorEnv} from './report.js';
-import {reportOpsErrorAsync} from './report.js';
-import {sanitizeForLog, type LogFields} from './sanitize.js';
+import type { OpsErrorEnv } from './report.js';
+import { reportOpsErrorAsync } from './report.js';
+import { type LogFields, sanitizeForLog } from './sanitize.js';
 
 export type OpsLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -47,18 +47,15 @@ function extractErrorMessage(fields: LogFields, event: string): string {
 }
 
 /** 结构化 JSON 日志；error 级可选即时运维邮件 */
-export function createOpsLogger(
-    workerName: string,
-    options: OpsLoggerOptions = {},
-): OpsLogger {
-    const {env, ctx} = options;
+export function createOpsLogger(workerName: string, options: OpsLoggerOptions = {}): OpsLogger {
+    const { env, ctx } = options;
 
     const log = (level: OpsLogLevel, event: string, fields: LogFields = {}) => {
         writeLog(workerName, level, event, fields);
         if (level !== 'error' || !env) {
             return;
         }
-        const {error: _errorField, message: _messageField, ...context} = fields;
+        const { error: _errorField, message: _messageField, ...context } = fields;
         reportOpsErrorAsync(
             env,
             {

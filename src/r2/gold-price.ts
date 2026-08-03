@@ -1,4 +1,4 @@
-import {pad2, shanghaiYmd} from '../time/shanghai.js';
+import { pad2, shanghaiYmd } from '../time/shanghai.js';
 
 export const DEFAULT_GOLD_R2_PREFIX = 'gold/AU9999_CNY/TMINI/';
 
@@ -26,7 +26,7 @@ export async function fetchLatestGoldPriceDetail(
     bucket: R2Bucket,
     options?: FetchLatestGoldPriceOptions,
 ): Promise<LatestGoldPrice | null> {
-    const prefix = (options?.prefix ?? DEFAULT_GOLD_R2_PREFIX) + shanghaiYmd() + '/';
+    const prefix = `${(options?.prefix ?? DEFAULT_GOLD_R2_PREFIX) + shanghaiYmd()}/`;
 
     try {
         let latestKey: string | null = null;
@@ -59,7 +59,7 @@ export async function fetchLatestGoldPriceDetail(
         if (latestMeta?.p) {
             const price = Number(latestMeta.p);
             if (Number.isFinite(price)) {
-                return {price, priceTime: latestTime};
+                return { price, priceTime: latestTime };
             }
         }
 
@@ -91,7 +91,7 @@ export function goldPriceObjectKey(
 ): string {
     const day = priceTime.slice(0, 8);
     const minute = priceTime.slice(8, 12);
-    return goldPriceObjectPrefix(benchmark, providerCode) + day + '/' + minute + '.json';
+    return `${goldPriceObjectPrefix(benchmark, providerCode) + day}/${minute}.json`;
 }
 
 export function priceTimeFromGoldKey(key: string): string | null {

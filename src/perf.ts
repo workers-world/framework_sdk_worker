@@ -14,11 +14,7 @@ export interface CpuBudgetOptions {
  * 测量同步 fn 耗时；超阈值输出 `event=cpu_budget_exceeded`。
  * @returns fn 的返回值
  */
-export function withCpuBudget<T>(
-    label: string,
-    fn: () => T,
-    options?: CpuBudgetOptions,
-): T {
+export function withCpuBudget<T>(label: string, fn: () => T, options?: CpuBudgetOptions): T {
     const thresholdMs = options?.thresholdMs ?? DEFAULT_CPU_BUDGET_MS;
     const start = performance.now();
     try {
