@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isShanghaiWeekend } from './shanghai.js';
+import { isShanghaiWeekend } from '../../src/time/shanghai.js';
 import {
     DEFAULT_GOLD_TRADE_SESSIONS,
     isWithinTradingSession,
     parseTradingSessions,
     resolveGoldTradeSessions,
-} from './trading-session.js';
+} from '../../src/time/trading-session.js';
 
 /** 构造「上海本地 wall clock」对应的 UTC Date（忽略 DST，固定 +08） */
 function shanghaiLocal(ymd: string, hm: string): Date {

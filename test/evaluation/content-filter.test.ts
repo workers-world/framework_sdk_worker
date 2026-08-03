@@ -10,7 +10,7 @@ import {
     shouldContinuePipeline,
     shouldStopPipeline,
     validateContentFilterConfig,
-} from './content-filter.js';
+} from '../../src/evaluation/content-filter.js';
 
 const sampleConfig: ContentFilterConfig = {
     version: 1,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDeskSignalId, deskSignalImportance, isDeskSignal } from './desk-signal.js';
+import { buildDeskSignalId, deskSignalImportance, isDeskSignal } from '../../src/desk/desk-signal.js';
 
 describe('desk-signal', () => {
     it('builds event signal_id', () => {

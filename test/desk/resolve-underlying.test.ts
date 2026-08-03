@@ -3,7 +3,7 @@ import {
     newSignalTraceId,
     normalizeUnderlyingKey,
     resolveInvestEventUnderlying,
-} from './resolve-underlying.js';
+} from '../../src/desk/resolve-underlying.js';
 
 describe('resolve-underlying', () => {
     it('normalizes tickers to uppercase', () => {

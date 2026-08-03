@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capInput } from './cap-input.js';
+import { capInput } from '../../src/text/cap-input.js';
 
 describe('capInput', () => {
     it('returns original when within max', () => {

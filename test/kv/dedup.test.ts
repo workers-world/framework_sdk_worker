@@ -5,7 +5,7 @@ import {
     confirmSent,
     normalizeKvDedupKey,
     releaseClaim,
-} from './dedup.js';
+} from '../../src/kv/dedup.js';
 
 function createMockKv(): KVNamespace {
     const store = new Map<string, string>();

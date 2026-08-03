@@ -8,7 +8,7 @@ import {
     shanghaiYmd,
     shanghaiYmdDash,
     shanghaiYmPath,
-} from './shanghai.js';
+} from '../../src/time/shanghai.js';
 
 describe('shanghai time', () => {
     const sample = new Date('2026-01-15T10:00:00Z');

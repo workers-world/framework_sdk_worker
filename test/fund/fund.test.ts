@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { computeNotifyTier, withinAlertBand } from '../monitor/threshold.js';
-import { parseFundGzJsonp } from './eastmoney-estimate.js';
-import { isFundCode, normalizeFundCode } from './normalize-code.js';
-import { markPriceFromQuote } from './quote.js';
+import { computeNotifyTier, withinAlertBand } from '../../src/monitor/threshold.js';
+import { parseFundGzJsonp } from '../../src/fund/eastmoney-estimate.js';
+import { isFundCode, normalizeFundCode } from '../../src/fund/normalize-code.js';
+import { markPriceFromQuote } from '../../src/fund/quote.js';
 
 describe('normalizeFundCode', () => {
     it('accepts 6-digit code', () => {

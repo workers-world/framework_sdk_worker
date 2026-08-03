@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSecret } from './resolve.js';
+import { resolveSecret } from '../../src/secrets/resolve.js';
 
 describe('resolveSecret', () => {
     it('returns trimmed string secrets', async () => {
