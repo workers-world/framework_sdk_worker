@@ -5,7 +5,7 @@ import {
     inputsUseChatMessages,
     inputsUseReadableStream,
     shouldUseAiGateway,
-} from './gateway.js';
+} from '../../src/ai/gateway.js';
 
 describe('inputsUseReadableStream', () => {
     it('detects multipart body stream', () => {

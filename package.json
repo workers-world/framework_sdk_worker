@@ -8,8 +8,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "npm run build",
-    "lint": "npx --yes @biomejs/biome@2.5.1 check src",
-    "format": "npx --yes @biomejs/biome@2.5.1 format --write src",
+    "lint": "npx --yes @biomejs/biome@2.5.1 check src test",
+    "format": "npx --yes @biomejs/biome@2.5.1 format --write src test",
     "check": "npm run lint"
   },
   "main": "./dist/index.js",

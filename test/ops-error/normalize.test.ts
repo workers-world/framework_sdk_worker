@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildOpsDedupKey, normalizeError } from './normalize.js';
+import { buildOpsDedupKey, normalizeError } from '../../src/ops-error/normalize.js';
 
 describe('normalizeError', () => {
     it('strips uuid and timestamps', () => {

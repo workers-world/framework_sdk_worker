@@ -9,7 +9,7 @@ import {
     secondsUntilNextUtcDay,
     utcDayRangeIso,
     utcYmdDash,
-} from './neuron-quota.js';
+} from '../../src/ai/neuron-quota.js';
 
 describe('neuron-quota', () => {
     it('utcYmdDash uses UTC calendar day', () => {

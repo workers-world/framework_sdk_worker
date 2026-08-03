@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDedupKey, computeNotifyTier, withinAlertBand } from './threshold.js';
+import { buildDedupKey, computeNotifyTier, withinAlertBand } from '../../src/monitor/threshold.js';
 
 describe('withinAlertBand', () => {
     describe('buy', () => {

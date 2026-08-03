@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { withCpuBudget } from './perf.js';
+import { withCpuBudget } from '../src/perf.js';
 
 describe('withCpuBudget', () => {
     afterEach(() => {

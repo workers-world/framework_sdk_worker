@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertEnvAsync, EnvValidationError, getEnvMode, shouldResendDryRun } from './validate.js';
+import { assertEnvAsync, EnvValidationError, getEnvMode, shouldResendDryRun } from '../../src/env/validate.js';
 
 describe('getEnvMode', () => {
     it('defaults to dev', () => {
