@@ -1,5 +1,8 @@
 import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
 
+/** LLM 调用超时：gateway 挂起时避免调用方无限等待 */
+const LLM_CALL_TIMEOUT_MS = 60_000;
+
 export interface LlmChatMessage {
     role: string;
     content: string;
@@ -86,6 +89,7 @@ async function chatAt(
         method: 'POST',
         headers,
         body: JSON.stringify(params),
+        signal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS),
     });
 
     const data = (await resp.json().catch(() => ({}))) as {
@@ -140,6 +144,7 @@ export async function checkNeuronQuota(
     try {
         const resp = await env.SVC_LLM_GATEWAY.fetch('https://llm/v1/usage/neurons', {
             headers: auth,
+            signal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS),
         });
         const data = (await resp.json()) as Partial<NeuronQuotaSnapshot>;
         if (!resp.ok) {
