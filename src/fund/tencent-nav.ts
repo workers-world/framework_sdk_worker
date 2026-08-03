@@ -1,7 +1,7 @@
-import {sleep} from '../async/sleep.js';
-import type {FundNav} from './types.js';
-import {normalizeFundCode} from './normalize-code.js';
-import {formatNavDate, parseDecimal, parsePct} from './parse-utils.js';
+import { sleep } from '../async/sleep.js';
+import { normalizeFundCode } from './normalize-code.js';
+import { formatNavDate, parseDecimal, parsePct } from './parse-utils.js';
+import type { FundNav } from './types.js';
 
 export const DEFAULT_FUND_FETCH_TIMEOUT_MS = 10_000;
 export const FUND_TRANSIENT_RETRY_DELAYS_MS = [2000, 4000];
@@ -12,10 +12,12 @@ export function isTransientFundError(status?: number, message = ''): boolean {
         return true;
     }
     const lower = message.toLowerCase();
-    return lower.includes('network')
-        || lower.includes('timeout')
-        || lower.includes('fetch failed')
-        || lower.includes('abort');
+    return (
+        lower.includes('network') ||
+        lower.includes('timeout') ||
+        lower.includes('fetch failed') ||
+        lower.includes('abort')
+    );
 }
 
 interface TencentFundRow {
@@ -27,7 +29,10 @@ interface TencentFundRow {
     jzrq?: string;
 }
 
-export async function fetchTencentNav(code: string, timeoutMs = DEFAULT_FUND_FETCH_TIMEOUT_MS): Promise<FundNav> {
+export async function fetchTencentNav(
+    code: string,
+    timeoutMs = DEFAULT_FUND_FETCH_TIMEOUT_MS,
+): Promise<FundNav> {
     const fundCode = normalizeFundCode(code);
     const url = `https://fundcomapi.tiantianfunds.com/mm/fundTrade/FundBaseInfos?FCODE=${fundCode}`;
 
@@ -42,13 +47,17 @@ export async function fetchTencentNav(code: string, timeoutMs = DEFAULT_FUND_FET
         });
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        const error = new Error(`tencent fund fetch failed: ${msg}`) as Error & { transient?: boolean };
+        const error = new Error(`tencent fund fetch failed: ${msg}`) as Error & {
+            transient?: boolean;
+        };
         error.transient = isTransientFundError(undefined, msg);
         throw error;
     }
 
     if (!resp.ok) {
-        const error = new Error(`tencent fund HTTP ${resp.status}`) as Error & { transient?: boolean };
+        const error = new Error(`tencent fund HTTP ${resp.status}`) as Error & {
+            transient?: boolean;
+        };
         error.transient = isTransientFundError(resp.status, error.message);
         throw error;
     }
@@ -75,7 +84,10 @@ export async function fetchTencentNav(code: string, timeoutMs = DEFAULT_FUND_FET
     };
 }
 
-export async function fetchTencentNavWithRetry(code: string, timeoutMs = DEFAULT_FUND_FETCH_TIMEOUT_MS): Promise<FundNav> {
+export async function fetchTencentNavWithRetry(
+    code: string,
+    timeoutMs = DEFAULT_FUND_FETCH_TIMEOUT_MS,
+): Promise<FundNav> {
     let lastError: Error | null = null;
     for (let attempt = 0; attempt <= FUND_TRANSIENT_RETRY_DELAYS_MS.length; attempt++) {
         try {

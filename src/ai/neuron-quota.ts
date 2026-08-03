@@ -33,7 +33,7 @@ export function utcDayRangeIso(date: Date = new Date()): { start: string; end: s
 
 /** 距 UTC 次日 00:05 秒数（Workers AI Neurons 日配额按 UTC 00:00 重置） */
 export function secondsUntilNextUtcDay(now: Date = new Date(), bufferSec = 5 * 60): number {
-    const {end} = utcDayRangeIso(now);
+    const { end } = utcDayRangeIso(now);
     const endMs = new Date(end).getTime();
     return Math.max(1, Math.ceil((endMs - now.getTime()) / 1000) + bufferSec);
 }
@@ -42,10 +42,12 @@ export function secondsUntilNextUtcDay(now: Date = new Date(), bufferSec = 5 * 6
 export function isWorkersAiMetric(record: BillableUsageRecord): boolean {
     const metric = (record.x_BillableMetricId || '').toLowerCase();
     const service = (record.ServiceName || '').toLowerCase();
-    return metric.includes('neuron')
-        || metric.includes('workers_ai')
-        || metric.includes('workers-ai')
-        || service.includes('workers ai');
+    return (
+        metric.includes('neuron') ||
+        metric.includes('workers_ai') ||
+        metric.includes('workers-ai') ||
+        service.includes('workers ai')
+    );
 }
 
 /** 拉取 UTC 当日 Workers AI Neurons 用量（GraphQL aiInferenceAdaptiveGroups） */
@@ -54,7 +56,7 @@ export async function fetchTodayNeuronsUsed(
     apiToken: string,
     date: Date = new Date(),
 ): Promise<FetchNeuronsResult> {
-    const {start, end} = utcDayRangeIso(date);
+    const { start, end } = utcDayRangeIso(date);
     const query = `
     query NeuronsUsedToday($accountId: String!, $start: Time!, $end: Time!) {
       viewer {
@@ -89,10 +91,10 @@ export async function fetchTodayNeuronsUsed(
         });
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        return {ok: false, used: 0, error: msg};
+        return { ok: false, used: 0, error: msg };
     }
 
-    const data = await resp.json() as {
+    const data = (await resp.json()) as {
         data?: {
             viewer?: {
                 accounts?: Array<{
@@ -125,7 +127,7 @@ export async function fetchTodayNeuronsUsed(
         used += group.sum?.totalNeurons ?? 0;
     }
 
-    return {ok: true, used};
+    return { ok: true, used };
 }
 
 /** 从 Error / AiError 对象 / 字符串提取可匹配的错误文案 */
@@ -161,10 +163,12 @@ export function extractAiErrorMessage(value: unknown): string {
 
 function isNeuronQuotaMessage(message: string): boolean {
     const lower = message.toLowerCase();
-    return lower.includes('4006')
-        || lower.includes('neuron_quota_exceeded')
-        || lower.includes('daily free allocation')
-        || (lower.includes('neurons') && lower.includes('upgrade'));
+    return (
+        lower.includes('4006') ||
+        lower.includes('neuron_quota_exceeded') ||
+        lower.includes('daily free allocation') ||
+        (lower.includes('neurons') && lower.includes('upgrade'))
+    );
 }
 
 /** 识别 Workers AI 日 Neurons 额度错误（4006 等） */
@@ -178,11 +182,7 @@ export function isNeuronQuotaError(value: unknown): boolean {
     return isNeuronQuotaMessage(extractAiErrorMessage(value));
 }
 
-export function hasNeuronQuotaRemaining(
-    used: number,
-    limit = 10_000,
-    reserve = 500,
-): boolean {
+export function hasNeuronQuotaRemaining(used: number, limit = 10_000, reserve = 500): boolean {
     return used + reserve <= limit;
 }
 

@@ -1,1 +1,1 @@
-export { isVideoUrl, describeVideoLink } from './video-link.js';
+export { describeVideoLink, isVideoUrl } from './video-link.js';

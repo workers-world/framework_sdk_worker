@@ -1,9 +1,9 @@
-import {escapeHtml} from '../email/escape-html.js';
-import {getEnvMode} from '../env/validate.js';
-import {sendNotify, type NotifyResult} from '../notify/client.js';
-import type {SecretLike} from '../secrets/resolve.js';
-import {buildOpsDedupKey} from './normalize.js';
-import {sanitizeForLog, type LogFields} from './sanitize.js';
+import { escapeHtml } from '../email/escape-html.js';
+import { getEnvMode } from '../env/validate.js';
+import { type NotifyResult, sendNotify } from '../notify/client.js';
+import type { SecretLike } from '../secrets/resolve.js';
+import { buildOpsDedupKey } from './normalize.js';
+import { type LogFields, sanitizeForLog } from './sanitize.js';
 
 export interface OpsErrorPayload {
     worker: string;
@@ -30,11 +30,7 @@ function resolveAlertTo(env: OpsErrorEnv, override?: string): string | undefined
 function formatContextLines(context: LogFields): string[] {
     return Object.entries(context).map(([key, value]) => {
         const rendered =
-            value == null
-                ? ''
-                : typeof value === 'object'
-                    ? JSON.stringify(value)
-                    : String(value);
+            value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
         return `${key}: ${rendered}`;
     });
 }
@@ -62,9 +58,9 @@ export async function reportOpsError(
             console.warn(
                 `[ops-error] OPS_ALERT_TO not configured, skip alert worker=${payload.worker} reason=${payload.reason}`,
             );
-            return {ok: true, skipped: true, reason: 'ops_alert_to_missing'};
+            return { ok: true, skipped: true, reason: 'ops_alert_to_missing' };
         }
-        return {ok: false, error: 'OPS_ALERT_TO not configured'};
+        return { ok: false, error: 'OPS_ALERT_TO not configured' };
     }
 
     const context = sanitizeForLog(payload.context ?? {});
@@ -72,8 +68,7 @@ export async function reportOpsError(
     const body = buildOpsEmailBody(payload, context);
     const html = `<pre>${escapeHtml(body)}</pre>`;
     const dedupKey =
-        payload.dedupKey?.trim()
-        || buildOpsDedupKey(payload.worker, payload.reason, payload.error);
+        payload.dedupKey?.trim() || buildOpsDedupKey(payload.worker, payload.reason, payload.error);
 
     try {
         return await sendNotify(env.SVC_NOTIFY, env.NOTIFY_AUTH_TOKEN, {
@@ -85,8 +80,10 @@ export async function reportOpsError(
         });
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        console.error(`[ops-error] notify failed worker=${payload.worker} reason=${payload.reason} error=${msg}`);
-        return {ok: false, error: msg};
+        console.error(
+            `[ops-error] notify failed worker=${payload.worker} reason=${payload.reason} error=${msg}`,
+        );
+        return { ok: false, error: msg };
     }
 }
 

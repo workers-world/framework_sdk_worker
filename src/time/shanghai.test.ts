@@ -1,13 +1,13 @@
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
     isShanghaiWeekend,
     pad2,
     secondsUntilNextShanghaiDay,
     shanghaiIsoString,
     shanghaiMinuteBucket,
-    shanghaiYmPath,
     shanghaiYmd,
     shanghaiYmdDash,
+    shanghaiYmPath,
 } from './shanghai.js';
 
 describe('shanghai time', () => {

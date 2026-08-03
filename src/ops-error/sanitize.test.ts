@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {sanitizeForLog} from './sanitize.js';
+import { describe, expect, it } from 'vitest';
+import { sanitizeForLog } from './sanitize.js';
 
 describe('sanitizeForLog', () => {
     it('redacts sensitive keys', () => {

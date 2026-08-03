@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {escapeHtml} from './escape-html.js';
+import { describe, expect, it } from 'vitest';
+import { escapeHtml } from './escape-html.js';
 
 describe('escapeHtml', () => {
     it('escapes ampersand', () => {
@@ -17,9 +17,7 @@ describe('escapeHtml', () => {
     });
 
     it('escapes all special characters together', () => {
-        expect(escapeHtml('<a href="x">&</a>')).toBe(
-            '&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;',
-        );
+        expect(escapeHtml('<a href="x">&</a>')).toBe('&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;');
     });
 
     it('returns plain text unchanged', () => {

@@ -1,12 +1,12 @@
-import {sleep} from '../async/sleep.js';
-import type {FundEstimate} from './types.js';
-import {normalizeFundCode} from './normalize-code.js';
-import {formatNavDate, parseDecimal, parsePct} from './parse-utils.js';
+import { sleep } from '../async/sleep.js';
+import { normalizeFundCode } from './normalize-code.js';
+import { formatNavDate, parseDecimal, parsePct } from './parse-utils.js';
 import {
     DEFAULT_FUND_FETCH_TIMEOUT_MS,
     FUND_TRANSIENT_RETRY_DELAYS_MS,
     isTransientFundError,
 } from './tencent-nav.js';
+import type { FundEstimate } from './types.js';
 
 interface FundGzPayload {
     fundcode?: string;

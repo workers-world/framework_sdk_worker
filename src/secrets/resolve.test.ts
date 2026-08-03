@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {resolveSecret} from './resolve.js';
+import { describe, expect, it } from 'vitest';
+import { resolveSecret } from './resolve.js';
 
 describe('resolveSecret', () => {
     it('returns trimmed string secrets', async () => {
@@ -9,7 +9,7 @@ describe('resolveSecret', () => {
     });
 
     it('awaits Secrets Store binding get()', async () => {
-        expect(await resolveSecret({get: async () => 'store-token'})).toBe('store-token');
-        expect(await resolveSecret({get: async () => '  '})).toBeUndefined();
+        expect(await resolveSecret({ get: async () => 'store-token' })).toBe('store-token');
+        expect(await resolveSecret({ get: async () => '  ' })).toBeUndefined();
     });
 });

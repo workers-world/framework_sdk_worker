@@ -1,5 +1,6 @@
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
+    type ContentFilterConfig,
     contentFilterKvKey,
     defaultActionForStage,
     dispatchContentFilterAction,
@@ -9,7 +10,6 @@ import {
     shouldContinuePipeline,
     shouldStopPipeline,
     validateContentFilterConfig,
-    type ContentFilterConfig,
 } from './content-filter.js';
 
 const sampleConfig: ContentFilterConfig = {
@@ -41,7 +41,7 @@ const sampleConfig: ContentFilterConfig = {
             id: 'disabled-rule',
             enabled: false,
             stage: 'before',
-            match: {type: 'keyword', fields: ['title'], values: ['ignore-me']},
+            match: { type: 'keyword', fields: ['title'], values: ['ignore-me'] },
         },
     ],
 };
@@ -67,7 +67,7 @@ describe('normalizeActionForStage', () => {
 
 describe('evaluateContentFilter', () => {
     it('returns null when config empty', () => {
-        expect(evaluateContentFilter(null, {stage: 'before', title: 'x'}).hit).toBeNull();
+        expect(evaluateContentFilter(null, { stage: 'before', title: 'x' }).hit).toBeNull();
     });
 
     it('matches before keyword', () => {
@@ -109,27 +109,33 @@ describe('evaluateContentFilter', () => {
 
 describe('dispatchContentFilterAction', () => {
     it('stops on block and block_notify', () => {
-        expect(dispatchContentFilterAction({
-            ruleId: 'a',
-            stage: 'before',
-            action: 'block',
-            message: '',
-        })).toBe('stop');
-        expect(dispatchContentFilterAction({
-            ruleId: 'b',
-            stage: 'after',
-            action: 'block_notify',
-            message: '',
-        })).toBe('stop');
+        expect(
+            dispatchContentFilterAction({
+                ruleId: 'a',
+                stage: 'before',
+                action: 'block',
+                message: '',
+            }),
+        ).toBe('stop');
+        expect(
+            dispatchContentFilterAction({
+                ruleId: 'b',
+                stage: 'after',
+                action: 'block_notify',
+                message: '',
+            }),
+        ).toBe('stop');
     });
 
     it('continues on tag_only', () => {
-        expect(dispatchContentFilterAction({
-            ruleId: 'c',
-            stage: 'before',
-            action: 'tag_only',
-            message: '',
-        })).toBe('continue');
+        expect(
+            dispatchContentFilterAction({
+                ruleId: 'c',
+                stage: 'before',
+                action: 'tag_only',
+                message: '',
+            }),
+        ).toBe('continue');
     });
 });
 
@@ -153,13 +159,15 @@ describe('shouldContinuePipeline / shouldStopPipeline', () => {
 
 describe('contentFilterKvKey', () => {
     it('builds scoped key', () => {
-        expect(contentFilterKvKey('before', 'hacker-news')).toBe('content-filter:before:hacker-news');
+        expect(contentFilterKvKey('before', 'hacker-news')).toBe(
+            'content-filter:before:hacker-news',
+        );
     });
 });
 
 describe('emptyContentFilterConfig', () => {
     it('returns version 1 with empty rules', () => {
-        expect(emptyContentFilterConfig()).toEqual({version: 1, rules: []});
+        expect(emptyContentFilterConfig()).toEqual({ version: 1, rules: [] });
     });
 });
 
@@ -176,13 +184,13 @@ describe('validateContentFilterConfig', () => {
                     id: 'dup',
                     enabled: true,
                     stage: 'before',
-                    match: {type: 'keyword', fields: ['title'], values: ['x']},
+                    match: { type: 'keyword', fields: ['title'], values: ['x'] },
                 },
                 {
                     id: 'dup',
                     enabled: true,
                     stage: 'before',
-                    match: {type: 'keyword', fields: ['title'], values: ['y']},
+                    match: { type: 'keyword', fields: ['title'], values: ['y'] },
                 },
             ],
         };
@@ -194,19 +202,23 @@ describe('validateContentFilterConfig', () => {
             version: 1,
             rules: [sampleConfig.rules[0]],
         };
-        expect(() => validateContentFilterConfig(beforeOnly, {stage: 'before'})).not.toThrow();
-        expect(() => validateContentFilterConfig(beforeOnly, {stage: 'after'})).toThrow(/stage 须为 after/);
+        expect(() => validateContentFilterConfig(beforeOnly, { stage: 'before' })).not.toThrow();
+        expect(() => validateContentFilterConfig(beforeOnly, { stage: 'after' })).toThrow(
+            /stage 须为 after/,
+        );
     });
 
     it('rejects invalid regex', () => {
         const bad: ContentFilterConfig = {
             version: 1,
-            rules: [{
-                id: 'bad-regex',
-                enabled: true,
-                stage: 'before',
-                match: {type: 'regex', fields: ['title'], pattern: '[unclosed'},
-            }],
+            rules: [
+                {
+                    id: 'bad-regex',
+                    enabled: true,
+                    stage: 'before',
+                    match: { type: 'regex', fields: ['title'], pattern: '[unclosed' },
+                },
+            ],
         };
         expect(() => validateContentFilterConfig(bad)).toThrow(/正则无效/);
     });

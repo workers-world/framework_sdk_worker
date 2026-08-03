@@ -17,11 +17,7 @@ export function hashString(input: string): string {
     return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-export function buildOpsDedupKey(
-    worker: string,
-    reason: string,
-    error: string,
-): string {
+export function buildOpsDedupKey(worker: string, reason: string, error: string): string {
     const normalized = normalizeError(error);
     return `ops:${worker}:${reason}:${hashString(normalized)}`;
 }

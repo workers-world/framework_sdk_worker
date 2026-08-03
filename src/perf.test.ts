@@ -1,5 +1,5 @@
-import {afterEach, describe, expect, it, vi} from 'vitest';
-import {withCpuBudget} from './perf.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { withCpuBudget } from './perf.js';
 
 describe('withCpuBudget', () => {
     afterEach(() => {
@@ -7,23 +7,21 @@ describe('withCpuBudget', () => {
     });
 
     it('returns fn result and does not warn under threshold', () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {
-        });
-        const result = withCpuBudget('fast', () => 42, {thresholdMs: 50});
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const result = withCpuBudget('fast', () => 42, { thresholdMs: 50 });
         expect(result).toBe(42);
         expect(warn).not.toHaveBeenCalled();
     });
 
     it('warns with structured event when over threshold', () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {
-        });
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         let calls = 0;
         vi.spyOn(performance, 'now').mockImplementation(() => {
             calls += 1;
             return calls === 1 ? 0 : 10;
         });
 
-        const result = withCpuBudget('slow-label', () => 'ok', {thresholdMs: 5});
+        const result = withCpuBudget('slow-label', () => 'ok', { thresholdMs: 5 });
         expect(result).toBe('ok');
         expect(warn).toHaveBeenCalledTimes(1);
         const payload = JSON.parse(String(warn.mock.calls[0][0])) as Record<string, unknown>;
@@ -34,8 +32,7 @@ describe('withCpuBudget', () => {
     });
 
     it('still warns when fn throws after exceeding threshold', () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {
-        });
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         let calls = 0;
         vi.spyOn(performance, 'now').mockImplementation(() => {
             calls += 1;
@@ -43,9 +40,13 @@ describe('withCpuBudget', () => {
         });
 
         expect(() =>
-            withCpuBudget('throws', () => {
-                throw new Error('boom');
-            }, {thresholdMs: 5}),
+            withCpuBudget(
+                'throws',
+                () => {
+                    throw new Error('boom');
+                },
+                { thresholdMs: 5 },
+            ),
         ).toThrow('boom');
         expect(warn).toHaveBeenCalledTimes(1);
     });
