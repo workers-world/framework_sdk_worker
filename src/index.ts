@@ -11,4 +11,5 @@ export * from './notify/client.js';
 export * from './r2/gold-price.js';
 export * from './r2/put.js';
 export * from './time/shanghai.js';
+export * from './time/utc.js';
 export * from './types/env.js';

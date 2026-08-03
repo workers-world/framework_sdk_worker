@@ -15,6 +15,7 @@ export default defineConfig({
         'kv/dedup': 'src/kv/dedup.ts',
         'time/shanghai': 'src/time/shanghai.ts',
         'time/trading-session': 'src/time/trading-session.ts',
+        'time/utc': 'src/time/utc.ts',
         'time/index': 'src/time/index.ts',
         'url/video-link': 'src/url/video-link.ts',
         'url/index': 'src/url/index.ts',
