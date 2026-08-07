@@ -36,7 +36,7 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/dev_')
     permissions:
       contents: write
-    uses: workers-world/.github/.github/workflows/worker-promote.yml@master
+    uses: workers-world/.github/.github/workflows/worker-promote.yml@actions/v0.4.3
     with:
       release_branch: ${{ github.ref_name }}
     secrets: inherit
