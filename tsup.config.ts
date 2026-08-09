@@ -18,6 +18,7 @@ export default defineConfig({
         'time/utc': 'src/time/utc.ts',
         'time/index': 'src/time/index.ts',
         'url/video-link': 'src/url/video-link.ts',
+        'url/pdf-link': 'src/url/pdf-link.ts',
         'url/index': 'src/url/index.ts',
         'ai/gateway': 'src/ai/gateway.ts',
         'ai/neuron-quota': 'src/ai/neuron-quota.ts',
