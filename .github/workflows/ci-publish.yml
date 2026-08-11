@@ -35,7 +35,7 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/dev_')
     # 写操作走 PAT；须 WORKERS_WORLD_GHA_TOKEN
     permissions: {}
-    uses: workers-world/.github/.github/workflows/worker-promote.yml@actions/v0.4.5
+    uses: workers-world/.github/.github/workflows/worker-promote.yml@actions/v0.4.9
     with:
       release_branch: ${{ github.ref_name }}
     secrets: inherit
