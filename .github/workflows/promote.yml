@@ -1,7 +1,7 @@
 name: Promote to master
 
-# 日常 promote 已内置在 CI and Publish（verify 后置 job）。
-# 此处仅保留手动 / 应急 FF；勿再对 CI 使用 workflow_run（与内置 promote 重复，且 GITHUB_TOKEN push 不触发 master CI）。
+# 日常 promote 已内置在 CI and Publish（verify 后置 job，经 Release PR merge）。
+# 此处仅保留手动 / 应急；勿再对 CI 使用 workflow_run（与内置 promote 重复）。
 on:
   workflow_dispatch:
     inputs:
@@ -12,9 +12,8 @@ on:
 
 jobs:
   promote:
-    permissions:
-      contents: write
-    uses: workers-world/.github/.github/workflows/worker-promote.yml@master
+    permissions: {}
+    uses: workers-world/.github/.github/workflows/worker-promote.yml@actions/v0.4.8
     with:
       release_branch: ${{ inputs.release_branch }}
     secrets: inherit
