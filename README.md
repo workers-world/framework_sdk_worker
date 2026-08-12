@@ -32,6 +32,8 @@ cnpm install
 ## 子模块
 
 - `framework_sdk_worker/notify` — notify-worker 客户端
+- `framework_sdk_worker/audit-log` — 通用维护日志客户端（`writeMaintenanceLog`，对接 audit-log-worker）
+- `framework_sdk_worker/id-generator` — 发号客户端（`generateId`，对接 counter-worker）
 - `framework_sdk_worker/auth` — Bearer 鉴权
 - `framework_sdk_worker/hono` — Hono 应用骨架
 - `framework_sdk_worker/http` — JSON 解析与错误响应
