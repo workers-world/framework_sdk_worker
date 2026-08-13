@@ -87,6 +87,10 @@
       "import": "./dist/id-generator/index.js",
       "types": "./dist/id-generator/index.d.ts"
     },
+    "./audit-log": {
+      "import": "./dist/audit-log/client.js",
+      "types": "./dist/audit-log/client.d.ts"
+    },
     "./email/decode-mime-header": {
       "import": "./dist/email/decode-mime-header.js",
       "types": "./dist/email/decode-mime-header.d.ts"
