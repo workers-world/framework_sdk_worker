@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -23,6 +23,10 @@
       "import": "./dist/async/sleep.js",
       "types": "./dist/async/sleep.d.ts"
     },
+    "./async/with-timeout": {
+      "import": "./dist/async/with-timeout.js",
+      "types": "./dist/async/with-timeout.d.ts"
+    },
     "./notify": {
       "import": "./dist/notify/client.js",
       "types": "./dist/notify/client.d.ts"
@@ -30,6 +34,10 @@
     "./auth": {
       "import": "./dist/auth/middleware.js",
       "types": "./dist/auth/middleware.d.ts"
+    },
+    "./auth/require-admin": {
+      "import": "./dist/auth/require-admin.js",
+      "types": "./dist/auth/require-admin.d.ts"
     },
     "./hono": {
       "import": "./dist/hono/create-app.js",
@@ -94,6 +102,10 @@
     "./email/decode-mime-header": {
       "import": "./dist/email/decode-mime-header.js",
       "types": "./dist/email/decode-mime-header.d.ts"
+    },
+    "./email/sender-allowlist": {
+      "import": "./dist/email/sender-allowlist.js",
+      "types": "./dist/email/sender-allowlist.d.ts"
     },
     "./email/regex-pattern": {
       "import": "./dist/email/regex-pattern.js",
@@ -170,6 +182,30 @@
     "./evaluation/content-filter": {
       "import": "./dist/evaluation/content-filter.js",
       "types": "./dist/evaluation/content-filter.d.ts"
+    },
+    "./mcp": {
+      "import": "./dist/mcp/index.js",
+      "types": "./dist/mcp/index.d.ts"
+    },
+    "./mcp/types": {
+      "import": "./dist/mcp/types.js",
+      "types": "./dist/mcp/types.d.ts"
+    },
+    "./mcp/openapi": {
+      "import": "./dist/mcp/openapi.js",
+      "types": "./dist/mcp/openapi.d.ts"
+    },
+    "./mcp/host-router": {
+      "import": "./dist/mcp/host-router.js",
+      "types": "./dist/mcp/host-router.d.ts"
+    },
+    "./mcp/fallback-spec": {
+      "import": "./dist/mcp/fallback-spec.js",
+      "types": "./dist/mcp/fallback-spec.d.ts"
+    },
+    "./mcp/ensure-server": {
+      "import": "./dist/mcp/ensure-server.js",
+      "types": "./dist/mcp/ensure-server.d.ts"
     },
     "./biome": "./biome-shared.json"
   },
