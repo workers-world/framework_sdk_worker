@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -35,7 +35,7 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/dev_')
     # 写操作走 PAT；须 WORKERS_WORLD_GHA_TOKEN
     permissions: {}
-    uses: workers-world/.github/.github/workflows/worker-promote.yml@actions/v0.4.10
+    uses: workers-world/.github/.github/workflows/worker-promote.yml@actions/v0.4.22
     with:
       release_branch: ${{ github.ref_name }}
     secrets: inherit
@@ -55,7 +55,7 @@ jobs:
           needs.promote.result == 'success'
         )
       )
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
     steps:
       # 发布轨：始终从 master 取代码（dev push 路径在 promote FF 之后与 dev tip 同 SHA）
       - uses: actions/checkout@v7
