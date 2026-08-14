@@ -23,6 +23,7 @@ export default defineConfig({
         'url/video-link': 'src/url/video-link.ts',
         'url/pdf-link': 'src/url/pdf-link.ts',
         'url/product-landing-link': 'src/url/product-landing-link.ts',
+        'url/article-link': 'src/url/article-link.ts',
         'url/index': 'src/url/index.ts',
         'ai/gateway': 'src/ai/gateway.ts',
         'ai/neuron-quota': 'src/ai/neuron-quota.ts',
