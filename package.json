@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -46,6 +46,10 @@
     "./http": {
       "import": "./dist/http/parse-json.js",
       "types": "./dist/http/parse-json.d.ts"
+    },
+    "./http/fetch-page-meta": {
+      "import": "./dist/http/fetch-page-meta.js",
+      "types": "./dist/http/fetch-page-meta.d.ts"
     },
     "./r2": {
       "import": "./dist/r2/put.js",
