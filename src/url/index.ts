@@ -1,3 +1,4 @@
+export { isLikelyArticleUrl } from './article-link.js';
 export { describePdfLink, isPdfUrl } from './pdf-link.js';
 export {
     describeProductLandingLink,
