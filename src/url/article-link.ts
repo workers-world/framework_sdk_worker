@@ -49,6 +49,7 @@ const ARTICLE_PATH_SEGMENTS = new Set([
     'entries',
     'archive',
     'archives',
+    'eventpage',
 ]);
 
 const LONG_SLUG_MIN_LEN = 20;

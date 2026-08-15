@@ -28,4 +28,12 @@ describe('isLikelyArticleUrl', () => {
             isLikelyArticleUrl('https://finance.yahoo.com/article/pepsico.html'),
         ).toBe(false);
     });
+
+    it('detects USGS earthquake eventpage paths', () => {
+        expect(
+            isLikelyArticleUrl(
+                'https://earthquake.usgs.gov/earthquakes/eventpage/us6000tkt2/executive',
+            ),
+        ).toBe(true);
+    });
 });
