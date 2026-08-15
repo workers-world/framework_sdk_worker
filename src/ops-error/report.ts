@@ -1,4 +1,4 @@
-import { escapeHtml } from '../email/escape-html.js';
+import { linkifyPlainTextEmail } from '../email/linkify-plain-text.js';
 import { getEnvMode } from '../env/validate.js';
 import { type NotifyResult, sendNotify } from '../notify/client.js';
 import type { SecretLike } from '../secrets/resolve.js';
@@ -66,7 +66,7 @@ export async function reportOpsError(
     const context = sanitizeForLog(payload.context ?? {});
     const subject = `[ops:${payload.worker}] ${payload.reason}`.slice(0, 200);
     const body = buildOpsEmailBody(payload, context);
-    const html = `<pre>${escapeHtml(body)}</pre>`;
+    const html = linkifyPlainTextEmail(body);
     const dedupKey =
         payload.dedupKey?.trim() || buildOpsDedupKey(payload.worker, payload.reason, payload.error);
 
