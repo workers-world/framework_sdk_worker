@@ -153,6 +153,41 @@ export const DEFAULT_FALLBACK_SPEC: OpenApiDoc = {
                 responses: { '200': { description: 'ok' } },
             },
         },
+        '/v1/digests': {
+            get: {
+                operationId: 'listDigests',
+                tags: ['email-rule'],
+                summary: '查询 LLM 摘要索引（关键词/规则/时间区间）',
+                parameters: [
+                    {
+                        name: 'keyword',
+                        in: 'query',
+                        description: '标题/摘要关键字（LIKE 模糊匹配）',
+                        schema: { type: 'string' },
+                    },
+                    { name: 'ruleId', in: 'query', schema: { type: 'string' } },
+                    {
+                        name: 'from',
+                        in: 'query',
+                        description: '起始日期（含），上海时区，格式 YYYY-MM-DD',
+                        schema: { type: 'string' },
+                    },
+                    {
+                        name: 'to',
+                        in: 'query',
+                        description: '结束日期（含），上海时区，格式 YYYY-MM-DD',
+                        schema: { type: 'string' },
+                    },
+                    {
+                        name: 'limit',
+                        in: 'query',
+                        schema: { type: 'integer', default: 50, maximum: 200 },
+                    },
+                    { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } },
+                ],
+                responses: { '200': { description: 'ok' } },
+            },
+        },
         '/v1/log': {
             post: {
                 operationId: 'writeMaintenanceLog',
