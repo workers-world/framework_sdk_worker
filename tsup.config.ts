@@ -53,6 +53,7 @@ export default defineConfig({
         'text/cap-input': 'src/text/cap-input.ts',
         'desk/desk-signal': 'src/desk/desk-signal.ts',
         'desk/resolve-underlying': 'src/desk/resolve-underlying.ts',
+        'analysis/analysis-signal': 'src/analysis/analysis-signal.ts',
         'evaluation/content-filter': 'src/evaluation/content-filter.ts',
         'evaluation/quality-incident': 'src/evaluation/quality-incident.ts',
         'mcp/index': 'src/mcp/index.ts',

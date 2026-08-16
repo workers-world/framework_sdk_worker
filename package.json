@@ -187,6 +187,10 @@
       "import": "./dist/desk/resolve-underlying.js",
       "types": "./dist/desk/resolve-underlying.d.ts"
     },
+    "./analysis/analysis-signal": {
+      "import": "./dist/analysis/analysis-signal.js",
+      "types": "./dist/analysis/analysis-signal.d.ts"
+    },
     "./evaluation/content-filter": {
       "import": "./dist/evaluation/content-filter.js",
       "types": "./dist/evaluation/content-filter.d.ts"
