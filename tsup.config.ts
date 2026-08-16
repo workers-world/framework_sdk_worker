@@ -54,6 +54,7 @@ export default defineConfig({
         'desk/desk-signal': 'src/desk/desk-signal.ts',
         'desk/resolve-underlying': 'src/desk/resolve-underlying.ts',
         'evaluation/content-filter': 'src/evaluation/content-filter.ts',
+        'evaluation/quality-incident': 'src/evaluation/quality-incident.ts',
         'mcp/index': 'src/mcp/index.ts',
         'mcp/types': 'src/mcp/types.ts',
         'mcp/openapi': 'src/mcp/openapi.ts',
