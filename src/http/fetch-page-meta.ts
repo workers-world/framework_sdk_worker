@@ -100,8 +100,96 @@ export function hasUsablePageMeta(meta: PageMeta): boolean {
     return Boolean(meta.description?.trim() || meta.title?.trim());
 }
 
+const CREATIVE_CONTENT_META_RE =
+    /\b(short\s+story|essay|novella|fiction|written\s+by|memoir|poem|poetry|novelette)\b/i;
+
+/** og/meta 是否表明创作类落地页（短篇/散文等），非 SaaS 产品页 */
+export function isCreativeContentPageMeta(meta: PageMeta): boolean {
+    const blob = [meta.title, meta.description, meta.siteName].filter(Boolean).join(' ');
+    return CREATIVE_CONTENT_META_RE.test(blob);
+}
+
+function stripHtmlToText(html: string): string {
+    return html
+        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
+}
+
+function normalizeVisibleLine(line: string): string | undefined {
+    const cleaned = line.replace(/\s+/g, ' ').trim();
+    return cleaned || undefined;
+}
+
+/** 从落地页 HTML 提取 main/h1/p 可见文案（非全文文章） */
+export function extractLandingPageVisibleCopy(html: string): string | undefined {
+    if (!html?.trim()) {
+        return undefined;
+    }
+
+    const chunks: string[] = [];
+    const mainRe = /<main\b[^>]*>([\s\S]*?)<\/main>/gi;
+    let mainMatch: RegExpExecArray | null = mainRe.exec(html);
+    while (mainMatch) {
+        const text = stripHtmlToText(mainMatch[1] ?? '');
+        if (text) {
+            chunks.push(text);
+        }
+        mainMatch = mainRe.exec(html);
+    }
+
+    if (chunks.length === 0) {
+        const bodyMatch = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+        const bodyHtml = bodyMatch?.[1] ?? html;
+        const headingRe = /<h[1-3]\b[^>]*>[\s\S]*?<\/h[1-3]>/gi;
+        const paragraphRe = /<p\b[^>]*>[\s\S]*?<\/p>/gi;
+        for (const re of [headingRe, paragraphRe]) {
+            let match: RegExpExecArray | null = re.exec(bodyHtml);
+            while (match) {
+                const text = stripHtmlToText(match[0] ?? '');
+                if (text) {
+                    chunks.push(text);
+                }
+                match = re.exec(bodyHtml);
+            }
+        }
+    }
+
+    const lines = chunks
+        .join('\n')
+        .split('\n')
+        .map(normalizeVisibleLine)
+        .filter((line): line is string => Boolean(line));
+
+    const deduped: string[] = [];
+    const seen = new Set<string>();
+    for (const line of lines) {
+        const key = line.toLowerCase();
+        if (seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+        deduped.push(line);
+    }
+
+    const text = deduped.join('\n').trim();
+    return text.length >= 40 ? text : undefined;
+}
+
 /** 将 meta 格式化为 LLM 可用的结构化片段 */
 export function formatPageMetaSnippet(meta: PageMeta): string {
+    return formatProductLandingSnippet(meta);
+}
+
+/** 将 meta + 落地页可见文案格式化为 LLM 片段 */
+export function formatProductLandingSnippet(meta: PageMeta, visibleCopy?: string): string {
     const lines = ['产品落地页元信息：'];
     if (meta.siteName) {
         lines.push(`站点：${meta.siteName}`);
@@ -113,7 +201,19 @@ export function formatPageMetaSnippet(meta: PageMeta): string {
         lines.push(`描述：${meta.description}`);
     }
     lines.push(`来源：${meta.source}`);
+    if (isCreativeContentPageMeta(meta)) {
+        lines.push('类型：创作推广');
+    }
+    const trimmedVisible = visibleCopy?.trim();
+    if (trimmedVisible) {
+        lines.push('', '页面可见文案：', trimmedVisible);
+    }
     return lines.join('\n');
+}
+
+export interface ProductLandingFetchResult {
+    meta: PageMeta;
+    snippet: string;
 }
 
 function isRejectedContentType(contentType: string | null): boolean {
@@ -169,24 +269,21 @@ async function readHtmlPrefix(resp: Response, maxBytes: number): Promise<string>
     return new TextDecoder('utf-8', { fatal: false, ignoreBOM: true }).decode(merged);
 }
 
-/**
- * 轻量抓取页面 meta；失败返回 source:'none'（不抛错）。
- */
-export async function fetchPageMeta(
+async function fetchHtmlPrefix(
     url: string,
     options?: { timeoutMs?: number; maxBytes?: number; fetchImpl?: typeof fetch },
-): Promise<PageMeta> {
+): Promise<string | null> {
     if (!url?.trim()) {
-        return { source: 'none' };
+        return null;
     }
     let parsed: URL;
     try {
         parsed = new URL(url);
         if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-            return { source: 'none' };
+            return null;
         }
     } catch {
-        return { source: 'none' };
+        return null;
     }
 
     const timeoutMs = options?.timeoutMs ?? META_FETCH_TIMEOUT_MS;
@@ -205,15 +302,47 @@ export async function fetchPageMeta(
         });
 
         if (!resp.ok) {
-            return { source: 'none' };
+            return null;
         }
         if (isRejectedContentType(resp.headers.get('content-type'))) {
-            return { source: 'none' };
+            return null;
         }
 
-        const html = await readHtmlPrefix(resp, maxBytes);
-        return parsePageMetaFromHtml(html);
+        return await readHtmlPrefix(resp, maxBytes);
     } catch {
+        return null;
+    }
+}
+
+/**
+ * 轻量抓取页面 meta；失败返回 source:'none'（不抛错）。
+ */
+export async function fetchPageMeta(
+    url: string,
+    options?: { timeoutMs?: number; maxBytes?: number; fetchImpl?: typeof fetch },
+): Promise<PageMeta> {
+    const html = await fetchHtmlPrefix(url, options);
+    if (!html) {
         return { source: 'none' };
     }
+    return parsePageMetaFromHtml(html);
+}
+
+/**
+ * 一次 HTTP 抓取落地页 meta + 可见文案，合并为 LLM 片段。
+ */
+export async function fetchProductLandingSnippet(
+    url: string,
+    options?: { timeoutMs?: number; maxBytes?: number; fetchImpl?: typeof fetch },
+): Promise<ProductLandingFetchResult> {
+    const html = await fetchHtmlPrefix(url, options);
+    if (!html) {
+        return { meta: { source: 'none' }, snippet: '' };
+    }
+    const meta = parsePageMetaFromHtml(html);
+    const visibleCopy = extractLandingPageVisibleCopy(html);
+    return {
+        meta,
+        snippet: formatProductLandingSnippet(meta, visibleCopy),
+    };
 }

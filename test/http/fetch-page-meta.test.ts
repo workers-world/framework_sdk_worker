@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+    extractLandingPageVisibleCopy,
     fetchPageMeta,
+    fetchProductLandingSnippet,
     formatPageMetaSnippet,
+    formatProductLandingSnippet,
     hasUsablePageMeta,
+    isCreativeContentPageMeta,
     parsePageMetaFromHtml,
 } from '../../src/http/fetch-page-meta.js';
 
@@ -64,6 +68,47 @@ describe('formatPageMetaSnippet', () => {
     });
 });
 
+const IMPULSE_LANDING_HTML = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Impulse Tracker - ovidem</title>
+  <meta property="og:site_name" content="ovidem" />
+  <meta property="og:title" content="ovidem">
+  <meta property="og:description" content="Impulse Tracker, short story written by Ovi Demetrian Jr.">
+</head>
+<body>
+  <main class="container">
+    <h1>Impulse Tracker</h1>
+    <p class="subtitle">To do the big things in life, you have to pay attention to each beat along the way</p>
+    <p>On a quiet night in the year 1996, 20-year old Alan is in his small apartment, about to make an important life decision.</p>
+    <p><em>Short story, about 8 pages</em></p>
+    <p><a href="/impulse-tracker.html"><strong>Read it for free</strong></a></p>
+  </main>
+</body>
+</html>`;
+
+describe('extractLandingPageVisibleCopy', () => {
+    it('extracts synopsis from main blocks', () => {
+        const text = extractLandingPageVisibleCopy(IMPULSE_LANDING_HTML);
+        expect(text).toContain('Impulse Tracker');
+        expect(text).toContain('1996');
+        expect(text).toContain('Short story, about 8 pages');
+        expect(text).toContain('Read it for free');
+    });
+});
+
+describe('formatProductLandingSnippet', () => {
+    it('marks creative landing pages and includes visible copy', () => {
+        const meta = parsePageMetaFromHtml(IMPULSE_LANDING_HTML);
+        const visible = extractLandingPageVisibleCopy(IMPULSE_LANDING_HTML);
+        const snippet = formatProductLandingSnippet(meta, visible);
+        expect(isCreativeContentPageMeta(meta)).toBe(true);
+        expect(snippet).toContain('类型：创作推广');
+        expect(snippet).toContain('页面可见文案：');
+        expect(snippet).toContain('Short story, about 8 pages');
+    });
+});
+
 describe('fetchPageMeta', () => {
     it('parses html from fetchImpl', async () => {
         const fetchImpl = vi.fn().mockResolvedValue(
@@ -92,5 +137,24 @@ describe('fetchPageMeta', () => {
         expect(await fetchPageMeta('https://example.com/a', { fetchImpl: pdf })).toEqual({
             source: 'none',
         });
+    });
+});
+
+describe('fetchProductLandingSnippet', () => {
+    it('merges meta and visible copy in one fetch', async () => {
+        const fetchImpl = vi.fn().mockResolvedValue(
+            new Response(IMPULSE_LANDING_HTML, {
+                status: 200,
+                headers: { 'content-type': 'text/html; charset=utf-8' },
+            }),
+        );
+        const result = await fetchProductLandingSnippet('https://ovidem.com/impulsetracker/', {
+            fetchImpl,
+        });
+        expect(fetchImpl).toHaveBeenCalledOnce();
+        expect(result.meta.description).toContain('short story');
+        expect(result.snippet).toContain('类型：创作推广');
+        expect(result.snippet).toContain('页面可见文案：');
+        expect(result.snippet).toContain('Read it for free');
     });
 });
