@@ -2,6 +2,7 @@ import {linkifyPlainTextEmail} from '../email/linkify-plain-text.js';
 import {getEnvMode} from '../env/validate.js';
 import {type NotifyResult, sendNotify} from '../notify/client.js';
 import type {SecretLike} from '../secrets/resolve.js';
+import {shanghaiIsoString} from '../time/shanghai.js';
 import {buildOpsDedupKey} from './normalize.js';
 import {type LogFields, sanitizeForLog} from './sanitize.js';
 
@@ -39,7 +40,7 @@ function buildOpsEmailBody(payload: OpsErrorPayload, context: LogFields): string
     const lines = [
         `Worker: ${payload.worker}`,
         `Reason: ${payload.reason}`,
-        `Time: ${new Date().toISOString()}`,
+        `Time: ${shanghaiIsoString()}`,
         `Error: ${payload.error}`,
         '',
         ...formatContextLines(context),
