@@ -1,4 +1,4 @@
-import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
 
 export interface GenerateIdResult {
     ok: boolean;
@@ -22,11 +22,11 @@ export async function generateId(
     prefix: string,
 ): Promise<GenerateIdResult> {
     if (!counter) {
-        return { ok: false, error: 'SVC_COUNTER service binding not configured' };
+        return {ok: false, error: 'SVC_COUNTER service binding not configured'};
     }
     const resolved = await resolveSecret(token);
     if (!resolved) {
-        return { ok: false, error: 'COUNTER_AUTH_TOKEN not configured' };
+        return {ok: false, error: 'COUNTER_AUTH_TOKEN not configured'};
     }
 
     const resp = await counter.fetch('https://counter/v1/id', {
@@ -35,7 +35,7 @@ export async function generateId(
             'Content-Type': 'application/json',
             Authorization: `Bearer ${resolved}`,
         },
-        body: JSON.stringify({ prefix } satisfies GenerateIdRequest),
+        body: JSON.stringify({prefix} satisfies GenerateIdRequest),
     });
 
     const data = (await resp.json()) as GenerateIdResult & { error?: string; code?: string };

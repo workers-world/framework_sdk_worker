@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {
     extractLandingPageVisibleCopy,
     fetchPageMeta,
@@ -47,8 +47,8 @@ describe('parsePageMetaFromHtml', () => {
     });
 
     it('returns none for empty html', () => {
-        expect(parsePageMetaFromHtml('')).toEqual({ source: 'none' });
-        expect(hasUsablePageMeta({ source: 'none' })).toBe(false);
+        expect(parsePageMetaFromHtml('')).toEqual({source: 'none'});
+        expect(hasUsablePageMeta({source: 'none'})).toBe(false);
     });
 });
 
@@ -114,27 +114,27 @@ describe('fetchPageMeta', () => {
         const fetchImpl = vi.fn().mockResolvedValue(
             new Response(SAMPLE_HTML, {
                 status: 200,
-                headers: { 'content-type': 'text/html; charset=utf-8' },
+                headers: {'content-type': 'text/html; charset=utf-8'},
             }),
         );
-        const meta = await fetchPageMeta('https://pixydesignapp.com/', { fetchImpl });
+        const meta = await fetchPageMeta('https://pixydesignapp.com/', {fetchImpl});
         expect(meta.source).toBe('og');
         expect(meta.description).toContain('coding agents');
     });
 
     it('returns none on non-ok or pdf content-type', async () => {
-        const notOk = vi.fn().mockResolvedValue(new Response('x', { status: 403 }));
-        expect(await fetchPageMeta('https://example.com/', { fetchImpl: notOk })).toEqual({
+        const notOk = vi.fn().mockResolvedValue(new Response('x', {status: 403}));
+        expect(await fetchPageMeta('https://example.com/', {fetchImpl: notOk})).toEqual({
             source: 'none',
         });
 
         const pdf = vi.fn().mockResolvedValue(
             new Response('%PDF', {
                 status: 200,
-                headers: { 'content-type': 'application/pdf' },
+                headers: {'content-type': 'application/pdf'},
             }),
         );
-        expect(await fetchPageMeta('https://example.com/a', { fetchImpl: pdf })).toEqual({
+        expect(await fetchPageMeta('https://example.com/a', {fetchImpl: pdf})).toEqual({
             source: 'none',
         });
     });
@@ -145,7 +145,7 @@ describe('fetchProductLandingSnippet', () => {
         const fetchImpl = vi.fn().mockResolvedValue(
             new Response(IMPULSE_LANDING_HTML, {
                 status: 200,
-                headers: { 'content-type': 'text/html; charset=utf-8' },
+                headers: {'content-type': 'text/html; charset=utf-8'},
             }),
         );
         const result = await fetchProductLandingSnippet('https://ovidem.com/impulsetracker/', {

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { linkifyPlainTextEmail } from '../../src/email/linkify-plain-text.js';
+import {describe, expect, it} from 'vitest';
+import {linkifyPlainTextEmail} from '../../src/email/linkify-plain-text.js';
 
 describe('linkifyPlainTextEmail', () => {
     it('wraps http(s) URLs in anchors', () => {

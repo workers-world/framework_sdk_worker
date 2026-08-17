@@ -120,7 +120,7 @@ export function normalizeQualityIncident(
     partial: Omit<QualityIncident, 'clusterKey' | 'ts'> & { clusterKey?: string; ts?: string },
 ): QualityIncident {
     const ts = partial.ts ?? new Date().toISOString();
-    const base = { ...partial, ts };
+    const base = {...partial, ts};
     return {
         ...base,
         clusterKey: partial.clusterKey ?? buildClusterKey(base),
@@ -132,7 +132,7 @@ export function evaluateQualityIncident(
     incident: QualityIncident,
     rules: QualityOpsRules = DEFAULT_QUALITY_OPS_RULES,
 ): QualityIncidentEval {
-    const { kind, because, fields } = incident;
+    const {kind, because, fields} = incident;
 
     if (rules.silentBecause.includes(because)) {
         return {
@@ -317,18 +317,18 @@ export function reconstructQualityChain(incidents: QualityIncident[]): QualityCh
 
 export function validateQualityDiagnosis(d: QualityDiagnosis): { ok: boolean; reason?: string } {
     if (!d.rootCause?.trim()) {
-        return { ok: false, reason: '缺少 rootCause' };
+        return {ok: false, reason: '缺少 rootCause'};
     }
     if (!d.suspectedLayer?.trim()) {
-        return { ok: false, reason: '缺少 suspectedLayer' };
+        return {ok: false, reason: '缺少 suspectedLayer'};
     }
     if (!d.expectedLog?.trim()) {
-        return { ok: false, reason: '缺少 expectedLog' };
+        return {ok: false, reason: '缺少 expectedLog'};
     }
     if (!d.recommendation?.trim()) {
-        return { ok: false, reason: '缺少 recommendation' };
+        return {ok: false, reason: '缺少 recommendation'};
     }
-    return { ok: true };
+    return {ok: true};
 }
 
 /** Phase 1 工单邮件正文 */

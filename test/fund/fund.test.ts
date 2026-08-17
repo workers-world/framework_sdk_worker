@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { computeNotifyTier, withinAlertBand } from '../../src/monitor/threshold.js';
-import { parseFundGzJsonp } from '../../src/fund/eastmoney-estimate.js';
-import { isFundCode, normalizeFundCode } from '../../src/fund/normalize-code.js';
-import { markPriceFromQuote } from '../../src/fund/quote.js';
+import {describe, expect, it} from 'vitest';
+import {computeNotifyTier, withinAlertBand} from '../../src/monitor/threshold.js';
+import {parseFundGzJsonp} from '../../src/fund/eastmoney-estimate.js';
+import {isFundCode, normalizeFundCode} from '../../src/fund/normalize-code.js';
+import {markPriceFromQuote} from '../../src/fund/quote.js';
 
 describe('normalizeFundCode', () => {
     it('accepts 6-digit code', () => {
@@ -33,7 +33,7 @@ describe('parseFundGzJsonp', () => {
 
 describe('markPriceFromQuote', () => {
     it('prefers estimate', () => {
-        expect(markPriceFromQuote({ estimatedNav: 3.52, nav: 3.5 })).toBe(3.52);
+        expect(markPriceFromQuote({estimatedNav: 3.52, nav: 3.5})).toBe(3.52);
     });
 });
 

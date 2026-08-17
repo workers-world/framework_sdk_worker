@@ -8,7 +8,7 @@ interface CircuitState {
 }
 
 function createState(): CircuitState {
-    return { failures: 0, lastFailureTime: 0, open: false };
+    return {failures: 0, lastFailureTime: 0, open: false};
 }
 
 const states = new Map<string, CircuitState>();
