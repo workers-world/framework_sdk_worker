@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -26,6 +26,18 @@
     "./async/with-timeout": {
       "import": "./dist/async/with-timeout.js",
       "types": "./dist/async/with-timeout.d.ts"
+    },
+    "./async/map-with-concurrency": {
+      "import": "./dist/async/map-with-concurrency.js",
+      "types": "./dist/async/map-with-concurrency.d.ts"
+    },
+    "./d1/escape-like": {
+      "import": "./dist/d1/escape-like.js",
+      "types": "./dist/d1/escape-like.d.ts"
+    },
+    "./d1/tech-meta": {
+      "import": "./dist/d1/tech-meta.js",
+      "types": "./dist/d1/tech-meta.d.ts"
     },
     "./notify": {
       "import": "./dist/notify/client.js",
