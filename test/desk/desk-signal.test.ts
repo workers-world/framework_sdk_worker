@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { buildDeskSignalId, deskSignalImportance, isDeskSignal } from '../../src/desk/desk-signal.js';
+import {describe, expect, it} from 'vitest';
+import {buildDeskSignalId, deskSignalImportance, isDeskSignal} from '../../src/desk/desk-signal.js';
 
 describe('desk-signal', () => {
     it('builds event signal_id', () => {
@@ -29,13 +29,13 @@ describe('desk-signal', () => {
             confidence: 0.8,
             sourceId: 's1',
         };
-        expect(buildDeskSignalId({ ...base, underlying: 'MSFT' })).toBe('advice:42:MSFT');
-        expect(buildDeskSignalId({ ...base, underlying: 'GOOG' })).toBe('advice:42:GOOG');
+        expect(buildDeskSignalId({...base, underlying: 'MSFT'})).toBe('advice:42:MSFT');
+        expect(buildDeskSignalId({...base, underlying: 'GOOG'})).toBe('advice:42:GOOG');
     });
 
     it('validates DeskSignal shape', () => {
         expect(
-            isDeskSignal({ type: 'invest_event', eventId: 'e', underlying: 'X', importance: 1 }),
+            isDeskSignal({type: 'invest_event', eventId: 'e', underlying: 'X', importance: 1}),
         ).toBe(true);
         expect(
             isDeskSignal({
@@ -56,7 +56,7 @@ describe('desk-signal', () => {
             }),
         ).toBe(false);
         expect(
-            isDeskSignal({ type: 'advice_lead', adviceId: 1, underlying: 'X', confidence: 0.5 }),
+            isDeskSignal({type: 'advice_lead', adviceId: 1, underlying: 'X', confidence: 0.5}),
         ).toBe(false);
         expect(
             isDeskSignal({

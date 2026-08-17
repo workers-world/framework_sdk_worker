@@ -71,7 +71,7 @@ function extractTitleTag(html: string): string | undefined {
 /** 从 HTML 片段解析 og/meta/title（纯函数，便于单测） */
 export function parsePageMetaFromHtml(html: string): PageMeta {
     if (!html?.trim()) {
-        return { source: 'none' };
+        return {source: 'none'};
     }
 
     const ogTitle = extractMetaByProperty(html, 'og:title');
@@ -85,15 +85,15 @@ export function parsePageMetaFromHtml(html: string): PageMeta {
     const siteName = ogSiteName;
 
     if (ogTitle || ogDescription || ogSiteName) {
-        return { title, description, siteName, source: 'og' };
+        return {title, description, siteName, source: 'og'};
     }
     if (metaDescription) {
-        return { title, description, siteName, source: 'meta' };
+        return {title, description, siteName, source: 'meta'};
     }
     if (titleTag) {
-        return { title: titleTag, description, siteName, source: 'title' };
+        return {title: titleTag, description, siteName, source: 'title'};
     }
-    return { source: 'none' };
+    return {source: 'none'};
 }
 
 export function hasUsablePageMeta(meta: PageMeta): boolean {
@@ -239,7 +239,7 @@ async function readHtmlPrefix(resp: Response, maxBytes: number): Promise<string>
     let total = 0;
     try {
         while (total < maxBytes) {
-            const { done, value } = await reader.read();
+            const {done, value} = await reader.read();
             if (done || !value) {
                 break;
             }
@@ -266,7 +266,7 @@ async function readHtmlPrefix(resp: Response, maxBytes: number): Promise<string>
         merged.set(c, offset);
         offset += c.byteLength;
     }
-    return new TextDecoder('utf-8', { fatal: false, ignoreBOM: true }).decode(merged);
+    return new TextDecoder('utf-8', {fatal: false, ignoreBOM: true}).decode(merged);
 }
 
 async function fetchHtmlPrefix(
@@ -323,7 +323,7 @@ export async function fetchPageMeta(
 ): Promise<PageMeta> {
     const html = await fetchHtmlPrefix(url, options);
     if (!html) {
-        return { source: 'none' };
+        return {source: 'none'};
     }
     return parsePageMetaFromHtml(html);
 }
@@ -337,7 +337,7 @@ export async function fetchProductLandingSnippet(
 ): Promise<ProductLandingFetchResult> {
     const html = await fetchHtmlPrefix(url, options);
     if (!html) {
-        return { meta: { source: 'none' }, snippet: '' };
+        return {meta: {source: 'none'}, snippet: ''};
     }
     const meta = parsePageMetaFromHtml(html);
     const visibleCopy = extractLandingPageVisibleCopy(html);

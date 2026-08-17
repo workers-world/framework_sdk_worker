@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import {describe, expect, it} from 'vitest';
 import {
     analysisSignalImportance,
     buildAnalysisSignalId,
@@ -41,35 +41,35 @@ describe('analysis-signal', () => {
 
     it('accepts invest_event with optional fields absent', () => {
         expect(isAnalysisSignal(baseEvent)).toBe(true);
-        expect(isAnalysisSignal({ ...baseEvent, underlying: 'GLD', category: 'macro' })).toBe(true);
+        expect(isAnalysisSignal({...baseEvent, underlying: 'GLD', category: 'macro'})).toBe(true);
     });
 
     it('accepts advice_lead', () => {
         expect(isAnalysisSignal(baseAdvice)).toBe(true);
-        expect(isAnalysisSignal({ ...baseAdvice, name: 'x', traceId: 't1' })).toBe(true);
+        expect(isAnalysisSignal({...baseAdvice, name: 'x', traceId: 't1'})).toBe(true);
     });
 
     it('rejects missing required fields', () => {
-        expect(isAnalysisSignal({ ...baseEvent, eventId: undefined })).toBe(false);
-        expect(isAnalysisSignal({ ...baseEvent, importance: '8' })).toBe(false);
-        expect(isAnalysisSignal({ ...baseEvent, tags: 'gold' })).toBe(false);
-        expect(isAnalysisSignal({ ...baseEvent, aiSummary: 3 })).toBe(false);
-        expect(isAnalysisSignal({ ...baseAdvice, adviceId: '42' })).toBe(false);
-        expect(isAnalysisSignal({ ...baseAdvice, underlying: undefined })).toBe(false);
+        expect(isAnalysisSignal({...baseEvent, eventId: undefined})).toBe(false);
+        expect(isAnalysisSignal({...baseEvent, importance: '8'})).toBe(false);
+        expect(isAnalysisSignal({...baseEvent, tags: 'gold'})).toBe(false);
+        expect(isAnalysisSignal({...baseEvent, aiSummary: 3})).toBe(false);
+        expect(isAnalysisSignal({...baseAdvice, adviceId: '42'})).toBe(false);
+        expect(isAnalysisSignal({...baseAdvice, underlying: undefined})).toBe(false);
     });
 
     it('rejects non-enum action', () => {
-        expect(isAnalysisSignal({ ...baseAdvice, action: 'buy' })).toBe(false);
-        expect(isAnalysisSignal({ ...baseAdvice, action: 'other' })).toBe(false);
+        expect(isAnalysisSignal({...baseAdvice, action: 'buy'})).toBe(false);
+        expect(isAnalysisSignal({...baseAdvice, action: 'other'})).toBe(false);
     });
 
     it('rejects unknown type and non-objects', () => {
         expect(isAnalysisSignal(null)).toBe(false);
         expect(isAnalysisSignal('x')).toBe(false);
-        expect(isAnalysisSignal({ type: 'other' })).toBe(false);
+        expect(isAnalysisSignal({type: 'other'})).toBe(false);
     });
 
     it('rejects empty traceId string', () => {
-        expect(isAnalysisSignal({ ...baseEvent, traceId: '' })).toBe(false);
+        expect(isAnalysisSignal({...baseEvent, traceId: ''})).toBe(false);
     });
 });

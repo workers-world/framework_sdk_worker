@@ -84,7 +84,7 @@ function buildExtraHeadersOnly(config?: AiGatewayConfig) {
     if (Object.keys(headers).length === 0) {
         return {};
     }
-    return { extraHeaders: headers };
+    return {extraHeaders: headers};
 }
 
 export function aiGatewayRunOptions(config?: AiGatewayConfig) {
@@ -92,7 +92,7 @@ export function aiGatewayRunOptions(config?: AiGatewayConfig) {
         gateway: { id: string };
         extraHeaders?: Record<string, string>;
     } = {
-        gateway: { id: resolveGatewayId(config?.gatewayId) },
+        gateway: {id: resolveGatewayId(config?.gatewayId)},
     };
 
     const headers = buildGatewayExtraHeaders(config);

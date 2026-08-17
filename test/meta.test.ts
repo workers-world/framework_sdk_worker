@@ -1,13 +1,13 @@
-import { describe, expect, it } from 'vitest';
-import { buildWorkerMeta, readVersionMetadata } from '../src/meta/build-meta.js';
-import { SDK_PACKAGE, SDK_VERSION } from '../src/meta/types.js';
+import {describe, expect, it} from 'vitest';
+import {buildWorkerMeta, readVersionMetadata} from '../src/meta/build-meta.js';
+import {SDK_PACKAGE, SDK_VERSION} from '../src/meta/types.js';
 
 describe('buildWorkerMeta', () => {
     it('returns sdk package/version and null build fields when unset', () => {
         const meta = buildWorkerMeta('invest-rss-worker', {});
         expect(meta.worker).toBe('invest-rss-worker');
-        expect(meta.sdk).toEqual({ package: SDK_PACKAGE, version: SDK_VERSION });
-        expect(meta.build).toEqual({ commit: null, branch: null, time: null });
+        expect(meta.sdk).toEqual({package: SDK_PACKAGE, version: SDK_VERSION});
+        expect(meta.build).toEqual({commit: null, branch: null, time: null});
         expect(meta.versionMetadata).toBeNull();
     });
 

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { isLikelyArticleUrl } from '../../src/url/article-link.js';
-import { isLikelyProductLandingUrl } from '../../src/url/product-landing-link.js';
+import {describe, expect, it} from 'vitest';
+import {isLikelyArticleUrl} from '../../src/url/article-link.js';
+import {isLikelyProductLandingUrl} from '../../src/url/product-landing-link.js';
 
 describe('isLikelyArticleUrl', () => {
     it('detects aeon essays path', () => {

@@ -139,7 +139,7 @@ export function evaluateContentFilter(
     input: ContentFilterInput,
 ): ContentFilterResult {
     if (!config?.rules?.length) {
-        return { hit: null };
+        return {hit: null};
     }
 
     const regexCache = new Map<string, RegExp>();
@@ -160,7 +160,7 @@ export function evaluateContentFilter(
             },
         };
     }
-    return { hit: null };
+    return {hit: null};
 }
 
 const DEFAULT_HANDLERS: Partial<Record<ContentFilterAction, ContentFilterHandler>> = {
@@ -280,5 +280,5 @@ export function validateContentFilterConfig(
 }
 
 export function emptyContentFilterConfig(): ContentFilterConfig {
-    return { version: 1, rules: [] };
+    return {version: 1, rules: []};
 }

@@ -1,5 +1,5 @@
-import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
-import { checkBearerToken } from './bearer.js';
+import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+import {checkBearerToken} from './bearer.js';
 
 export interface BearerAuthMiddlewareOptions {
     requireConfigured?: boolean;
@@ -27,7 +27,7 @@ export function createBearerAuthMiddleware(envKey: string, options?: BearerAuthM
         });
 
         if (!result.ok) {
-            return c.json({ error: result.error }, result.status ?? 401);
+            return c.json({error: result.error}, result.status ?? 401);
         }
 
         await next();
@@ -57,5 +57,5 @@ export function registerBearerAuthRoutes(
     }
 }
 
-export { resolveSecret, type SecretLike } from '../secrets/resolve.js';
-export { authorizeRequest, checkBearerToken } from './bearer.js';
+export {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+export {authorizeRequest, checkBearerToken} from './bearer.js';

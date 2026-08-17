@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { compileEmailPattern, tryCompileEmailPattern } from '../../src/email/regex-pattern.js';
+import {describe, expect, it} from 'vitest';
+import {compileEmailPattern, tryCompileEmailPattern} from '../../src/email/regex-pattern.js';
 
 describe('compileEmailPattern', () => {
     it('compiles plain regex', () => {

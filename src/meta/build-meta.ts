@@ -26,7 +26,7 @@ export function readVersionMetadata(
     if (!id && !tag && !timestamp) {
         return null;
     }
-    return { id, tag, timestamp };
+    return {id, tag, timestamp};
 }
 
 export function buildWorkerMeta(

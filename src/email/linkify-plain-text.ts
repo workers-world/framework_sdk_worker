@@ -1,4 +1,4 @@
-import { escapeHtml } from './escape-html.js';
+import {escapeHtml} from './escape-html.js';
 
 /**
  * 将纯文本正文转为可点击链接的简易 HTML（运维告警邮件用）。
@@ -14,13 +14,13 @@ function splitTrailingPunctuation(raw: string): { url: string; trailing: string 
         trailing = url.slice(-1) + trailing;
         url = url.slice(0, -1);
     }
-    return { url, trailing };
+    return {url, trailing};
 }
 
 export function linkifyPlainTextEmail(text: string): string {
     const escaped = escapeHtml(text);
     const withLinks = escaped.replace(URL_RE, (match) => {
-        const { url, trailing } = splitTrailingPunctuation(match);
+        const {url, trailing} = splitTrailingPunctuation(match);
         if (!url) {
             return match;
         }

@@ -1,12 +1,13 @@
-import { shanghaiYmd } from '../time/shanghai.js';
-import type { IdSequenceStore } from './store.js';
-import { MAX_SEQ, SequenceOverflowError } from './types.js';
+import {shanghaiYmd} from '../time/shanghai.js';
+import type {IdSequenceStore} from './store.js';
+import {MAX_SEQ, SequenceOverflowError} from './types.js';
 
 export class IdGenerator {
     constructor(
         private readonly prefix: string,
         private readonly store: IdSequenceStore,
-    ) {}
+    ) {
+    }
 
     async genId(bizDate: string = shanghaiYmd()): Promise<string> {
         const seq = await this.store.nextSeq(this.prefix, bizDate);
