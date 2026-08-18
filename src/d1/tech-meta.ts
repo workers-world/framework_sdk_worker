@@ -1,4 +1,4 @@
-import { shanghaiTechTime } from '../time/shanghai.js';
+import { shanghaiTechTime } from '../time/index.js';
 
 /** 仓库标准 tech_* 审计字段 */
 export interface TechMetaRow {
