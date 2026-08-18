@@ -1,4 +1,4 @@
-import { utcDayRangeIso } from '../time/utc.js';
+import { utcDayRangeIso } from '../time/index.js';
 
 export interface BillableUsageRecord {
     ConsumedQuantity?: number;
@@ -13,7 +13,7 @@ export interface FetchNeuronsResult {
 }
 
 /** 兼容再导出：新代码请从 `framework_sdk_worker/time` 导入 */
-export { secondsUntilNextUtcDay, utcDayRangeIso, utcYmdDash } from '../time/utc.js';
+export { secondsUntilNextUtcDay, utcDayRangeIso, utcYmdDash } from '../time/index.js';
 
 /** 判断 billable/usage 返回的记录是否属于 Workers AI（Neurons 计费） */
 export function isWorkersAiMetric(record: BillableUsageRecord): boolean {
