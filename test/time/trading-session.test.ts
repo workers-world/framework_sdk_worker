@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {isShanghaiWeekend} from '../../src/time/shanghai.js';
+import { describe, expect, it } from 'vitest';
+import { isShanghaiWeekend } from '../../src/time/shanghai.js';
 import {
     DEFAULT_GOLD_TRADE_SESSIONS,
     isWithinTradingSession,
@@ -34,15 +34,15 @@ describe('parseTradingSessions', () => {
     it('parses default gold sessions including overnight', () => {
         const sessions = parseTradingSessions(DEFAULT_GOLD_TRADE_SESSIONS);
         expect(sessions).toEqual([
-            {startMin: 9 * 60, endMin: 11 * 60 + 30},
-            {startMin: 13 * 60 + 30, endMin: 15 * 60 + 30},
-            {startMin: 20 * 60, endMin: 2 * 60 + 30},
+            { startMin: 9 * 60, endMin: 11 * 60 + 30 },
+            { startMin: 13 * 60 + 30, endMin: 15 * 60 + 30 },
+            { startMin: 20 * 60, endMin: 2 * 60 + 30 },
         ]);
     });
 
     it('skips invalid fragments', () => {
         expect(parseTradingSessions('09:00-09:00,bad,10:00-11:00')).toEqual([
-            {startMin: 10 * 60, endMin: 11 * 60},
+            { startMin: 10 * 60, endMin: 11 * 60 },
         ]);
     });
 });
@@ -88,7 +88,7 @@ describe('resolveGoldTradeSessions', () => {
 
     it('accepts custom env override', () => {
         expect(resolveGoldTradeSessions('09:00-15:00')).toEqual([
-            {startMin: 9 * 60, endMin: 15 * 60},
+            { startMin: 9 * 60, endMin: 15 * 60 },
         ]);
     });
 });

@@ -22,6 +22,6 @@ export async function mapWithConcurrency<T, R>(
         }
     }
 
-    await Promise.all(Array.from({length: workerCount}, () => worker()));
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
     return results;
 }

@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {buildTechInsert, buildTechUpdate, shanghaiTechTime} from '../../src/d1/tech-meta.js';
+import { describe, expect, it } from 'vitest';
+import { buildTechInsert, buildTechUpdate, shanghaiTechTime } from '../../src/d1/tech-meta.js';
 
 describe('tech-meta', () => {
     it('buildTechInsert sets version 1 and matching timestamps', () => {

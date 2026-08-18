@@ -1,16 +1,16 @@
 /**
  * 注册 GET /v1/meta（Bearer 鉴权，与 /health 分离）
  */
-import {createBearerAuthMiddleware} from '../auth/middleware.js';
-import {buildWorkerMeta} from './build-meta.js';
-import {type MetaEnvLike, type RegisterMetaRouteOptions, SDK_VERSION} from './types.js';
+import { createBearerAuthMiddleware } from '../auth/middleware.js';
+import { buildWorkerMeta } from './build-meta.js';
+import { type MetaEnvLike, type RegisterMetaRouteOptions, SDK_VERSION } from './types.js';
 
-export {buildWorkerMeta, readVersionMetadata} from './build-meta.js';
+export { buildWorkerMeta, readVersionMetadata } from './build-meta.js';
 export {
-    SDK_PACKAGE,
-    SDK_VERSION,
     type MetaEnvLike,
     type RegisterMetaRouteOptions,
+    SDK_PACKAGE,
+    SDK_VERSION,
     type WorkerMetaBuildInfo,
     type WorkerMetaResponse,
     type WorkerVersionMetadataView,
@@ -29,10 +29,7 @@ export function registerMetaRoute(app: any, options: RegisterMetaRouteOptions): 
     app.use('/v1/meta', auth);
     app.get(
         '/v1/meta',
-        (c: {
-            env: object;
-            json: (body: unknown, status?: number) => Response;
-        }) => {
+        (c: { env: object; json: (body: unknown, status?: number) => Response }) => {
             const body = buildWorkerMeta(options.workerName, c.env as MetaEnvLike, sdkVersion);
             return c.json(body);
         },

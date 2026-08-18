@@ -4,7 +4,7 @@
  * 下游：gold-price-worker、strategy-monitor。
  * 不变量：纯函数；支持跨午夜时段（如 20:00-02:30）；半开区间 [start, end)。
  */
-import {SHANGHAI_OFFSET_MS} from './shanghai.js';
+import { SHANGHAI_OFFSET_MS } from './shanghai.js';
 
 export type TradingSession = {
     /** 当日 0 点起的分钟数（含） */
@@ -49,7 +49,7 @@ export function parseTradingSessions(spec: string): TradingSession[] {
         if (startMin == null || endMin == null || startMin === endMin) {
             continue;
         }
-        sessions.push({startMin, endMin});
+        sessions.push({ startMin, endMin });
     }
     return sessions;
 }

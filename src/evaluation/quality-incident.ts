@@ -120,7 +120,7 @@ export function normalizeQualityIncident(
     partial: Omit<QualityIncident, 'clusterKey' | 'ts'> & { clusterKey?: string; ts?: string },
 ): QualityIncident {
     const ts = partial.ts ?? new Date().toISOString();
-    const base = {...partial, ts};
+    const base = { ...partial, ts };
     return {
         ...base,
         clusterKey: partial.clusterKey ?? buildClusterKey(base),
@@ -132,7 +132,7 @@ export function evaluateQualityIncident(
     incident: QualityIncident,
     rules: QualityOpsRules = DEFAULT_QUALITY_OPS_RULES,
 ): QualityIncidentEval {
-    const {kind, because, fields} = incident;
+    const { kind, because, fields } = incident;
 
     if (rules.silentBecause.includes(because)) {
         return {
@@ -149,17 +149,12 @@ export function evaluateQualityIncident(
     const summary = fieldStr(fields, 'summary');
     const path = fieldStr(fields, 'path');
 
-    if (
-        kind === 'summary.title_only' &&
-        because === 'nav_shell_body' &&
-        fetchFailed === false
-    ) {
+    if (kind === 'summary.title_only' && because === 'nav_shell_body' && fetchFailed === false) {
         return {
             pass: false,
             severity: 'hard',
             ruleId: 'quality.nav-shell-after-fetch-ok',
-            feedback:
-                '抓取已成功但摘要阶段 nav_shell_body 走 title-only，疑似误杀（USGS 类）',
+            feedback: '抓取已成功但摘要阶段 nav_shell_body 走 title-only，疑似误杀（USGS 类）',
         };
     }
 
@@ -176,11 +171,7 @@ export function evaluateQualityIncident(
         };
     }
 
-    if (
-        kind === 'summary.title_only' &&
-        because === 'thin_snippet' &&
-        urlKind === 'article'
-    ) {
+    if (kind === 'summary.title_only' && because === 'thin_snippet' && urlKind === 'article') {
         return {
             pass: false,
             severity: 'soft',
@@ -317,18 +308,18 @@ export function reconstructQualityChain(incidents: QualityIncident[]): QualityCh
 
 export function validateQualityDiagnosis(d: QualityDiagnosis): { ok: boolean; reason?: string } {
     if (!d.rootCause?.trim()) {
-        return {ok: false, reason: '缺少 rootCause'};
+        return { ok: false, reason: '缺少 rootCause' };
     }
     if (!d.suspectedLayer?.trim()) {
-        return {ok: false, reason: '缺少 suspectedLayer'};
+        return { ok: false, reason: '缺少 suspectedLayer' };
     }
     if (!d.expectedLog?.trim()) {
-        return {ok: false, reason: '缺少 expectedLog'};
+        return { ok: false, reason: '缺少 expectedLog' };
     }
     if (!d.recommendation?.trim()) {
-        return {ok: false, reason: '缺少 recommendation'};
+        return { ok: false, reason: '缺少 recommendation' };
     }
-    return {ok: true};
+    return { ok: true };
 }
 
 /** Phase 1 工单邮件正文 */

@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
     aggregateQualityClusters,
     buildClusterKey,
@@ -42,7 +42,7 @@ describe('evaluateQualityIncident', () => {
                 service: 'email-rule-worker',
                 kind: 'summary.title_only',
                 because: 'video_link',
-                fields: {fetchFailed: true},
+                fields: { fetchFailed: true },
             }),
         );
         expect(result.pass).toBe(true);
@@ -92,7 +92,7 @@ describe('reconstructQualityChain', () => {
                 kind: 'fetch.browser',
                 because: 'ok',
                 ts: '2026-08-15T02:34:29.000Z',
-                fields: {bodyLen: 5917},
+                fields: { bodyLen: 5917 },
             }),
             usgsIncident,
         ]);
@@ -111,12 +111,14 @@ describe('formatClusterAlertMarkdown', () => {
 
 describe('validateQualityDiagnosis', () => {
     it('requires all fields', () => {
-        expect(validateQualityDiagnosis({
-            rootCause: '',
-            suspectedLayer: 'summarize',
-            isBug: true,
-            expectedLog: 'x',
-            recommendation: 'y',
-        }).ok).toBe(false);
+        expect(
+            validateQualityDiagnosis({
+                rootCause: '',
+                suspectedLayer: 'summarize',
+                isBug: true,
+                expectedLog: 'x',
+                recommendation: 'y',
+            }).ok,
+        ).toBe(false);
     });
 });

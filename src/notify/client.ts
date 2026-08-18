@@ -1,4 +1,4 @@
-import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 
 export interface NotifyPayload {
     subject: string;
@@ -55,6 +55,34 @@ export interface DigestItemRaw extends DigestItemBase {
 
 export type DigestItem = DigestItemLlm | DigestItemRaw;
 
+type NotifyJsonParseResult<T> =
+    | { ok: true; data: T }
+    | { ok: false; error: string; status: number };
+
+/** 安全解析 notify 响应；空 body 或非 JSON 不向上抛，避免上游 process_exception */
+async function parseNotifyJsonResponse<T extends { error?: string }>(
+    resp: Response,
+): Promise<NotifyJsonParseResult<T>> {
+    const text = (await resp.text()).trim();
+    if (!text) {
+        return {
+            ok: false,
+            error: resp.ok ? 'notify empty response' : resp.statusText || 'notify error',
+            status: resp.status,
+        };
+    }
+    try {
+        return { ok: true, data: JSON.parse(text) as T };
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return {
+            ok: false,
+            error: `notify invalid JSON: ${msg}`,
+            status: resp.status,
+        };
+    }
+}
+
 /**
  * 通过 Service Binding 调用 notify-worker 发邮件。
  * host 填 https://notify 即可，Service Binding 会路由到 notify-worker，不走公网。
@@ -66,11 +94,11 @@ export async function sendNotify(
     payload: NotifyPayload,
 ): Promise<NotifyResult> {
     if (!notify) {
-        return {ok: false, error: 'NOTIFY service binding not configured'};
+        return { ok: false, error: 'NOTIFY service binding not configured' };
     }
     const resolved = await resolveSecret(token);
     if (!resolved) {
-        return {ok: false, error: 'NOTIFY_AUTH_TOKEN not configured'};
+        return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
     }
 
     const resp = await notify.fetch('https://notify/v1/send', {
@@ -82,7 +110,11 @@ export async function sendNotify(
         body: JSON.stringify(payload),
     });
 
-    const data = (await resp.json()) as NotifyResult;
+    const parsed = await parseNotifyJsonResponse<NotifyResult>(resp);
+    if (!parsed.ok) {
+        return { ok: false, error: parsed.error, status: parsed.status };
+    }
+    const data = parsed.data;
     if (!resp.ok) {
         return {
             ok: false,
@@ -103,11 +135,11 @@ export async function sendNotifyAsync(
     item: DigestItem,
 ): Promise<NotifyAsyncResult> {
     if (!notify) {
-        return {ok: false, error: 'NOTIFY service binding not configured'};
+        return { ok: false, error: 'NOTIFY service binding not configured' };
     }
     const resolved = await resolveSecret(token);
     if (!resolved) {
-        return {ok: false, error: 'NOTIFY_AUTH_TOKEN not configured'};
+        return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
     }
 
     const resp = await notify.fetch('https://notify/v1/send/async', {
@@ -115,12 +147,16 @@ export async function sendNotifyAsync(
         headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${resolved}`,
-            ...(item.source ? {'X-Notify-Source': item.source} : {}),
+            ...(item.source ? { 'X-Notify-Source': item.source } : {}),
         },
         body: JSON.stringify(item),
     });
 
-    const data = (await resp.json()) as NotifyAsyncResult;
+    const parsed = await parseNotifyJsonResponse<NotifyAsyncResult>(resp);
+    if (!parsed.ok) {
+        return { ok: false, error: parsed.error, status: parsed.status };
+    }
+    const data = parsed.data;
     if (!resp.ok) {
         return {
             ok: false,
