@@ -1,6 +1,6 @@
-# dev_* push：verify → promote（开 Release PR + merge）→ publish（同一次 workflow）。
 # master push / tag / dispatch：verify → publish。
-# promote 经 PAT merge PR（禁止直推 master）；publish 仍在 dev 链内完成（不依赖 master 上再触发 workflow）。
+# PR → dev_*：仅 verify（不发布）。
+# dev_* → master 合入请在 GitHub 手动开 PR / merge；本仓为 public，不可调用私有 workers-world/.github reusable workflow。
 name: CI and Publish
 
 on:
@@ -30,34 +30,17 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  promote:
-    needs: verify
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/dev_')
-    # 写操作走 PAT；须 WORKERS_WORLD_GHA_TOKEN
-    permissions: {}
-    uses: workers-world/.github/.github/workflows/worker-promote.yml@actions/v0.4.28
-    with:
-      release_branch: ${{ github.ref_name }}
-    secrets: inherit
-
   publish:
-    needs: [verify, promote]
+    needs: verify
     if: >
-      always() &&
       needs.verify.result == 'success' &&
       (
         github.event_name == 'workflow_dispatch' ||
         startsWith(github.ref, 'refs/tags/v') ||
-        github.ref == 'refs/heads/master' ||
-        (
-          github.event_name == 'push' &&
-          startsWith(github.ref, 'refs/heads/dev_') &&
-          needs.promote.result == 'success'
-        )
+        github.ref == 'refs/heads/master'
       )
     runs-on: ${{ vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
     steps:
-      # 发布轨：始终从 master 取代码（dev push 路径在 promote FF 之后与 dev tip 同 SHA）
       - uses: actions/checkout@v7
         with:
           ref: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref || 'refs/heads/master' }}
