@@ -1,9 +1,10 @@
-import { linkifyPlainTextEmail } from '../email/linkify-plain-text.js';
-import { getEnvMode } from '../env/validate.js';
-import { type NotifyResult, sendNotify } from '../notify/client.js';
-import type { SecretLike } from '../secrets/resolve.js';
-import { buildOpsDedupKey } from './normalize.js';
-import { type LogFields, sanitizeForLog } from './sanitize.js';
+import {linkifyPlainTextEmail} from '../email/linkify-plain-text.js';
+import {getEnvMode} from '../env/validate.js';
+import {type NotifyResult, sendNotify} from '../notify/client.js';
+import type {SecretLike} from '../secrets/resolve.js';
+import {shanghaiIsoString} from '../time/shanghai.js';
+import {buildOpsDedupKey} from './normalize.js';
+import {type LogFields, sanitizeForLog} from './sanitize.js';
 
 export interface OpsErrorPayload {
     worker: string;
@@ -39,7 +40,7 @@ function buildOpsEmailBody(payload: OpsErrorPayload, context: LogFields): string
     const lines = [
         `Worker: ${payload.worker}`,
         `Reason: ${payload.reason}`,
-        `Time: ${new Date().toISOString()}`,
+        `Time: ${shanghaiIsoString()}`,
         `Error: ${payload.error}`,
         '',
         ...formatContextLines(context),
@@ -58,9 +59,9 @@ export async function reportOpsError(
             console.warn(
                 `[ops-error] OPS_ALERT_TO not configured, skip alert worker=${payload.worker} reason=${payload.reason}`,
             );
-            return { ok: true, skipped: true, reason: 'ops_alert_to_missing' };
+            return {ok: true, skipped: true, reason: 'ops_alert_to_missing'};
         }
-        return { ok: false, error: 'OPS_ALERT_TO not configured' };
+        return {ok: false, error: 'OPS_ALERT_TO not configured'};
     }
 
     const context = sanitizeForLog(payload.context ?? {});
@@ -83,7 +84,7 @@ export async function reportOpsError(
         console.error(
             `[ops-error] notify failed worker=${payload.worker} reason=${payload.reason} error=${msg}`,
         );
-        return { ok: false, error: msg };
+        return {ok: false, error: msg};
     }
 }
 

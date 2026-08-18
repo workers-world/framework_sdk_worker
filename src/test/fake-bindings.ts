@@ -1,7 +1,7 @@
 export function makeFakeFetcher(
     handler?: (url: string | URL | Request, init?: RequestInit) => Response | Promise<Response>,
 ): Fetcher {
-    const fallback = () => new Response('Not Found', { status: 404 });
+    const fallback = () => new Response('Not Found', {status: 404});
     const resolve = handler ?? fallback;
 
     return {

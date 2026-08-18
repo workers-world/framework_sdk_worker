@@ -33,7 +33,7 @@ export async function fetchTodayNeuronsUsed(
     apiToken: string,
     date: Date = new Date(),
 ): Promise<FetchNeuronsResult> {
-    const { start, end } = utcDayRangeIso(date);
+    const {start, end} = utcDayRangeIso(date);
     const query = `
     query NeuronsUsedToday($accountId: String!, $start: Time!, $end: Time!) {
       viewer {
@@ -68,7 +68,7 @@ export async function fetchTodayNeuronsUsed(
         });
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        return { ok: false, used: 0, error: msg };
+        return {ok: false, used: 0, error: msg};
     }
 
     const data = (await resp.json()) as {
@@ -104,7 +104,7 @@ export async function fetchTodayNeuronsUsed(
         used += group.sum?.totalNeurons ?? 0;
     }
 
-    return { ok: true, used };
+    return {ok: true, used};
 }
 
 /** 从 Error / AiError 对象 / 字符串提取可匹配的错误文案 */

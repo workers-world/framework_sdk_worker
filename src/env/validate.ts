@@ -1,4 +1,4 @@
-import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
 
 export type EnvMode = 'dev' | 'prod';
 

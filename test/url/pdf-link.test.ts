@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { describePdfLink, isPdfUrl } from '../../src/url/pdf-link.js';
+import {describe, expect, it} from 'vitest';
+import {describePdfLink, isPdfUrl} from '../../src/url/pdf-link.js';
 
 describe('isPdfUrl', () => {
     it('detects .pdf path and query/hash variants', () => {

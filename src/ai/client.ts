@@ -1,4 +1,4 @@
-import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
 
 /** LLM 调用超时：gateway 挂起时避免调用方无限等待 */
 const LLM_CALL_TIMEOUT_MS = 60_000;
@@ -45,7 +45,7 @@ async function authHeader(token: SecretLike | undefined): Promise<Record<string,
     if (!resolved) {
         throw new Error('LLM_GATEWAY_AUTH_TOKEN 未配置');
     }
-    return { Authorization: `Bearer ${resolved}` };
+    return {Authorization: `Bearer ${resolved}`};
 }
 
 export async function chatGeneral(
@@ -68,7 +68,7 @@ async function chatAt(
     params: LlmChatParams,
 ): Promise<LlmChatResponse> {
     if (!env.SVC_LLM_GATEWAY) {
-        return { ok: false, status: 0, error: 'SVC_LLM_GATEWAY 未配置' };
+        return {ok: false, status: 0, error: 'SVC_LLM_GATEWAY 未配置'};
     }
 
     let headers: Record<string, string>;
@@ -109,10 +109,10 @@ async function chatAt(
 
     const content = data.choices?.[0]?.message?.content?.trim();
     if (!content) {
-        return { ok: false, status: resp.status, error: 'LLM 返回空内容', raw: data };
+        return {ok: false, status: resp.status, error: 'LLM 返回空内容', raw: data};
     }
 
-    return { ok: true, status: resp.status, content, raw: data };
+    return {ok: true, status: resp.status, content, raw: data};
 }
 
 export async function checkNeuronQuota(

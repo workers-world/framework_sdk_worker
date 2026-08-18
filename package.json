@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.2.7",
+  "version": "0.2.9",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -26,6 +26,18 @@
     "./async/with-timeout": {
       "import": "./dist/async/with-timeout.js",
       "types": "./dist/async/with-timeout.d.ts"
+    },
+    "./async/map-with-concurrency": {
+      "import": "./dist/async/map-with-concurrency.js",
+      "types": "./dist/async/map-with-concurrency.d.ts"
+    },
+    "./d1/escape-like": {
+      "import": "./dist/d1/escape-like.js",
+      "types": "./dist/d1/escape-like.d.ts"
+    },
+    "./d1/tech-meta": {
+      "import": "./dist/d1/tech-meta.js",
+      "types": "./dist/d1/tech-meta.d.ts"
     },
     "./notify": {
       "import": "./dist/notify/client.js",
@@ -187,9 +199,17 @@
       "import": "./dist/desk/resolve-underlying.js",
       "types": "./dist/desk/resolve-underlying.d.ts"
     },
+    "./analysis/analysis-signal": {
+      "import": "./dist/analysis/analysis-signal.js",
+      "types": "./dist/analysis/analysis-signal.d.ts"
+    },
     "./evaluation/content-filter": {
       "import": "./dist/evaluation/content-filter.js",
       "types": "./dist/evaluation/content-filter.d.ts"
+    },
+    "./evaluation/quality-incident": {
+      "import": "./dist/evaluation/quality-incident.js",
+      "types": "./dist/evaluation/quality-incident.d.ts"
     },
     "./mcp": {
       "import": "./dist/mcp/index.js",
@@ -215,6 +235,10 @@
       "import": "./dist/mcp/ensure-server.js",
       "types": "./dist/mcp/ensure-server.d.ts"
     },
+    "./meta": {
+      "import": "./dist/meta/index.js",
+      "types": "./dist/meta/index.d.ts"
+    },
     "./biome": "./biome-shared.json"
   },
   "peerDependencies": {
@@ -222,7 +246,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250617.0",
-    "@vitest/coverage-v8": "^3.2.6",
+    "@vitest/coverage-v8": "^4.1.10",
     "tsup": "^8.5.0",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4"

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { isLikelyArticleUrl } from '../../src/url/article-link.js';
-import { isLikelyProductLandingUrl } from '../../src/url/product-landing-link.js';
+import {describe, expect, it} from 'vitest';
+import {isLikelyArticleUrl} from '../../src/url/article-link.js';
+import {isLikelyProductLandingUrl} from '../../src/url/product-landing-link.js';
 
 describe('isLikelyArticleUrl', () => {
     it('detects aeon essays path', () => {
@@ -27,5 +27,13 @@ describe('isLikelyArticleUrl', () => {
         expect(
             isLikelyArticleUrl('https://finance.yahoo.com/article/pepsico.html'),
         ).toBe(false);
+    });
+
+    it('detects USGS earthquake eventpage paths', () => {
+        expect(
+            isLikelyArticleUrl(
+                'https://earthquake.usgs.gov/earthquakes/eventpage/us6000tkt2/executive',
+            ),
+        ).toBe(true);
     });
 });

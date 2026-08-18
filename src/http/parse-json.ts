@@ -10,7 +10,7 @@ export interface JsonRequestContext {
 
 export type ParseJsonResult<T> = { ok: true; data: T } | { ok: false; response: Response };
 
-export { jsonError, jsonResponse } from './errors.js';
+export {jsonError, jsonResponse} from './errors.js';
 
 export async function parseJsonBody<T = unknown>(
     c: JsonRequestContext,
@@ -18,7 +18,7 @@ export async function parseJsonBody<T = unknown>(
 ): Promise<ParseJsonResult<T>> {
     try {
         const data = await c.req.json<T>();
-        return { ok: true, data };
+        return {ok: true, data};
     } catch (e: unknown) {
         if (options?.debug) {
             const raw = await c.req.text().catch(() => '(无法读取body)');
@@ -40,7 +40,7 @@ export async function parseJsonBody<T = unknown>(
 
         return {
             ok: false,
-            response: c.json({ error: '请求体不是合法 JSON' }, 400),
+            response: c.json({error: '请求体不是合法 JSON'}, 400),
         };
     }
 }

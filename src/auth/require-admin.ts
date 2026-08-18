@@ -1,4 +1,4 @@
-import { checkBearerToken } from './bearer.js';
+import {checkBearerToken} from './bearer.js';
 
 /**
  * 非 Hono 入口的 Bearer 鉴权：校验失败返回 401/503 Response，通过返回 null。
@@ -15,8 +15,8 @@ export async function requireAdminAuth(
     if (result.ok) {
         return null;
     }
-    return new Response(JSON.stringify({ ok: false, error: result.error ?? 'Unauthorized' }), {
+    return new Response(JSON.stringify({ok: false, error: result.error ?? 'Unauthorized'}), {
         status: result.status ?? 401,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
     });
 }

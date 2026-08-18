@@ -1,4 +1,4 @@
-import type { McpHost } from './types.js';
+import type {McpHost} from './types.js';
 
 /**
  * 确保已连接 MCP server DO（幂等）。

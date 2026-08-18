@@ -1,5 +1,5 @@
-import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
-import type { ApiRequestOptions, McpServiceEntry } from './types.js';
+import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+import type {ApiRequestOptions, McpServiceEntry} from './types.js';
 
 /** 默认上游超时（LLM 类长调用由 entry.timeoutMs 覆盖） */
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -68,13 +68,13 @@ export function createHostRouter(
                 typeof methodDeniedMessage === 'function'
                     ? methodDeniedMessage(method)
                     : methodDeniedMessage;
-            return { error: 'method_not_allowed', message: msg };
+            return {error: 'method_not_allowed', message: msg};
         }
 
         const envRecord = env as Record<string, unknown>;
         const fetcher = envRecord[entry.svcKey] as Fetcher | undefined;
         if (!fetcher) {
-            return { error: 'svc_missing', message: `${entry.svcKey} 未配置` };
+            return {error: 'svc_missing', message: `${entry.svcKey} 未配置`};
         }
         const token = await resolveSecret(envRecord[entry.tokenKey] as SecretLike | undefined);
         const url = buildUrl(entry.baseUrl, options.path, options.query);
@@ -105,15 +105,15 @@ export function createHostRouter(
                         options.body === undefined
                             ? undefined
                             : typeof options.body === 'string'
-                              ? options.body
-                              : JSON.stringify(options.body),
+                                ? options.body
+                                : JSON.stringify(options.body),
                     signal: AbortSignal.timeout(entry.timeoutMs ?? defaultTimeoutMs),
                 });
             }
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             console.warn(`mcp execute ${entry.worker} ${method} ${options.path}: ${msg}`);
-            return { error: 'fetch_failed', message: `${entry.worker} 调用失败: ${msg}` };
+            return {error: 'fetch_failed', message: `${entry.worker} 调用失败: ${msg}`};
         }
 
         const text = await resp.text();
@@ -121,7 +121,7 @@ export function createHostRouter(
             const parsed = JSON.parse(text);
             return entry.transformResponse ? entry.transformResponse(options.path, parsed) : parsed;
         } catch {
-            return { status: resp.status, body: text.slice(0, 2000) };
+            return {status: resp.status, body: text.slice(0, 2000)};
         }
     };
 }

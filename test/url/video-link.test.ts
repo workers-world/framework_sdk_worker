@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { describeVideoLink, isVideoUrl } from '../../src/url/video-link.js';
+import {describe, expect, it} from 'vitest';
+import {describeVideoLink, isVideoUrl} from '../../src/url/video-link.js';
 
 describe('isVideoUrl', () => {
     it('detects known video hosts', () => {
