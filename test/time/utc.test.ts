@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {secondsUntilNextUtcDay, utcDayRangeIso, utcYmdDash} from '../../src/time/utc.js';
+import { describe, expect, it } from 'vitest';
+import { secondsUntilNextUtcDay, utcDayRangeIso, utcYmdDash } from '../../src/time/utc.js';
 
 describe('utc time', () => {
     it('utcYmdDash uses UTC calendar day', () => {

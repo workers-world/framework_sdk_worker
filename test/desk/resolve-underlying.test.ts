@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
     newSignalTraceId,
     normalizeUnderlyingKey,
@@ -47,7 +47,7 @@ describe('resolve-underlying', () => {
     });
 
     it('returns null when no candidate', () => {
-        expect(resolveInvestEventUnderlying({tags: ['宏观', '政策']})).toBeNull();
+        expect(resolveInvestEventUnderlying({ tags: ['宏观', '政策'] })).toBeNull();
     });
 
     it('generates uuid trace ids', () => {

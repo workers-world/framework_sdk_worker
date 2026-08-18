@@ -1,7 +1,7 @@
-import {sleep} from '../async/sleep.js';
-import {normalizeFundCode} from './normalize-code.js';
-import {formatNavDate, parseDecimal, parsePct} from './parse-utils.js';
-import type {FundNav} from './types.js';
+import { sleep } from '../async/sleep.js';
+import { normalizeFundCode } from './normalize-code.js';
+import { formatNavDate, parseDecimal, parsePct } from './parse-utils.js';
+import type { FundNav } from './types.js';
 
 export const DEFAULT_FUND_FETCH_TIMEOUT_MS = 10_000;
 export const FUND_TRANSIENT_RETRY_DELAYS_MS = [2000, 4000];

@@ -1,7 +1,7 @@
 /**
  * decision-desk 标的（underlying）统一解析与 trace 发号。
  */
-import {isFundCode} from '../fund/normalize-code.js';
+import { isFundCode } from '../fund/normalize-code.js';
 
 const TICKER_RE = /^[A-Z]{1,5}(\.[A-Z]+)?$/;
 

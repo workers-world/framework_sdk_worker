@@ -21,7 +21,7 @@ export function utcDayRangeIso(date: Date = new Date()): { start: string; end: s
 
 /** 距 UTC 次日 00:05 秒数（Workers AI Neurons 日配额按 UTC 00:00 重置） */
 export function secondsUntilNextUtcDay(now: Date = new Date(), bufferSec = 5 * 60): number {
-    const {end} = utcDayRangeIso(now);
+    const { end } = utcDayRangeIso(now);
     const endMs = new Date(end).getTime();
     return Math.max(1, Math.ceil((endMs - now.getTime()) / 1000) + bufferSec);
 }

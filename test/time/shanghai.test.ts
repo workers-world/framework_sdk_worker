@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
     formatCompactTime12,
     isShanghaiWeekend,
@@ -62,7 +62,9 @@ describe('shanghai time', () => {
     });
 
     it('shanghaiDateTimeLabel formats as YYYY-MM-DD HH:mm', () => {
-        expect(shanghaiDateTimeLabel(new Date('2026-07-17T05:27:38.000Z'))).toBe('2026-07-17 13:27');
+        expect(shanghaiDateTimeLabel(new Date('2026-07-17T05:27:38.000Z'))).toBe(
+            '2026-07-17 13:27',
+        );
     });
 
     it('shanghaiTechTime returns 14-digit timestamp', () => {

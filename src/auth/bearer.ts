@@ -17,15 +17,15 @@ export function checkBearerToken(
                 error: options.missingConfigMessage || 'Auth token not configured',
             };
         }
-        return {ok: false, status: 401, error: 'Unauthorized'};
+        return { ok: false, status: 401, error: 'Unauthorized' };
     }
 
     const auth = authorizationHeader || '';
     if (auth !== `Bearer ${expectedToken}`) {
-        return {ok: false, status: 401, error: 'Unauthorized'};
+        return { ok: false, status: 401, error: 'Unauthorized' };
     }
 
-    return {ok: true};
+    return { ok: true };
 }
 
 export function authorizeRequest(request: Request, expectedToken: string | undefined): boolean {

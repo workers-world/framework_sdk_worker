@@ -1,5 +1,5 @@
-import {describe, expect, it, vi} from 'vitest';
-import {mapWithConcurrency} from '../../src/async/map-with-concurrency.js';
+import { describe, expect, it, vi } from 'vitest';
+import { mapWithConcurrency } from '../../src/async/map-with-concurrency.js';
 
 describe('mapWithConcurrency', () => {
     it('returns empty for empty input', async () => {
