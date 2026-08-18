@@ -1,4 +1,4 @@
-import {pad2, shanghaiYmd} from '../time/shanghai.js';
+import { pad2, shanghaiYmd } from '../time/shanghai.js';
 
 export const DEFAULT_GOLD_R2_PREFIX = 'gold/AU9999_CNY/TMINI/';
 
@@ -59,7 +59,7 @@ export async function fetchLatestGoldPriceDetail(
         if (latestMeta?.p) {
             const price = Number(latestMeta.p);
             if (Number.isFinite(price)) {
-                return {price, priceTime: latestTime};
+                return { price, priceTime: latestTime };
             }
         }
 

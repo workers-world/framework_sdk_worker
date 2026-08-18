@@ -17,30 +17,30 @@ function shanghaiParts(date: Date = new Date()) {
 }
 
 export function shanghaiYmd(date: Date = new Date()): string {
-    const {year, month, day} = shanghaiParts(date);
+    const { year, month, day } = shanghaiParts(date);
     return `${year}${month}${day}`;
 }
 
 /** YYYY-MM-DD，用于路径前缀、按日去重等 */
 export function shanghaiYmdDash(date: Date = new Date()): string {
-    const {year, month, day} = shanghaiParts(date);
+    const { year, month, day } = shanghaiParts(date);
     return `${year}-${month}-${day}`;
 }
 
 /** ISO 8601，固定 +08:00，用于日志与持久化时间戳 */
 export function shanghaiIsoString(date: Date = new Date()): string {
-    const {year, month, day, hour, minute, second} = shanghaiParts(date);
+    const { year, month, day, hour, minute, second } = shanghaiParts(date);
     return `${year}-${month}-${day}T${hour}:${minute}:${second}+08:00`;
 }
 
 /** YYYY/MM，用于 R2 等分层存储路径 */
 export function shanghaiYmPath(date: Date = new Date()): string {
-    const {year, month} = shanghaiParts(date);
+    const { year, month } = shanghaiParts(date);
     return `${year}/${month}`;
 }
 
 export function shanghaiMinuteBucket(date: Date = new Date()): string {
-    const {year, month, day, hour, minute} = shanghaiParts(date);
+    const { year, month, day, hour, minute } = shanghaiParts(date);
     return `${year}${month}${day}${hour}${minute}`;
 }
 
@@ -63,7 +63,9 @@ export function secondsUntilNextShanghaiDay(now: Date = new Date()): number {
  * 用于 D1 TEXT 时间字段，便于本地后台直接展示。
  */
 export function shanghaiWallClock(date: Date = new Date()): string {
-    return shanghaiIsoString(date).replace('T', ' ').replace(/\+08:00$/, '');
+    return shanghaiIsoString(date)
+        .replace('T', ' ')
+        .replace(/\+08:00$/, '');
 }
 
 /** `YYYY-MM-DD HH:mm`，用于通知正文时间标签 */
@@ -73,7 +75,7 @@ export function shanghaiDateTimeLabel(date: Date = new Date()): string {
 
 /** 上海墙钟紧凑串 `YYYYMMDDHHmmss`，用于 D1 tech_* 审计字段 */
 export function shanghaiTechTime(date: Date = new Date()): string {
-    const {year, month, day, hour, minute, second} = shanghaiParts(date);
+    const { year, month, day, hour, minute, second } = shanghaiParts(date);
     return `${year}${month}${day}${hour}${minute}${second}`;
 }
 

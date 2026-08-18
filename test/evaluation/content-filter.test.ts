@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
     type ContentFilterConfig,
     contentFilterKvKey,
@@ -41,7 +41,7 @@ const sampleConfig: ContentFilterConfig = {
             id: 'disabled-rule',
             enabled: false,
             stage: 'before',
-            match: {type: 'keyword', fields: ['title'], values: ['ignore-me']},
+            match: { type: 'keyword', fields: ['title'], values: ['ignore-me'] },
         },
     ],
 };
@@ -67,7 +67,7 @@ describe('normalizeActionForStage', () => {
 
 describe('evaluateContentFilter', () => {
     it('returns null when config empty', () => {
-        expect(evaluateContentFilter(null, {stage: 'before', title: 'x'}).hit).toBeNull();
+        expect(evaluateContentFilter(null, { stage: 'before', title: 'x' }).hit).toBeNull();
     });
 
     it('matches before keyword', () => {
@@ -167,7 +167,7 @@ describe('contentFilterKvKey', () => {
 
 describe('emptyContentFilterConfig', () => {
     it('returns version 1 with empty rules', () => {
-        expect(emptyContentFilterConfig()).toEqual({version: 1, rules: []});
+        expect(emptyContentFilterConfig()).toEqual({ version: 1, rules: [] });
     });
 });
 
@@ -184,13 +184,13 @@ describe('validateContentFilterConfig', () => {
                     id: 'dup',
                     enabled: true,
                     stage: 'before',
-                    match: {type: 'keyword', fields: ['title'], values: ['x']},
+                    match: { type: 'keyword', fields: ['title'], values: ['x'] },
                 },
                 {
                     id: 'dup',
                     enabled: true,
                     stage: 'before',
-                    match: {type: 'keyword', fields: ['title'], values: ['y']},
+                    match: { type: 'keyword', fields: ['title'], values: ['y'] },
                 },
             ],
         };
@@ -202,8 +202,8 @@ describe('validateContentFilterConfig', () => {
             version: 1,
             rules: [sampleConfig.rules[0]],
         };
-        expect(() => validateContentFilterConfig(beforeOnly, {stage: 'before'})).not.toThrow();
-        expect(() => validateContentFilterConfig(beforeOnly, {stage: 'after'})).toThrow(
+        expect(() => validateContentFilterConfig(beforeOnly, { stage: 'before' })).not.toThrow();
+        expect(() => validateContentFilterConfig(beforeOnly, { stage: 'after' })).toThrow(
             /stage 须为 after/,
         );
     });
@@ -216,7 +216,7 @@ describe('validateContentFilterConfig', () => {
                     id: 'bad-regex',
                     enabled: true,
                     stage: 'before',
-                    match: {type: 'regex', fields: ['title'], pattern: '[unclosed'},
+                    match: { type: 'regex', fields: ['title'], pattern: '[unclosed' },
                 },
             ],
         };

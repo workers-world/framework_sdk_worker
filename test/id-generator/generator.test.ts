@@ -1,8 +1,8 @@
-import {describe, expect, it} from 'vitest';
-import {IdFactory} from '../../src/id-generator/factory.js';
-import {genId, IdGenerator} from '../../src/id-generator/generator.js';
-import {InMemoryIdSequenceStore} from '../../src/id-generator/store.js';
-import {MAX_SEQ} from '../../src/id-generator/types.js';
+import { describe, expect, it } from 'vitest';
+import { IdFactory } from '../../src/id-generator/factory.js';
+import { genId, IdGenerator } from '../../src/id-generator/generator.js';
+import { InMemoryIdSequenceStore } from '../../src/id-generator/store.js';
+import { MAX_SEQ } from '../../src/id-generator/types.js';
 
 describe('IdGenerator', () => {
     it('should include prefix and date', async () => {
@@ -51,7 +51,7 @@ describe('IdGenerator', () => {
     it('should be concurrent-safe with in-memory store', async () => {
         const store = new InMemoryIdSequenceStore();
         const g = new IdGenerator('MT', store);
-        const tasks = Array.from({length: 100}, () => g.genId('20260706'));
+        const tasks = Array.from({ length: 100 }, () => g.genId('20260706'));
         const ids = await Promise.all(tasks);
         expect(new Set(ids).size).toBe(100);
     });

@@ -1,6 +1,6 @@
-import {describe, expect, it} from 'vitest';
-import {isLikelyArticleUrl} from '../../src/url/article-link.js';
-import {isLikelyProductLandingUrl} from '../../src/url/product-landing-link.js';
+import { describe, expect, it } from 'vitest';
+import { isLikelyArticleUrl } from '../../src/url/article-link.js';
+import { isLikelyProductLandingUrl } from '../../src/url/product-landing-link.js';
 
 describe('isLikelyArticleUrl', () => {
     it('detects aeon essays path', () => {
@@ -24,9 +24,7 @@ describe('isLikelyArticleUrl', () => {
     });
 
     it('rejects finance yahoo article paths', () => {
-        expect(
-            isLikelyArticleUrl('https://finance.yahoo.com/article/pepsico.html'),
-        ).toBe(false);
+        expect(isLikelyArticleUrl('https://finance.yahoo.com/article/pepsico.html')).toBe(false);
     });
 
     it('detects USGS earthquake eventpage paths', () => {

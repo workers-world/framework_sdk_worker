@@ -4,7 +4,7 @@
  * 下游：与 isLikelyProductLandingUrl 互斥优先判落地页。
  * 不变量：essays/blog 等路径段、已知长文站、多段长 slug → true。
  */
-import {isLikelyProductLandingUrl} from './product-landing-link.js';
+import { isLikelyProductLandingUrl } from './product-landing-link.js';
 
 /** 已知以长文为主的主机 */
 const ARTICLE_HOST_SUFFIXES = [

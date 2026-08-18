@@ -1,4 +1,4 @@
-import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 
 export interface NotifyPayload {
     subject: string;
@@ -66,11 +66,11 @@ export async function sendNotify(
     payload: NotifyPayload,
 ): Promise<NotifyResult> {
     if (!notify) {
-        return {ok: false, error: 'NOTIFY service binding not configured'};
+        return { ok: false, error: 'NOTIFY service binding not configured' };
     }
     const resolved = await resolveSecret(token);
     if (!resolved) {
-        return {ok: false, error: 'NOTIFY_AUTH_TOKEN not configured'};
+        return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
     }
 
     const resp = await notify.fetch('https://notify/v1/send', {
@@ -103,11 +103,11 @@ export async function sendNotifyAsync(
     item: DigestItem,
 ): Promise<NotifyAsyncResult> {
     if (!notify) {
-        return {ok: false, error: 'NOTIFY service binding not configured'};
+        return { ok: false, error: 'NOTIFY service binding not configured' };
     }
     const resolved = await resolveSecret(token);
     if (!resolved) {
-        return {ok: false, error: 'NOTIFY_AUTH_TOKEN not configured'};
+        return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
     }
 
     const resp = await notify.fetch('https://notify/v1/send/async', {
@@ -115,7 +115,7 @@ export async function sendNotifyAsync(
         headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${resolved}`,
-            ...(item.source ? {'X-Notify-Source': item.source} : {}),
+            ...(item.source ? { 'X-Notify-Source': item.source } : {}),
         },
         body: JSON.stringify(item),
     });

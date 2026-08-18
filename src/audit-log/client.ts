@@ -3,7 +3,7 @@
  * host 填 https://audit-log 即可，Service Binding 会路由到 audit-log-worker，不走公网。
  * 上游：各 worker（config-agent / email-rule-worker ...）；下游：audit-log-worker POST /v1/log。
  */
-import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 
 export interface MaintenanceLogEntry {
     ts: string;
@@ -32,11 +32,11 @@ export async function writeMaintenanceLog(
     entry: MaintenanceLogEntry,
 ): Promise<WriteLogResult> {
     if (!logger) {
-        return {ok: false, error: 'SVC_AUDIT_LOG service binding not configured'};
+        return { ok: false, error: 'SVC_AUDIT_LOG service binding not configured' };
     }
     const resolved = await resolveSecret(token);
     if (!resolved) {
-        return {ok: false, error: 'AUDIT_LOG_AUTH_TOKEN not configured'};
+        return { ok: false, error: 'AUDIT_LOG_AUTH_TOKEN not configured' };
     }
 
     const resp = await logger.fetch('https://audit-log/v1/log', {
@@ -50,7 +50,7 @@ export async function writeMaintenanceLog(
 
     const data = (await resp.json()) as WriteLogResult & { error?: string };
     if (!resp.ok) {
-        return {ok: false, error: data.error || resp.statusText};
+        return { ok: false, error: data.error || resp.statusText };
     }
     return data;
 }
