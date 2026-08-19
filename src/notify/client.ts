@@ -1,5 +1,8 @@
 import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 
+/** notify Service Binding 调用超时，避免热路径无限挂起 */
+const NOTIFY_FETCH_TIMEOUT_MS = 15_000;
+
 export interface NotifyPayload {
     subject: string;
     /** 纯文本正文；与 html 至少提供一个 */
@@ -108,6 +111,7 @@ export async function sendNotify(
             Authorization: `Bearer ${resolved}`,
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(NOTIFY_FETCH_TIMEOUT_MS),
     });
 
     const parsed = await parseNotifyJsonResponse<NotifyResult>(resp);
@@ -150,6 +154,7 @@ export async function sendNotifyAsync(
             ...(item.source ? { 'X-Notify-Source': item.source } : {}),
         },
         body: JSON.stringify(item),
+        signal: AbortSignal.timeout(NOTIFY_FETCH_TIMEOUT_MS),
     });
 
     const parsed = await parseNotifyJsonResponse<NotifyAsyncResult>(resp);

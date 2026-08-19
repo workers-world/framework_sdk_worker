@@ -1,7 +1,7 @@
 import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 
-/** LLM 调用超时：gateway 挂起时避免调用方无限等待 */
-const LLM_CALL_TIMEOUT_MS = 60_000;
+/** LLM 调用超时：gateway 挂起时避免调用方占满 isolate 墙钟上限 */
+const LLM_CALL_TIMEOUT_MS = 25_000;
 
 export interface LlmChatMessage {
     role: string;
