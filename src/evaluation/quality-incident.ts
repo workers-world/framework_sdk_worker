@@ -13,6 +13,10 @@ export interface QualityIncident {
     because: string;
     clusterKey: string;
     dedupKey?: string;
+    /** 当前 Worker invocation（emit / queue consumer 侧） */
+    invocationId?: string;
+    /** 邮件热路径 invocation（fetch / process-email 日志） */
+    emailInvocationId?: string;
     url?: string;
     fingerprint?: string;
     ruleId?: string;
