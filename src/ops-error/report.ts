@@ -2,7 +2,7 @@ import { linkifyPlainTextEmail } from '../email/linkify-plain-text.js';
 import { getEnvMode } from '../env/validate.js';
 import { type NotifyResult, sendNotify } from '../notify/client.js';
 import type { SecretLike } from '../secrets/resolve.js';
-import { shanghaiIsoString } from '../time/index.js';
+import { shanghaiIsoString } from '../time.js';
 import { buildOpsDedupKey } from './normalize.js';
 import { type LogFields, sanitizeForLog } from './sanitize.js';
 
