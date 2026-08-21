@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.2.91",
+  "version": "0.2.92",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -210,6 +210,10 @@
     "./evaluation/quality-incident": {
       "import": "./dist/evaluation/quality-incident.js",
       "types": "./dist/evaluation/quality-incident.d.ts"
+    },
+    "./observability/platform-log": {
+      "import": "./dist/observability/platform-log.js",
+      "types": "./dist/observability/platform-log.d.ts"
     },
     "./mcp": {
       "import": "./dist/mcp/index.js",
