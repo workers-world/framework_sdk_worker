@@ -59,6 +59,7 @@ export default defineConfig({
         'analysis/analysis-signal': 'src/analysis/analysis-signal.ts',
         'evaluation/content-filter': 'src/evaluation/content-filter.ts',
         'evaluation/quality-incident': 'src/evaluation/quality-incident.ts',
+        'observability/platform-log': 'src/observability/platform-log.ts',
         'mcp/index': 'src/mcp/index.ts',
         'mcp/types': 'src/mcp/types.ts',
         'mcp/openapi': 'src/mcp/openapi.ts',

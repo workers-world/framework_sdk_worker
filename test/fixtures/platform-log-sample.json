@@ -1,0 +1,245 @@
+[
+  {
+    "source": {
+      "message": "msg=Neuron 配额耗尽，邮件已推迟 rule=Electronics Weekly subject=Electronics Weekly: No One’s No.1 Problem reason=neuron_quota"
+    },
+    "dataset": "cloudflare-workers",
+    "timestamp": "2026-08-21T01:38:31.801Z",
+    "$workers": {
+      "truncated": false,
+      "event": {
+        "rcptTo": "user@example.com",
+        "mailFrom": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+        "rawSize": 24174
+      },
+      "scriptName": "email-rule-worker",
+      "eventType": "email",
+      "scriptVersion": {
+        "id": "cc376a1d-5f8b-4989-81ee-2081e9e3e575"
+      },
+      "executionModel": "stateless",
+      "requestId": "9YYFVE6K6SMI9OOW"
+    },
+    "$metadata": {
+      "id": "01M0GZGF7SBGC5A3B8ZTQ4VEVM",
+      "requestId": "9YYFVE6K6SMI9OOW",
+      "trigger": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+      "service": "email-rule-worker",
+      "message": "msg=Neuron 配额耗尽，邮件已推迟 rule=Electronics Weekly subject=Electronics Weekly: No One’s No.1 Problem reason=neuron_quota",
+      "account": "1d6d1fb6f38e1b908a7179e257be96a6",
+      "type": "cf-worker",
+      "fingerprint": "e0efdcf76e1aa7e3ea97322571317d84",
+      "origin": "email",
+      "messageTemplate": "msg=Neuron 配额耗尽，邮件已推迟 rule=Electronics Weekly subject=Electronics Weekly: No One’s No.1 Problem reason=neuron_quota"
+    }
+  },
+  {
+    "source": {
+      "message": "msg=规则处理完成 disposition=process action=finish rule=Electronics Weekly result=deferred from=DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com to=user@example.com subject=Electronics Weekly: No One’s No.1 Problem messageId=<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net> url=https://www.electronicsweekly.com/blogs/mannerisms/dilemmas/no-ones-no-1-problem-2026-08/"
+    },
+    "dataset": "cloudflare-workers",
+    "timestamp": "2026-08-21T01:38:31.801Z",
+    "$workers": {
+      "truncated": false,
+      "event": {
+        "rcptTo": "user@example.com",
+        "mailFrom": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+        "rawSize": 24174
+      },
+      "scriptName": "email-rule-worker",
+      "eventType": "email",
+      "scriptVersion": {
+        "id": "cc376a1d-5f8b-4989-81ee-2081e9e3e575"
+      },
+      "executionModel": "stateless",
+      "requestId": "9YYFVE6K6SMI9OOW"
+    },
+    "$metadata": {
+      "id": "01M0GZGF7SBGC5A3B8ZTQ4VEVK",
+      "requestId": "9YYFVE6K6SMI9OOW",
+      "trigger": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+      "service": "email-rule-worker",
+      "message": "msg=规则处理完成 disposition=process action=finish rule=Electronics Weekly result=deferred from=DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com to=user@example.com subject=Electronics Weekly: No One’s No.1 Problem messageId=<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net> url=https://www.electronicsweekly.com/blogs/mannerisms/dilemmas/no-ones-no-1-problem-2026-08/",
+      "account": "1d6d1fb6f38e1b908a7179e257be96a6",
+      "type": "cf-worker",
+      "fingerprint": "e0efdcf76e1aa7e3ea97322571317d84",
+      "origin": "email",
+      "messageTemplate": "msg=规则处理完成 disposition=process action=finish rule=Electronics Weekly result=deferred from=<EMAIL> to=<EMAIL> subject=Electronics Weekly: No One’s No.1 Problem messageId=<<EMAIL>> url=https://www.electronicsweekly.com/blogs/mannerisms/dilemmas/no-ones-no-1-problem-2026-08/"
+    }
+  },
+  {
+    "source": {
+      "message": "【正文抓取】 [Electronics Weekly] [browser] trigger=email_hotpath dedupKey=custom:<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net> outcome=discarded reason=quality_rejected url=https://www.electronicsweekly.com/blogs/mannerisms/dilemmas/no-ones-no-1-problem-2026-08/"
+    },
+    "dataset": "cloudflare-workers",
+    "timestamp": "2026-08-21T01:38:31.223Z",
+    "$workers": {
+      "truncated": false,
+      "event": {
+        "rcptTo": "user@example.com",
+        "mailFrom": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+        "rawSize": 24174
+      },
+      "scriptName": "email-rule-worker",
+      "eventType": "email",
+      "scriptVersion": {
+        "id": "cc376a1d-5f8b-4989-81ee-2081e9e3e575"
+      },
+      "executionModel": "stateless",
+      "requestId": "9YYFVE6K6SMI9OOW"
+    },
+    "$metadata": {
+      "id": "01M0GZGENQM0B846128ZBETJP2",
+      "requestId": "9YYFVE6K6SMI9OOW",
+      "trigger": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+      "service": "email-rule-worker",
+      "message": "【正文抓取】 [Electronics Weekly] [browser] trigger=email_hotpath dedupKey=custom:<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net> outcome=discarded reason=quality_rejected url=https://www.electronicsweekly.com/blogs/mannerisms/dilemmas/no-ones-no-1-problem-2026-08/",
+      "account": "1d6d1fb6f38e1b908a7179e257be96a6",
+      "type": "cf-worker",
+      "fingerprint": "e0efdcf76e1aa7e3ea97322571317d84",
+      "origin": "email",
+      "messageTemplate": "【正文抓取】 [Electronics Weekly] [browser] trigger=email_hotpath dedupKey=custom:<<EMAIL>> outcome=discarded reason=quality_rejected url=https://www.electronicsweekly.com/blogs/mannerisms/dilemmas/no-ones-no-1-problem-2026-08/"
+    }
+  },
+  {
+    "source": {
+      "message": "【正文抓取】 [Electronics Weekly] [bare] trigger=email_hotpath dedupKey=custom:<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net> httpStatus=200 outcome=discarded reason=quality_rejected url=https://www.electronicsweekly.com/blogs/mannerisms/dilemmas/no-ones-no-1-problem-2026-08/"
+    },
+    "dataset": "cloudflare-workers",
+    "timestamp": "2026-08-21T01:38:31.149Z",
+    "$workers": {
+      "truncated": false,
+      "event": {
+        "rcptTo": "user@example.com",
+        "mailFrom": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+        "rawSize": 24174
+      },
+      "scriptName": "email-rule-worker",
+      "eventType": "email",
+      "scriptVersion": {
+        "id": "cc376a1d-5f8b-4989-81ee-2081e9e3e575"
+      },
+      "executionModel": "stateless",
+      "requestId": "9YYFVE6K6SMI9OOW"
+    },
+    "$metadata": {
+      "id": "01M0GZGEKDV4PDAW8EXVB3A1E1",
+      "requestId": "9YYFVE6K6SMI9OOW",
+      "trigger": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+      "service": "email-rule-worker",
+      "message": "【正文抓取】 [Electronics Weekly] [bare] trigger=email_hotpath dedupKey=custom:<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net> httpStatus=200 outcome=discarded reason=quality_rejected url=https://www.electronicsweekly.com/blogs/mannerisms/dilemmas/no-ones-no-1-problem-2026-08/",
+      "account": "1d6d1fb6f38e1b908a7179e257be96a6",
+      "type": "cf-worker",
+      "fingerprint": "e0efdcf76e1aa7e3ea97322571317d84",
+      "origin": "email",
+      "messageTemplate": "【正文抓取】 [Electronics Weekly] [bare] trigger=email_hotpath dedupKey=custom:<<EMAIL>> httpStatus=200 outcome=discarded reason=quality_rejected url=https://www.electronicsweekly.com/blogs/mannerisms/dilemmas/no-ones-no-1-problem-2026-08/"
+    }
+  },
+  {
+    "source": {
+      "message": "msg=开始处理邮件 disposition=process action=start rule=Electronics Weekly from=DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com to=user@example.com subject=Electronics Weekly: No One’s No.1 Problem messageId=<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net>"
+    },
+    "dataset": "cloudflare-workers",
+    "timestamp": "2026-08-21T01:38:30.610Z",
+    "$workers": {
+      "truncated": false,
+      "event": {
+        "rcptTo": "user@example.com",
+        "mailFrom": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+        "rawSize": 24174
+      },
+      "scriptName": "email-rule-worker",
+      "eventType": "email",
+      "scriptVersion": {
+        "id": "cc376a1d-5f8b-4989-81ee-2081e9e3e575"
+      },
+      "executionModel": "stateless",
+      "requestId": "9YYFVE6K6SMI9OOW"
+    },
+    "$metadata": {
+      "id": "01M0GZGE2J158CMK043N6H5JPM",
+      "requestId": "9YYFVE6K6SMI9OOW",
+      "trigger": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+      "service": "email-rule-worker",
+      "message": "msg=开始处理邮件 disposition=process action=start rule=Electronics Weekly from=DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com to=user@example.com subject=Electronics Weekly: No One’s No.1 Problem messageId=<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net>",
+      "account": "1d6d1fb6f38e1b908a7179e257be96a6",
+      "type": "cf-worker",
+      "fingerprint": "e0efdcf76e1aa7e3ea97322571317d84",
+      "origin": "email",
+      "messageTemplate": "msg=开始处理邮件 disposition=process action=start rule=Electronics Weekly from=<EMAIL> to=<EMAIL> subject=Electronics Weekly: No One’s No.1 Problem messageId=<<EMAIL>>"
+    }
+  },
+  {
+    "source": {
+      "message": "msg=收到邮件 disposition=received from=DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com to=user@example.com subject=Electronics Weekly: No One’s No.1 Problem messageId=<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net>"
+    },
+    "dataset": "cloudflare-workers",
+    "timestamp": "2026-08-21T01:38:30.607Z",
+    "$workers": {
+      "truncated": false,
+      "event": {
+        "rcptTo": "user@example.com",
+        "mailFrom": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+        "rawSize": 24174
+      },
+      "scriptName": "email-rule-worker",
+      "eventType": "email",
+      "scriptVersion": {
+        "id": "cc376a1d-5f8b-4989-81ee-2081e9e3e575"
+      },
+      "executionModel": "stateless",
+      "requestId": "9YYFVE6K6SMI9OOW"
+    },
+    "$metadata": {
+      "id": "01M0GZGE2F4RKFZ6NHWX3V18KA",
+      "requestId": "9YYFVE6K6SMI9OOW",
+      "trigger": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+      "service": "email-rule-worker",
+      "message": "msg=收到邮件 disposition=received from=DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com to=user@example.com subject=Electronics Weekly: No One’s No.1 Problem messageId=<9494E62C-F390-4264-982F-FFA683C52637.30@mx.sendamatic.net>",
+      "account": "1d6d1fb6f38e1b908a7179e257be96a6",
+      "type": "cf-worker",
+      "fingerprint": "e0efdcf76e1aa7e3ea97322571317d84",
+      "origin": "email",
+      "messageTemplate": "msg=收到邮件 disposition=received from=<EMAIL> to=<EMAIL> subject=Electronics Weekly: No One’s No.1 Problem messageId=<<EMAIL>>"
+    }
+  },
+  {
+    "source": {
+      "level": "info",
+      "message": "user@example.com"
+    },
+    "dataset": "cloudflare-workers",
+    "timestamp": "2026-08-21T01:38:30.516Z",
+    "$workers": {
+      "truncated": false,
+      "event": {
+        "rcptTo": "user@example.com",
+        "mailFrom": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+        "rawSize": 24174
+      },
+      "scriptName": "email-rule-worker",
+      "outcome": "ok",
+      "eventType": "email",
+      "scriptVersion": {
+        "id": "cc376a1d-5f8b-4989-81ee-2081e9e3e575"
+      },
+      "executionModel": "stateless",
+      "requestId": "9YYFVE6K6SMI9OOW",
+      "wallTimeMs": 1264,
+      "cpuTimeMs": 26
+    },
+    "$metadata": {
+      "id": "01M0GZGDZM41WT83QXR49WQRE4",
+      "requestId": "9YYFVE6K6SMI9OOW",
+      "trigger": "DFA9AEBA-A610-C5AC-C190-B931602719AB.1@deltamail.blogtrottr.com",
+      "service": "email-rule-worker",
+      "level": "info",
+      "message": "user@example.com",
+      "account": "1d6d1fb6f38e1b908a7179e257be96a6",
+      "type": "cf-worker-event",
+      "fingerprint": "e0efdcf76e1aa7e3ea97322571317d84",
+      "origin": "email",
+      "messageTemplate": "<EMAIL>"
+    }
+  }
+]

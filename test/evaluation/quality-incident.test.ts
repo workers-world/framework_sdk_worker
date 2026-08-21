@@ -84,6 +84,23 @@ describe('buildClusterKey', () => {
     });
 });
 
+describe('normalizeQualityIncident', () => {
+    it('passes through invocationId fields', () => {
+        const incident = normalizeQualityIncident({
+            service: 'email-rule-worker',
+            kind: 'summary.llm',
+            because: 'usable_body',
+            dedupKey: 'hn:test',
+            invocationId: 'consumer-inv',
+            emailInvocationId: 'email-inv',
+            url: 'https://example.com/article',
+            fields: { bodyLen: 100 },
+        });
+        expect(incident.invocationId).toBe('consumer-inv');
+        expect(incident.emailInvocationId).toBe('email-inv');
+    });
+});
+
 describe('reconstructQualityChain', () => {
     it('orders events by ts', () => {
         const chain = reconstructQualityChain([
