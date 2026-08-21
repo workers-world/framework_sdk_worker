@@ -1,4 +1,4 @@
-import { shanghaiYmd } from '../time.js';
+import { shanghaiYmd } from '../time/shanghai.js';
 import type { IdSequenceStore } from './store.js';
 import { MAX_SEQ, SequenceOverflowError } from './types.js';
 
