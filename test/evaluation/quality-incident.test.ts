@@ -4,6 +4,7 @@ import {
     buildClusterKey,
     evaluateQualityIncident,
     formatClusterAlertMarkdown,
+    formatQualityCaptureDigestMarkdown,
     normalizeQualityIncident,
     reconstructQualityChain,
     validateQualityDiagnosis,
@@ -137,5 +138,43 @@ describe('validateQualityDiagnosis', () => {
                 recommendation: 'y',
             }).ok,
         ).toBe(false);
+    });
+});
+
+describe('formatQualityCaptureDigestMarkdown', () => {
+    it('renders empty window note', () => {
+        const md = formatQualityCaptureDigestMarkdown([], {
+            digestYmd: '2026-08-22',
+            baselineTs: '2026-08-20T00:00:00+08:00',
+            baselineLogId: 0,
+        });
+        expect(md).toContain('质量日志日报');
+        expect(md).toContain('无新的 quality_capture');
+        expect(md).toContain('logId > 0');
+    });
+
+    it('lists capture items and attachment hint', () => {
+        const md = formatQualityCaptureDigestMarkdown(
+            [
+                {
+                    dedupKey: 'dedup-1',
+                    service: 'email-rule-worker',
+                    ts: '2026-08-21T10:00:00+08:00',
+                    because: 'title_only',
+                    logsCaptured: true,
+                    logFileCount: 1,
+                    eventCount: 3,
+                    url: 'https://example.com',
+                },
+            ],
+            {
+                digestYmd: '2026-08-22',
+                baselineTs: '2026-08-20T00:00:00+08:00',
+                baselineLogId: 5,
+            },
+        );
+        expect(md).toContain('## dedup-1');
+        expect(md).toContain('title_only');
+        expect(md).toContain('完整平台 JSON 见邮件附件 zip');
     });
 });
