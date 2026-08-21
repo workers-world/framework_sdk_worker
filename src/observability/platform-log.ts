@@ -84,6 +84,11 @@ export function extractPlatformLogEventArray(raw: unknown): unknown[] {
     if (Array.isArray(raw.events)) {
         return raw.events;
     }
+    // CF Observability telemetry/query：result.events 为 { events, fields, count, series }
+    const eventsContainer = raw.events;
+    if (isRecord(eventsContainer) && Array.isArray(eventsContainer.events)) {
+        return eventsContainer.events;
+    }
     if (Array.isArray(raw.result)) {
         return raw.result;
     }
