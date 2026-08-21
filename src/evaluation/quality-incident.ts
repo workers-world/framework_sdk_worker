@@ -356,3 +356,47 @@ export function formatQualityTicketMarkdown(
     ];
     return lines.filter((l) => l !== '').join('\n');
 }
+
+/** Phase 3 每日日志汇总邮件正文（Capture 索引，不含 Cursor 诊断） */
+export interface QualityCaptureDigestItem {
+    dedupKey: string;
+    service: string;
+    ts: string;
+    because: string;
+    logsCaptured: boolean;
+    logFileCount: number;
+    eventCount: number;
+    url?: string;
+}
+
+export function formatQualityCaptureDigestMarkdown(
+    items: QualityCaptureDigestItem[],
+    window: { digestYmd: string; baselineTs: string; baselineLogId: number },
+): string {
+    const lines = [
+        '# 质量日志日报',
+        '',
+        `- 汇总日：${window.digestYmd}`,
+        `- 增量自：${window.baselineTs}（logId > ${window.baselineLogId}）`,
+        `- 新增 capture：${items.length} 条`,
+        '',
+    ];
+    if (items.length === 0) {
+        lines.push('本窗口无新的 quality_capture 记录。附件 manifest 仍含基准线信息。', '');
+        return lines.join('\n');
+    }
+    for (const item of items) {
+        lines.push(`## ${item.dedupKey}`);
+        lines.push(`- service：${item.service}`);
+        lines.push(`- ts：${item.ts}`);
+        lines.push(`- because：${item.because}`);
+        lines.push(`- logsCaptured：${item.logsCaptured ? '是' : '否'}`);
+        lines.push(`- 日志文件：${item.logFileCount}（events ${item.eventCount}）`);
+        if (item.url) {
+            lines.push(`- URL：${item.url}`);
+        }
+        lines.push('');
+    }
+    lines.push('完整平台 JSON 见邮件附件 zip。', '');
+    return lines.join('\n');
+}
