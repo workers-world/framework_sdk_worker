@@ -1,4 +1,4 @@
-import { pad2, shanghaiYmd } from '../time/index.js';
+import { pad2, shanghaiYmd } from '../time.js';
 
 export const DEFAULT_GOLD_R2_PREFIX = 'gold/AU9999_CNY/TMINI/';
 
