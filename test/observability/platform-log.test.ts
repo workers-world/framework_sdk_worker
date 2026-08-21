@@ -57,6 +57,17 @@ describe('parsePlatformLogEvents', () => {
         expect(extractPlatformLogEventArray(wrapped)).toHaveLength(1);
         expect(parsePlatformLogEvents(wrapped)).toHaveLength(1);
     });
+
+    it('unwraps CF telemetry/query { events: { events: [...] } } envelope', () => {
+        const row = [{ message: 'a', $metadata: { requestId: 'QMRUHTKREOFRD2DK' } }];
+        const wrapped = {
+            run: { status: 'COMPLETED' },
+            events: { events: row, fields: [], count: 1, series: [] },
+            statistics: {},
+        };
+        expect(extractPlatformLogEventArray(wrapped)).toHaveLength(1);
+        expect(parsePlatformLogEvents(wrapped)[0]?.$metadata?.requestId).toBe('QMRUHTKREOFRD2DK');
+    });
 });
 
 describe('resolveInvocationIdFromLogEvent', () => {
