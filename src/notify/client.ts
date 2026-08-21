@@ -3,6 +3,14 @@ import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 /** notify Service Binding 调用超时，避免热路径无限挂起 */
 const NOTIFY_FETCH_TIMEOUT_MS = 15_000;
 
+// 附件
+export interface NotifyAttachment {
+    filename: string;
+    /** base64 编码的二进制内容 */
+    contentBase64: string;
+    contentType?: string;
+}
+
 export interface NotifyPayload {
     subject: string;
     /** 纯文本正文；与 html 至少提供一个 */
@@ -11,6 +19,7 @@ export interface NotifyPayload {
     html?: string;
     to?: string;
     dedupKey?: string;
+    attachments?: NotifyAttachment[];
 }
 
 export interface NotifyResult {
