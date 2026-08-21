@@ -62,7 +62,8 @@ function rowFromDb(raw: Record<string, unknown>): MaintenanceLogRow {
         before: raw.before != null ? String(raw.before) : undefined,
         after: raw.after != null ? String(raw.after) : undefined,
         traceId: String(raw.trace_id ?? raw.traceId ?? ''),
-        opId: raw.op_id != null ? String(raw.op_id) : raw.opId != null ? String(raw.opId) : undefined,
+        opId:
+            raw.op_id != null ? String(raw.op_id) : raw.opId != null ? String(raw.opId) : undefined,
         detail: raw.detail != null ? String(raw.detail) : undefined,
     };
 }
@@ -111,15 +112,33 @@ export async function queryMaintenanceLogs(
     }
 
     const params = new URLSearchParams();
-    if (query.worker) params.set('worker', query.worker);
-    if (query.service) params.set('service', query.service);
-    if (query.action) params.set('action', query.action);
-    if (query.traceId) params.set('traceId', query.traceId);
-    if (query.sinceTs) params.set('sinceTs', query.sinceTs);
-    if (query.sinceId != null) params.set('sinceId', String(query.sinceId));
-    if (query.afterId != null) params.set('afterId', String(query.afterId));
-    if (query.order) params.set('order', query.order);
-    if (query.limit != null) params.set('limit', String(query.limit));
+    if (query.worker) {
+        params.set('worker', query.worker);
+    }
+    if (query.service) {
+        params.set('service', query.service);
+    }
+    if (query.action) {
+        params.set('action', query.action);
+    }
+    if (query.traceId) {
+        params.set('traceId', query.traceId);
+    }
+    if (query.sinceTs) {
+        params.set('sinceTs', query.sinceTs);
+    }
+    if (query.sinceId != null) {
+        params.set('sinceId', String(query.sinceId));
+    }
+    if (query.afterId != null) {
+        params.set('afterId', String(query.afterId));
+    }
+    if (query.order) {
+        params.set('order', query.order);
+    }
+    if (query.limit != null) {
+        params.set('limit', String(query.limit));
+    }
 
     const resp = await logger.fetch(`https://audit-log/v1/logs?${params.toString()}`, {
         headers: { Authorization: `Bearer ${resolved}` },

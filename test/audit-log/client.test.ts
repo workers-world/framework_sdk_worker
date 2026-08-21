@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import {
-    queryMaintenanceLogs,
-    queryMaintenanceLogsSince,
-} from '../../src/audit-log/client.js';
+import { queryMaintenanceLogs, queryMaintenanceLogsSince } from '../../src/audit-log/client.js';
 import { makeFakeFetcher } from '../../src/test/fake-bindings.js';
 
 describe('queryMaintenanceLogs', () => {
     it('missing binding returns error', async () => {
-        const result = await queryMaintenanceLogs(undefined, 'token', { action: 'quality_capture' });
+        const result = await queryMaintenanceLogs(undefined, 'token', {
+            action: 'quality_capture',
+        });
         expect(result.ok).toBe(false);
         expect(result.error).toContain('SVC_AUDIT_LOG');
     });
