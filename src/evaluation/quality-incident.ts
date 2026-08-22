@@ -384,8 +384,7 @@ function csvEscapeCell(value: string): string {
 
 /** Phase 3 日报 capture 明细 CSV（附件） */
 export function formatQualityCaptureDigestCsv(items: QualityCaptureDigestItem[]): string {
-    const header =
-        'dedupKey,service,ts,because,logsCaptured,logFileCount,eventCount,url';
+    const header = 'dedupKey,service,ts,because,logsCaptured,logFileCount,eventCount,url';
     const rows = items.map((item) =>
         [
             item.dedupKey,
