@@ -4,6 +4,7 @@ import {
     buildClusterKey,
     evaluateQualityIncident,
     formatClusterAlertMarkdown,
+    formatQualityCaptureDigestCsv,
     formatQualityCaptureDigestMarkdown,
     normalizeQualityIncident,
     reconstructQualityChain,
@@ -153,28 +154,31 @@ describe('formatQualityCaptureDigestMarkdown', () => {
         expect(md).toContain('logId > 0');
     });
 
-    it('lists capture items and attachment hint', () => {
-        const md = formatQualityCaptureDigestMarkdown(
-            [
-                {
-                    dedupKey: 'dedup-1',
-                    service: 'email-rule-worker',
-                    ts: '2026-08-21T10:00:00+08:00',
-                    because: 'title_only',
-                    logsCaptured: true,
-                    logFileCount: 1,
-                    eventCount: 3,
-                    url: 'https://example.com',
-                },
-            ],
+    it('短摘要指向 csv 附件', () => {
+        const items = [
             {
-                digestYmd: '2026-08-22',
-                baselineTs: '2026-08-20T00:00:00+08:00',
-                baselineLogId: 5,
+                dedupKey: 'dedup-1',
+                service: 'email-rule-worker',
+                ts: '2026-08-21T10:00:00+08:00',
+                because: 'title_only',
+                logsCaptured: true,
+                logFileCount: 1,
+                eventCount: 3,
+                url: 'https://example.com',
             },
-        );
-        expect(md).toContain('## dedup-1');
-        expect(md).toContain('title_only');
-        expect(md).toContain('完整平台 JSON 见邮件附件 zip');
+        ];
+        const window = {
+            digestYmd: '2026-08-22',
+            baselineTs: '2026-08-20T00:00:00+08:00',
+            baselineLogId: 5,
+        };
+        const md = formatQualityCaptureDigestMarkdown(items, window);
+        expect(md).not.toContain('## dedup-1');
+        expect(md).toContain('quality-captures-2026-08-22.csv');
+        expect(md).toContain('quality-logs-2026-08-22-part');
+
+        const csv = formatQualityCaptureDigestCsv(items);
+        expect(csv).toContain('dedup-1');
+        expect(csv).toContain('title_only');
     });
 });
