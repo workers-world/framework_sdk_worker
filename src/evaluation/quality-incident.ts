@@ -369,9 +369,45 @@ export interface QualityCaptureDigestItem {
     url?: string;
 }
 
+export interface QualityCaptureDigestSummaryOptions {
+    partIndex?: number;
+    partTotal?: number;
+    truncated?: boolean;
+}
+
+function csvEscapeCell(value: string): string {
+    if (/[",\n\r]/.test(value)) {
+        return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+}
+
+/** Phase 3 日报 capture 明细 CSV（附件） */
+export function formatQualityCaptureDigestCsv(items: QualityCaptureDigestItem[]): string {
+    const header =
+        'dedupKey,service,ts,because,logsCaptured,logFileCount,eventCount,url';
+    const rows = items.map((item) =>
+        [
+            item.dedupKey,
+            item.service,
+            item.ts,
+            item.because,
+            item.logsCaptured ? 'true' : 'false',
+            String(item.logFileCount),
+            String(item.eventCount),
+            item.url ?? '',
+        ]
+            .map((cell) => csvEscapeCell(String(cell)))
+            .join(','),
+    );
+    return [header, ...rows].join('\n');
+}
+
+/** Phase 3 每日日志汇总邮件正文（短摘要，明细在 CSV 附件） */
 export function formatQualityCaptureDigestMarkdown(
     items: QualityCaptureDigestItem[],
     window: { digestYmd: string; baselineTs: string; baselineLogId: number },
+    options?: QualityCaptureDigestSummaryOptions,
 ): string {
     const lines = [
         '# 质量日志日报',
@@ -379,24 +415,43 @@ export function formatQualityCaptureDigestMarkdown(
         `- 汇总日：${window.digestYmd}`,
         `- 增量自：${window.baselineTs}（logId > ${window.baselineLogId}）`,
         `- 新增 capture：${items.length} 条`,
-        '',
     ];
+    if (options?.partIndex && options?.partTotal && options.partTotal > 1) {
+        lines.push(`- 分片：第 ${options.partIndex}/${options.partTotal} 封`);
+    }
+    if (options?.truncated) {
+        lines.push('- 日志 zip 因体积上限有部分截断，详见 manifest');
+    }
+    lines.push(
+        '',
+        `- 明细附件：quality-captures-${window.digestYmd}.csv`,
+        `- 平台 JSON：quality-logs-${window.digestYmd}-part*.zip`,
+        '',
+    );
     if (items.length === 0) {
         lines.push('本窗口无新的 quality_capture 记录。附件 manifest 仍含基准线信息。', '');
-        return lines.join('\n');
     }
-    for (const item of items) {
-        lines.push(`## ${item.dedupKey}`);
-        lines.push(`- service：${item.service}`);
-        lines.push(`- ts：${item.ts}`);
-        lines.push(`- because：${item.because}`);
-        lines.push(`- logsCaptured：${item.logsCaptured ? '是' : '否'}`);
-        lines.push(`- 日志文件：${item.logFileCount}（events ${item.eventCount}）`);
-        if (item.url) {
-            lines.push(`- URL：${item.url}`);
-        }
-        lines.push('');
+    return lines.join('\n');
+}
+
+/** 分片日报第 2+ 封正文 */
+export function formatQualityCaptureDigestPartMarkdown(
+    digestYmd: string,
+    partIndex: number,
+    partTotal: number,
+    truncated?: boolean,
+): string {
+    const lines = [
+        '# 质量日志日报（续）',
+        '',
+        `- 汇总日：${digestYmd}`,
+        `- 分片：第 ${partIndex}/${partTotal} 封`,
+        '',
+        '本封仅含日志 zip 附件（CSV 见第 1 封）。',
+    ];
+    if (truncated) {
+        lines.push('- 本 zip 因体积上限有部分截断，详见 manifest');
     }
-    lines.push('完整平台 JSON 见邮件附件 zip。', '');
+    lines.push('');
     return lines.join('\n');
 }
