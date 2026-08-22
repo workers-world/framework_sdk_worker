@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.2.94",
+  "version": "0.2.95",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -142,6 +142,10 @@
     "./email/linkify-plain-text": {
       "import": "./dist/email/linkify-plain-text.js",
       "types": "./dist/email/linkify-plain-text.d.ts"
+    },
+    "./email/message-size": {
+      "import": "./dist/email/message-size.js",
+      "types": "./dist/email/message-size.d.ts"
     },
     "./env": {
       "import": "./dist/env/validate.js",

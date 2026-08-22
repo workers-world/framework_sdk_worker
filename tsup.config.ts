@@ -43,6 +43,7 @@ export default defineConfig({
         'resilience/circuit-breaker': 'src/resilience/circuit-breaker.ts',
         'email/escape-html': 'src/email/escape-html.ts',
         'email/linkify-plain-text': 'src/email/linkify-plain-text.ts',
+        'email/message-size': 'src/email/message-size.ts',
         'env/validate': 'src/env/validate.ts',
         'ops-error/index': 'src/ops-error/index.ts',
         'fund/types': 'src/fund/types.ts',
