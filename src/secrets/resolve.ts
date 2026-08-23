@@ -15,9 +15,15 @@ export async function resolveSecret(
         return trimmed.length > 0 ? trimmed : undefined;
     }
     if (typeof value.get === 'function') {
-        const resolved = await value.get();
-        const trimmed = typeof resolved === 'string' ? resolved.trim() : '';
-        return trimmed.length > 0 ? trimmed : undefined;
+        try {
+            const resolved = await value.get();
+            const trimmed = typeof resolved === 'string' ? resolved.trim() : '';
+            return trimmed.length > 0 ? trimmed : undefined;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`[resolveSecret] Secrets Store get failed: ${message}`);
+            return undefined;
+        }
     }
     return undefined;
 }
