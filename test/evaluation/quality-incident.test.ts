@@ -143,7 +143,7 @@ describe('validateQualityDiagnosis', () => {
 });
 
 describe('formatQualityCaptureDigestMarkdown', () => {
-    it('renders empty window note', () => {
+    it('renders empty window note without attachment hints', () => {
         const md = formatQualityCaptureDigestMarkdown([], {
             digestYmd: '2026-08-22',
             baselineTs: '2026-08-20T00:00:00+08:00',
@@ -151,6 +151,9 @@ describe('formatQualityCaptureDigestMarkdown', () => {
         });
         expect(md).toContain('质量日志日报');
         expect(md).toContain('无新的 quality_capture');
+        expect(md).toContain('无附件');
+        expect(md).not.toContain('quality-captures-');
+        expect(md).not.toContain('quality-logs-');
         expect(md).toContain('logId > 0');
     });
 
