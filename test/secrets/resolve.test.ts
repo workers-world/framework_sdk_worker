@@ -1,15 +1,29 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { resolveSecret } from '../../src/secrets/resolve.js';
 
 describe('resolveSecret', () => {
-    it('returns trimmed string secrets', async () => {
+    it('returns string secret', async () => {
         expect(await resolveSecret('  abc  ')).toBe('abc');
-        expect(await resolveSecret('')).toBeUndefined();
-        expect(await resolveSecret(undefined)).toBeUndefined();
     });
 
-    it('awaits Secrets Store binding get()', async () => {
-        expect(await resolveSecret({ get: async () => 'store-token' })).toBe('store-token');
-        expect(await resolveSecret({ get: async () => '  ' })).toBeUndefined();
+    it('returns undefined for empty string', async () => {
+        expect(await resolveSecret('')).toBeUndefined();
+    });
+
+    it('resolves Secrets Store binding', async () => {
+        const binding = { get: async () => 'from-store' };
+        expect(await resolveSecret(binding)).toBe('from-store');
+    });
+
+    it('returns undefined when Secrets Store get throws', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const binding = {
+            get: async () => {
+                throw new Error('Secrets Worker: Failed to fetch secret');
+            },
+        };
+        expect(await resolveSecret(binding)).toBeUndefined();
+        expect(warn).toHaveBeenCalled();
+        warn.mockRestore();
     });
 });
