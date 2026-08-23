@@ -421,14 +421,15 @@ export function formatQualityCaptureDigestMarkdown(
     if (options?.truncated) {
         lines.push('- 日志 zip 因体积上限有部分截断，详见 manifest');
     }
-    lines.push(
-        '',
-        `- 明细附件：quality-captures-${window.digestYmd}.csv`,
-        `- 平台 JSON：quality-logs-${window.digestYmd}-part*.zip`,
-        '',
-    );
-    if (items.length === 0) {
-        lines.push('本窗口无新的 quality_capture 记录。附件 manifest 仍含基准线信息。', '');
+    if (items.length > 0) {
+        lines.push(
+            '',
+            `- 明细附件：quality-captures-${window.digestYmd}.csv`,
+            `- 平台 JSON：quality-logs-${window.digestYmd}-part*.zip`,
+            '',
+        );
+    } else {
+        lines.push('', '本窗口无新的 quality_capture 记录，无附件。', '');
     }
     return lines.join('\n');
 }
