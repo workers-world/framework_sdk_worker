@@ -134,7 +134,7 @@ export function isLikelyProductLandingUrl(url: string): boolean {
             return true;
         }
 
-        // 单段短 slug（如 /pricing、/app），排除过长或带扩展名的文章文件
+        // 单段短 slug（如 /pricing、/app），排除过长、带扩展名、或多连字符的文章标题路径
         if (segments.length === 1) {
             const seg = segments[0];
             if (seg.includes('.') && !INDEX_FILES.has(seg)) {
@@ -142,6 +142,10 @@ export function isLikelyProductLandingUrl(url: string): boolean {
             }
             // 过长 slug 更像文章标题路径
             if (seg.length > 48) {
+                return false;
+            }
+            // 两个及以上连字符（如 ai-chip-architectures）更像文章 slug，非营销页
+            if ((seg.match(/-/g) || []).length >= 2) {
                 return false;
             }
             return true;

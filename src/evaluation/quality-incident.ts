@@ -5,6 +5,9 @@
  * 不变量：pass=true 表示静默（预期降级）；pass=false 触发告警/工单
  */
 
+import { ArticleFetchReason } from './article-fetch-reason.js';
+import { SummaryDecisionBecause } from './summary-decision-because.js';
+
 export type QualitySeverity = 'hard' | 'soft' | 'silent';
 
 export interface QualityIncident {
@@ -34,7 +37,7 @@ export interface QualityOpsRules {
 }
 
 export const DEFAULT_QUALITY_OPS_RULES: QualityOpsRules = {
-    silentBecause: ['video_link', 'pdf_link'],
+    silentBecause: [SummaryDecisionBecause.video_link.code, SummaryDecisionBecause.pdf_link.code],
     alertDedupTtlSec: 86_400,
     ticketDedupTtlSec: 86_400,
     minClusterCount: 1,
@@ -153,7 +156,11 @@ export function evaluateQualityIncident(
     const summary = fieldStr(fields, 'summary');
     const path = fieldStr(fields, 'path');
 
-    if (kind === 'summary.title_only' && because === 'nav_shell_body' && fetchFailed === false) {
+    if (
+        kind === 'summary.title_only' &&
+        because === SummaryDecisionBecause.nav_shell_body.code &&
+        fetchFailed === false
+    ) {
         return {
             pass: false,
             severity: 'hard',
@@ -175,7 +182,11 @@ export function evaluateQualityIncident(
         };
     }
 
-    if (kind === 'summary.title_only' && because === 'thin_snippet' && urlKind === 'article') {
+    if (
+        kind === 'summary.title_only' &&
+        because === SummaryDecisionBecause.thin_snippet.code &&
+        urlKind === 'article'
+    ) {
         return {
             pass: false,
             severity: 'soft',
@@ -184,7 +195,7 @@ export function evaluateQualityIncident(
         };
     }
 
-    if (kind === 'summary.title_only' && because === 'binary_body') {
+    if (kind === 'summary.title_only' && because === SummaryDecisionBecause.binary_body.code) {
         return {
             pass: false,
             severity: 'soft',
@@ -202,7 +213,7 @@ export function evaluateQualityIncident(
         };
     }
 
-    if (kind.startsWith('fetch.') && because === 'quality_rejected') {
+    if (kind.startsWith('fetch.') && because === ArticleFetchReason.quality_rejected.code) {
         return {
             pass: false,
             severity: 'soft',
