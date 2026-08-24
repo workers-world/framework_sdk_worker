@@ -36,6 +36,9 @@ describe('quality-code-targets', () => {
         expect(inferSuspectedLayerFromIncident({ path: 'title_only', chain: 'summarize' })).toBe(
             'summarize',
         );
+        expect(
+            inferSuspectedLayerFromIncident({ path: 'title_only', chain: 'fetch→browser:ok' }),
+        ).toBe('summarize');
         expect(inferSuspectedLayerFromIncident({ chain: 'llm-gateway:timeout' })).toBe('llm');
     });
 });

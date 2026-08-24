@@ -53,10 +53,15 @@ export function inferSuspectedLayerFromIncident(
 ): QualitySuspectedLayer {
     const chain = String(fields.chain ?? '');
     const path = String(fields.path ?? '');
+
+    // 终端 summary 决策 path 优先于上游 fetch chain（如 browser:ok 后仍 title_only）
+    if (/summarize|title_only/i.test(path)) {
+        return 'summarize';
+    }
     if (/fetch|browser|article_fetch/i.test(chain) || /fetch/i.test(path)) {
         return 'fetch';
     }
-    if (/summarize|summary|title_only/i.test(chain) || /summarize|title_only/i.test(path)) {
+    if (/summarize|summary|title_only/i.test(chain)) {
         return 'summarize';
     }
     if (/notify/i.test(chain)) {
