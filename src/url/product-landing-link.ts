@@ -1,8 +1,8 @@
 /**
- * 产品落地页 URL 判定：纯 URL 启发式，不发起网络请求。
- * 上游：email-rule / invest-rss 正文抓取编排（meta 轻抓路径）。
- * 下游：fetchPageMeta 或 product_landing 降级说明。
- * 不变量：根路径 / 单段短 slug 且非文章路径/已知文章站 → true。
+ * 产品落地页 URL 判定（Tier 0）：纯 URL、不发起网络请求。
+ * 上游：email-rule / invest-rss 正文抓取编排。
+ * 下游：resolveLandingOrArticleFetch；ambiguous 单段 slug 交 meta 分类（Tier 1/2）。
+ * 不变量：根路径 / 单段简单 slug → landing；≥2 连字符单段 → ambiguous；文章路径/站 → not_landing。
  */
 
 /** 已知以长文/聚合为主的主机，不按产品落地页处理 */
@@ -84,6 +84,9 @@ const DATE_SEGMENT_RE =
     /^(?:19|20)\d{2}(?:[-_/]?(?:0[1-9]|1[0-2])(?:[-_/]?(?:0[1-9]|[12]\d|3[01]))?)?$/;
 const INDEX_FILES = new Set(['index.html', 'index.htm', 'index.php', 'index']);
 
+/** Tier 0：高置信落地页 / 需 meta 探测 / 明确非落地页 */
+export type LinkLandingTier = 'landing' | 'ambiguous' | 'not_landing';
+
 function hostMatchesSuffix(hostname: string, suffix: string): boolean {
     const host = hostname.replace(/^www\./, '').toLowerCase();
     return host === suffix || host.endsWith(`.${suffix}`);
@@ -107,50 +110,73 @@ function pathSegments(pathname: string): string[] {
         });
 }
 
-/** 纯函数：URL 是否像产品落地页（根路径或单段营销页） */
-export function isLikelyProductLandingUrl(url: string): boolean {
+function parseHttpUrl(url: string): URL | null {
     if (!url?.trim()) {
-        return false;
+        return null;
     }
     try {
         const u = new URL(url);
         if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-            return false;
+            return null;
         }
-        if (isArticleHost(u.hostname)) {
-            return false;
-        }
-
-        const segments = pathSegments(u.pathname);
-        if (segments.some((seg) => ARTICLE_PATH_SEGMENTS.has(seg) || DATE_SEGMENT_RE.test(seg))) {
-            return false;
-        }
-
-        // 根路径或 /index.html
-        if (segments.length === 0) {
-            return true;
-        }
-        if (segments.length === 1 && INDEX_FILES.has(segments[0])) {
-            return true;
-        }
-
-        // 单段短 slug（如 /pricing、/app），排除过长或带扩展名的文章文件
-        if (segments.length === 1) {
-            const seg = segments[0];
-            if (seg.includes('.') && !INDEX_FILES.has(seg)) {
-                return false;
-            }
-            // 过长 slug 更像文章标题路径
-            if (seg.length > 48) {
-                return false;
-            }
-            return true;
-        }
-
-        return false;
+        return u;
     } catch {
-        return false;
+        return null;
     }
+}
+
+/**
+ * Tier 0 路由：仅高置信 case 直接判 landing；多连字符单段 slug 标记 ambiguous，
+ * 由 meta 抓取后的 classifyPageMetaForFetch 决定落地页或全文抓取。
+ */
+export function classifyLinkLandingTier(url: string): LinkLandingTier {
+    const u = parseHttpUrl(url);
+    if (!u) {
+        return 'not_landing';
+    }
+    if (isArticleHost(u.hostname)) {
+        return 'not_landing';
+    }
+
+    const segments = pathSegments(u.pathname);
+    if (segments.some((seg) => ARTICLE_PATH_SEGMENTS.has(seg) || DATE_SEGMENT_RE.test(seg))) {
+        return 'not_landing';
+    }
+
+    if (segments.length === 0) {
+        return 'landing';
+    }
+    if (segments.length === 1 && INDEX_FILES.has(segments[0])) {
+        return 'landing';
+    }
+
+    if (segments.length !== 1) {
+        return 'not_landing';
+    }
+
+    const seg = segments[0];
+    if (seg.includes('.') && !INDEX_FILES.has(seg)) {
+        return 'not_landing';
+    }
+    if (seg.length > 48) {
+        return 'not_landing';
+    }
+
+    const hyphenCount = seg.split('-').filter(Boolean).length - 1;
+    if (hyphenCount >= 2) {
+        return 'ambiguous';
+    }
+    return 'landing';
+}
+
+/** 是否需先 meta 探测再定抓取路径（Tier 1） */
+export function needsMetaProbeForLanding(url: string): boolean {
+    return classifyLinkLandingTier(url) === 'ambiguous';
+}
+
+/** 纯函数：URL 是否像产品落地页（仅 Tier 0 高置信，不含 ambiguous） */
+export function isLikelyProductLandingUrl(url: string): boolean {
+    return classifyLinkLandingTier(url) === 'landing';
 }
 
 /** 给人/LLM 看的说明文案 */

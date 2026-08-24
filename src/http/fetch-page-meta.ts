@@ -4,6 +4,7 @@
  * 下游：formatPageMetaSnippet → LLM prompt 正文片段。
  * 不变量：不启 Browser；超时/非 HTML/失败 → source:'none'，不抛致命错误。
  */
+import { classifyLinkLandingTier } from '../url.js';
 
 export type PageMetaSource = 'og' | 'meta' | 'title' | 'none';
 
@@ -101,12 +102,52 @@ export function hasUsablePageMeta(meta: PageMeta): boolean {
 }
 
 const CREATIVE_CONTENT_META_RE =
-    /\b(short\s+story|essay|novella|fiction|written\s+by|memoir|poem|poetry|novelette)\b/i;
+    /\b(short\s+story|novella|fiction|memoir|poem|poetry|novelette)\b|written\s+by\b/i;
 
 /** og/meta 是否表明创作类落地页（短篇/散文等），非 SaaS 产品页 */
 export function isCreativeContentPageMeta(meta: PageMeta): boolean {
     const blob = [meta.title, meta.description, meta.siteName].filter(Boolean).join(' ');
     return CREATIVE_CONTENT_META_RE.test(blob);
+}
+
+/** Tier 2：meta 内容分类（规则；ambiguous slug 探测后用） */
+export type PageMetaFetchKind = 'landing' | 'article' | 'unknown';
+
+const ARTICLE_PAGE_META_RE =
+    /\b(essay|essays|article|blog\s+post|opinion|analysis|deep\s+dive|published\s+on|min(?:ute)?s?\s+(?:to\s+)?read|research|white\s+paper|case\s+study)\b/i;
+
+const PRODUCT_PAGE_META_RE =
+    /\b(free\s+trial|sign\s*up|get\s+started|try\s+(?:it\s+)?free|pricing|download\s+(?:the\s+)?app|saas|software\s+platform|book\s+a\s+demo|request\s+a\s+demo|start\s+your\s+free|product\s+demo|waitlist)\b/i;
+
+/** 基于 og/meta 判定 ambiguous URL 应走落地页 meta 还是全文抓取 */
+export function classifyPageMetaForFetch(meta: PageMeta): PageMetaFetchKind {
+    if (!hasUsablePageMeta(meta)) {
+        return 'unknown';
+    }
+
+    const blob = [meta.title, meta.description, meta.siteName].filter(Boolean).join(' ');
+    if (ARTICLE_PAGE_META_RE.test(blob)) {
+        return 'article';
+    }
+    if (isCreativeContentPageMeta(meta)) {
+        return 'landing';
+    }
+    if (PRODUCT_PAGE_META_RE.test(blob)) {
+        return 'landing';
+    }
+
+    const description = meta.description?.trim() ?? '';
+    const title = meta.title?.trim() ?? '';
+    if (description.length >= 120 && (description.match(/[.!?]/g)?.length ?? 0) >= 2) {
+        return 'article';
+    }
+    if (title.split(/\s+/).filter(Boolean).length >= 5 && !PRODUCT_PAGE_META_RE.test(blob)) {
+        return 'article';
+    }
+    if (title.length > 0 && description.length > 0 && description.length < 140) {
+        return 'landing';
+    }
+    return 'unknown';
 }
 
 function stripHtmlToText(html: string): string {
@@ -345,4 +386,47 @@ export async function fetchProductLandingSnippet(
         meta,
         snippet: formatProductLandingSnippet(meta, visibleCopy),
     };
+}
+
+export type LandingOrArticleFetchPath = 'landing' | 'landing_failed' | 'article';
+
+export interface LandingOrArticleFetchResult {
+    path: LandingOrArticleFetchPath;
+    meta: PageMeta;
+    snippet: string;
+}
+
+/**
+ * Tier 0–2 统一编排：高置信 landing 直接 meta 抓；ambiguous 先 meta 再分类；
+ * not_landing / meta 判为 article → 走全文抓取路径。
+ */
+export async function resolveLandingOrArticleFetch(
+    url: string,
+    options?: { timeoutMs?: number; maxBytes?: number; fetchImpl?: typeof fetch },
+): Promise<LandingOrArticleFetchResult> {
+    const tier = classifyLinkLandingTier(url);
+
+    if (tier === 'not_landing') {
+        return { path: 'article', meta: { source: 'none' }, snippet: '' };
+    }
+
+    const landing = await fetchProductLandingSnippet(url, options);
+    if (!hasUsablePageMeta(landing.meta)) {
+        return tier === 'landing'
+            ? { path: 'landing_failed', meta: landing.meta, snippet: '' }
+            : { path: 'article', meta: landing.meta, snippet: '' };
+    }
+
+    if (tier === 'landing') {
+        return { path: 'landing', meta: landing.meta, snippet: landing.snippet };
+    }
+
+    const kind = classifyPageMetaForFetch(landing.meta);
+    if (kind === 'landing') {
+        return { path: 'landing', meta: landing.meta, snippet: landing.snippet };
+    }
+    if (kind === 'article') {
+        return { path: 'article', meta: landing.meta, snippet: '' };
+    }
+    return { path: 'article', meta: landing.meta, snippet: '' };
 }
