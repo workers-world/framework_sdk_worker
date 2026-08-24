@@ -78,6 +78,22 @@ export interface QualityDiagnosis {
     isBug: boolean;
     expectedLog: string;
     recommendation: string;
+    /** Analyze 阶段：嫌疑源码路径（相对 service 仓库根） */
+    suspectedFiles?: string[];
+    primaryService?: string;
+    relatedServices?: string[];
+    codeRef?: string;
+}
+
+/** audit-log quality_diagnosis 持久化记录 */
+export interface QualityDiagnosisRecord {
+    dedupKey: string;
+    status: 'ok' | 'failed' | 'skipped';
+    diagnosis?: QualityDiagnosis;
+    agentId?: string;
+    error?: string;
+    codeRepo?: string;
+    analyzedAt?: string;
 }
 
 function hostSuffix(url?: string): string {
@@ -321,7 +337,10 @@ export function reconstructQualityChain(incidents: QualityIncident[]): QualityCh
     });
 }
 
-export function validateQualityDiagnosis(d: QualityDiagnosis): { ok: boolean; reason?: string } {
+export function validateQualityDiagnosis(
+    d: QualityDiagnosis,
+    options?: { requireSuspectedFiles?: boolean },
+): { ok: boolean; reason?: string } {
     if (!d.rootCause?.trim()) {
         return { ok: false, reason: '缺少 rootCause' };
     }
@@ -333,6 +352,11 @@ export function validateQualityDiagnosis(d: QualityDiagnosis): { ok: boolean; re
     }
     if (!d.recommendation?.trim()) {
         return { ok: false, reason: '缺少 recommendation' };
+    }
+    if (options?.requireSuspectedFiles) {
+        if (!d.suspectedFiles?.length) {
+            return { ok: false, reason: '缺少 suspectedFiles' };
+        }
     }
     return { ok: true };
 }
@@ -465,4 +489,64 @@ export function formatQualityCaptureDigestPartMarkdown(
     }
     lines.push('');
     return lines.join('\n');
+}
+
+/** 日报 diagnosis 条目（正文展示，不含附件） */
+export interface QualityDiagnosisDigestItem {
+    dedupKey: string;
+    service: string;
+    ts: string;
+    diagnosis: QualityDiagnosis;
+    codeRepo?: string;
+    fixUrl?: string;
+}
+
+export interface QualityAnalysisDigestOptions {
+    partIndex?: number;
+    partTotal?: number;
+}
+
+/** 08:00 日报 diagnosis 摘要区块（追加在 capture 摘要之后） */
+export function formatQualityAnalysisDigestMarkdown(
+    items: QualityDiagnosisDigestItem[],
+    options?: QualityAnalysisDigestOptions,
+): string {
+    if (items.length === 0) {
+        return '';
+    }
+    const lines = ['## 自动诊断（Cursor Analyze）', ''];
+    if (options?.partIndex && options?.partTotal && options.partTotal > 1) {
+        lines.push(
+            `（本封 part ${options.partIndex}/${options.partTotal} 窗口内 ${items.length} 条）`,
+            '',
+        );
+    }
+    for (const item of items) {
+        const d = item.diagnosis;
+        lines.push(`### ${item.dedupKey}`);
+        lines.push(`- service：${item.service}`);
+        lines.push(`- 根因：${d.rootCause}`);
+        lines.push(`- 嫌疑层：${d.suspectedLayer}`);
+        lines.push(`- 是否 bug：${d.isBug ? '是' : '否'}`);
+        lines.push(`- 建议：${d.recommendation}`);
+        if (d.suspectedFiles?.length) {
+            lines.push(`- 嫌疑文件：${d.suspectedFiles.join(', ')}`);
+        }
+        if (item.fixUrl && d.isBug) {
+            lines.push(`- [确认修复](${item.fixUrl})`);
+        }
+        lines.push('');
+    }
+    return lines.join('\n');
+}
+
+/** 合并 capture 正文 + diagnosis 区块 */
+export function appendQualityAnalysisDigestSection(
+    captureBody: string,
+    diagnosisSection: string,
+): string {
+    if (!diagnosisSection.trim()) {
+        return captureBody;
+    }
+    return `${captureBody.trimEnd()}\n\n${diagnosisSection.trim()}\n`;
 }
