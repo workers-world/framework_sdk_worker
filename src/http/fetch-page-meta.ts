@@ -4,7 +4,7 @@
  * 下游：formatPageMetaSnippet → LLM prompt 正文片段。
  * 不变量：不启 Browser；超时/非 HTML/失败 → source:'none'，不抛致命错误。
  */
-import { classifyLinkLandingTier } from '../url/product-landing-link.js';
+import { classifyLinkLandingTier } from '../url.js';
 
 export type PageMetaSource = 'og' | 'meta' | 'title' | 'none';
 
