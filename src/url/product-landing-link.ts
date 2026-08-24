@@ -115,8 +115,9 @@ function isArticleLikeSingleSegmentSlug(seg: string): boolean {
     }
     const maxPartLen = Math.max(...parts.map((p) => p.length));
     const lastPartLen = parts[parts.length - 1]?.length ?? 0;
-    // 连字符 alone 不足以判定；需叠加长词/多段等文章 slug 特征
-    return hyphenCount >= 3 || maxPartLen >= 12 || lastPartLen >= 9;
+    // 连字符数量 alone 不足以判定（如 start-your-free-trial 仍是营销页）；
+    // 需长词/长尾段，或 ≥5 个词段的标题式 slug
+    return maxPartLen >= 12 || lastPartLen >= 9 || parts.length >= 5;
 }
 
 /** 纯函数：URL 是否像产品落地页（根路径或单段营销页） */

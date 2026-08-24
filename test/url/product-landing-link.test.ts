@@ -41,6 +41,7 @@ describe('isLikelyProductLandingUrl', () => {
         expect(isLikelyProductLandingUrl('https://example.com/sign-up')).toBe(true);
         expect(isLikelyProductLandingUrl('https://example.com/get-started-now')).toBe(true);
         expect(isLikelyProductLandingUrl('https://example.com/sign-up-free')).toBe(true);
+        expect(isLikelyProductLandingUrl('https://example.com/start-your-free-trial')).toBe(true);
     });
 
     it('rejects known article hosts', () => {
