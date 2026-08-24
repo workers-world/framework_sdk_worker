@@ -17,6 +17,113 @@ export interface PageMeta {
 
 const META_FETCH_TIMEOUT_MS = 8_000;
 const META_HTML_MAX_BYTES = 64 * 1024;
+const META_FETCH_MAX_REDIRECTS = 5;
+
+const BLOCKED_FETCH_HOSTNAMES = new Set(['localhost', 'metadata.google.internal']);
+
+function isPrivateIpv4Literal(host: string): boolean {
+    const parts = host.split('.');
+    if (parts.length !== 4) {
+        return false;
+    }
+    const octets = parts.map((p) => Number.parseInt(p, 10));
+    if (octets.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) {
+        return false;
+    }
+    const [a, b] = octets;
+    if (a === 10 || a === 127 || a === 0) {
+        return true;
+    }
+    if (a === 169 && b === 254) {
+        return true;
+    }
+    if (a === 172 && b >= 16 && b <= 31) {
+        return true;
+    }
+    if (a === 192 && b === 168) {
+        return true;
+    }
+    if (a === 100 && b >= 64 && b <= 127) {
+        return true;
+    }
+    return false;
+}
+
+function isPrivateIpv6Literal(host: string): boolean {
+    const normalized = host.toLowerCase();
+    if (normalized === '::' || normalized === '::1') {
+        return true;
+    }
+    if (normalized.startsWith('fc') || normalized.startsWith('fd')) {
+        return true;
+    }
+    if (normalized.startsWith('fe80:')) {
+        return true;
+    }
+    if (normalized.startsWith('::ffff:')) {
+        return isPrivateIpv4Literal(normalized.slice('::ffff:'.length));
+    }
+    return false;
+}
+
+/** 是否允许对外发起 HTTP(S) 抓取（阻断 loopback / 私网 / link-local / metadata） */
+export function isPublicFetchUrl(url: URL): boolean {
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return false;
+    }
+    if (url.username || url.password) {
+        return false;
+    }
+
+    let hostname = url.hostname.toLowerCase();
+    if (hostname.startsWith('[') && hostname.endsWith(']')) {
+        hostname = hostname.slice(1, -1);
+    }
+
+    if (BLOCKED_FETCH_HOSTNAMES.has(hostname)) {
+        return false;
+    }
+    if (
+        hostname.endsWith('.localhost') ||
+        hostname.endsWith('.local') ||
+        hostname.endsWith('.internal')
+    ) {
+        return false;
+    }
+    if (isPrivateIpv4Literal(hostname) || isPrivateIpv6Literal(hostname)) {
+        return false;
+    }
+    return true;
+}
+
+async function fetchWithSafeRedirects(
+    initialUrl: URL,
+    init: RequestInit,
+    fetchFn: typeof fetch,
+    maxRedirects = META_FETCH_MAX_REDIRECTS,
+): Promise<Response | null> {
+    let current = initialUrl;
+    for (let hop = 0; hop <= maxRedirects; hop++) {
+        if (!isPublicFetchUrl(current)) {
+            return null;
+        }
+        const resp = await fetchFn(current.toString(), { ...init, redirect: 'manual' });
+        if (resp.status >= 300 && resp.status < 400) {
+            const location = resp.headers.get('location');
+            if (!location) {
+                return null;
+            }
+            try {
+                current = new URL(location, current);
+            } catch {
+                return null;
+            }
+            continue;
+        }
+        return resp;
+    }
+    return null;
+}
 
 function unescapeHtml(text: string): string {
     return text
@@ -320,7 +427,7 @@ async function fetchHtmlPrefix(
     let parsed: URL;
     try {
         parsed = new URL(url);
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        if (!isPublicFetchUrl(parsed)) {
             return null;
         }
     } catch {
@@ -332,17 +439,20 @@ async function fetchHtmlPrefix(
     const fetchFn = options?.fetchImpl ?? fetch;
 
     try {
-        const resp = await fetchFn(parsed.toString(), {
-            method: 'GET',
-            redirect: 'follow',
-            headers: {
-                Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
-                'User-Agent': 'Mozilla/5.0 (compatible; CloudflareWorkersMeta/1.0)',
+        const resp = await fetchWithSafeRedirects(
+            parsed,
+            {
+                method: 'GET',
+                headers: {
+                    Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+                    'User-Agent': 'Mozilla/5.0 (compatible; CloudflareWorkersMeta/1.0)',
+                },
+                signal: AbortSignal.timeout(timeoutMs),
             },
-            signal: AbortSignal.timeout(timeoutMs),
-        });
+            fetchFn,
+        );
 
-        if (!resp.ok) {
+        if (!resp?.ok) {
             return null;
         }
         if (isRejectedContentType(resp.headers.get('content-type'))) {

@@ -29,8 +29,6 @@ jobs:
           node-version: "22"
 
       - name: Regenerate package-lock.json when package.json changed
-        env:
-          PUSH_TOKEN: ${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -63,7 +61,7 @@ jobs:
           fi
 
           echo "按 package.json 刷新 package-lock.json"
-          npm install --no-fund --no-audit
+          npm install --ignore-scripts --no-fund --no-audit
 
           if ! root_deps_in_sync; then
             echo "::error::刷新后 package-lock 根依赖仍与 package.json 不一致。"
@@ -80,16 +78,18 @@ jobs:
           git commit -m "CI action 自动刷新 package-lock" -m "package.json 根依赖与 lock 不一致时由 sync-lock job 生成。"
 
           push_with_rebase() {
+            local push_token="$1"
             git fetch origin "${GITHUB_REF_NAME}"
             git pull --rebase origin "${GITHUB_REF_NAME}"
-            git push "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
+            git push "https://x-access-token:${push_token}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
           }
 
-          if push_with_rebase; then
+          PUSH_TOKEN="${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}"
+          if push_with_rebase "${PUSH_TOKEN}"; then
             exit 0
           fi
           echo "push 被拒，rebase 后重试一次…"
-          push_with_rebase
+          push_with_rebase "${PUSH_TOKEN}"
 
   verify:
     needs: sync-lock

@@ -7,6 +7,7 @@ import {
     formatProductLandingSnippet,
     hasUsablePageMeta,
     isCreativeContentPageMeta,
+    isPublicFetchUrl,
     parsePageMetaFromHtml,
 } from '../../src/http/fetch-page-meta.js';
 
@@ -109,6 +110,20 @@ describe('formatProductLandingSnippet', () => {
     });
 });
 
+describe('isPublicFetchUrl', () => {
+    it('allows public https hosts', () => {
+        expect(isPublicFetchUrl(new URL('https://example.com/path'))).toBe(true);
+    });
+
+    it('blocks loopback, private, and metadata hosts', () => {
+        expect(isPublicFetchUrl(new URL('http://127.0.0.1/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://localhost/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://192.168.1.1/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://169.254.169.254/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://metadata.google.internal/'))).toBe(false);
+    });
+});
+
 describe('fetchPageMeta', () => {
     it('parses html from fetchImpl', async () => {
         const fetchImpl = vi.fn().mockResolvedValue(
@@ -137,6 +152,36 @@ describe('fetchPageMeta', () => {
         expect(await fetchPageMeta('https://example.com/a', { fetchImpl: pdf })).toEqual({
             source: 'none',
         });
+    });
+
+    it('blocks private hosts without fetching', async () => {
+        const fetchImpl = vi.fn();
+        expect(await fetchPageMeta('http://127.0.0.1/admin', { fetchImpl })).toEqual({
+            source: 'none',
+        });
+        expect(fetchImpl).not.toHaveBeenCalled();
+    });
+
+    it('does not follow redirects to private hosts', async () => {
+        const fetchImpl = vi
+            .fn()
+            .mockResolvedValueOnce(
+                new Response('', {
+                    status: 302,
+                    headers: { location: 'http://127.0.0.1/secret' },
+                }),
+            )
+            .mockResolvedValue(
+                new Response(SAMPLE_HTML, {
+                    status: 200,
+                    headers: { 'content-type': 'text/html; charset=utf-8' },
+                }),
+            );
+
+        expect(await fetchPageMeta('https://example.com/redirect', { fetchImpl })).toEqual({
+            source: 'none',
+        });
+        expect(fetchImpl).toHaveBeenCalledOnce();
     });
 });
 
