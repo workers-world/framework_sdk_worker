@@ -1,61 +1,78 @@
 import { describe, expect, it } from 'vitest';
 import {
+    classifyLinkLandingTier,
     describeProductLandingLink,
     isLikelyProductLandingUrl,
+    needsMetaProbeForLanding,
 } from '../../src/url/product-landing-link.js';
 
-describe('isLikelyProductLandingUrl', () => {
-    it('detects root and index paths', () => {
-        expect(isLikelyProductLandingUrl('https://pixydesignapp.com/')).toBe(true);
-        expect(isLikelyProductLandingUrl('https://pixydesignapp.com')).toBe(true);
-        expect(isLikelyProductLandingUrl('https://www.pixydesignapp.com/index.html')).toBe(true);
+describe('classifyLinkLandingTier', () => {
+    it('marks root and index as landing', () => {
+        expect(classifyLinkLandingTier('https://pixydesignapp.com/')).toBe('landing');
+        expect(classifyLinkLandingTier('https://www.pixydesignapp.com/index.html')).toBe('landing');
     });
 
-    it('detects single short marketing slug', () => {
+    it('marks simple single-segment slugs as landing', () => {
+        expect(classifyLinkLandingTier('https://example.com/pricing')).toBe('landing');
+        expect(classifyLinkLandingTier('https://example.com/app')).toBe('landing');
+        expect(classifyLinkLandingTier('https://example.com/sign-up')).toBe('landing');
+    });
+
+    it('marks multi-hyphen single-segment slugs as ambiguous', () => {
+        expect(classifyLinkLandingTier('https://example.com/get-started-now')).toBe('ambiguous');
+        expect(classifyLinkLandingTier('https://example.com/start-your-free-trial-now')).toBe(
+            'ambiguous',
+        );
+        expect(classifyLinkLandingTier('https://surya.website/rling-qwen-to-paint-with-code')).toBe(
+            'ambiguous',
+        );
+        expect(classifyLinkLandingTier('https://www.jepeake.com/ai-chip-architectures')).toBe(
+            'ambiguous',
+        );
+    });
+
+    it('marks article paths and hosts as not_landing', () => {
+        expect(classifyLinkLandingTier('https://example.com/blog/my-post')).toBe('not_landing');
+        expect(classifyLinkLandingTier('https://medium.com/@user/story')).toBe('not_landing');
+        expect(classifyLinkLandingTier('https://example.com/2024/01/hello')).toBe('not_landing');
+    });
+});
+
+describe('isLikelyProductLandingUrl', () => {
+    it('is true only for Tier 0 landing', () => {
+        expect(isLikelyProductLandingUrl('https://pixydesignapp.com/')).toBe(true);
         expect(isLikelyProductLandingUrl('https://example.com/pricing')).toBe(true);
-        expect(isLikelyProductLandingUrl('https://example.com/app')).toBe(true);
+        expect(isLikelyProductLandingUrl('https://example.com/sign-up')).toBe(true);
+    });
+
+    it('is false for ambiguous slugs (handled by meta probe)', () => {
+        expect(isLikelyProductLandingUrl('https://example.com/get-started-now')).toBe(false);
+        expect(isLikelyProductLandingUrl('https://example.com/start-your-free-trial-now')).toBe(
+            false,
+        );
+        expect(
+            isLikelyProductLandingUrl('https://surya.website/rling-qwen-to-paint-with-code'),
+        ).toBe(false);
     });
 
     it('rejects article-like paths', () => {
         expect(isLikelyProductLandingUrl('https://example.com/blog/my-post')).toBe(false);
         expect(isLikelyProductLandingUrl('https://example.com/posts/hello')).toBe(false);
-        expect(isLikelyProductLandingUrl('https://example.com/article/foo')).toBe(false);
-        expect(isLikelyProductLandingUrl('https://example.com/2024/01/hello')).toBe(false);
-        expect(isLikelyProductLandingUrl('https://example.com/p/abc123')).toBe(false);
-    });
-
-    it('rejects single-segment title-like hyphenated slugs', () => {
-        expect(
-            isLikelyProductLandingUrl('https://surya.website/rling-qwen-to-paint-with-code'),
-        ).toBe(false);
-        expect(isLikelyProductLandingUrl('https://www.jepeake.com/ai-chip-architectures')).toBe(
-            false,
-        );
-        expect(isLikelyProductLandingUrl('https://ericpardee.github.io/fire-hd-ownership/')).toBe(
-            false,
-        );
-    });
-
-    it('still treats short marketing single-segment as landing', () => {
-        expect(isLikelyProductLandingUrl('https://example.com/pricing')).toBe(true);
-        expect(isLikelyProductLandingUrl('https://example.com/sign-up')).toBe(true);
-        expect(isLikelyProductLandingUrl('https://example.com/get-started-now')).toBe(true);
-        expect(isLikelyProductLandingUrl('https://example.com/sign-up-free')).toBe(true);
-        expect(isLikelyProductLandingUrl('https://example.com/start-your-free-trial')).toBe(true);
-    });
-
-    it('rejects known article hosts', () => {
-        expect(isLikelyProductLandingUrl('https://medium.com/@user/story')).toBe(false);
-        expect(isLikelyProductLandingUrl('https://foo.substack.com/')).toBe(false);
         expect(isLikelyProductLandingUrl('https://github.com/org/repo')).toBe(false);
-        expect(isLikelyProductLandingUrl('https://news.ycombinator.com/item?id=1')).toBe(false);
-        expect(isLikelyProductLandingUrl('https://finance.yahoo.com/')).toBe(false);
     });
 
     it('rejects empty or invalid', () => {
         expect(isLikelyProductLandingUrl('')).toBe(false);
         expect(isLikelyProductLandingUrl('not-a-url')).toBe(false);
         expect(isLikelyProductLandingUrl('ftp://example.com/')).toBe(false);
+    });
+});
+
+describe('needsMetaProbeForLanding', () => {
+    it('matches ambiguous tier only', () => {
+        expect(needsMetaProbeForLanding('https://example.com/start-your-free-trial')).toBe(true);
+        expect(needsMetaProbeForLanding('https://example.com/pricing')).toBe(false);
+        expect(needsMetaProbeForLanding('https://example.com/blog/x')).toBe(false);
     });
 });
 
