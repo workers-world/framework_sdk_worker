@@ -66,8 +66,11 @@ export function slimPlatformLogsForAnalysis(
             message: message.slice(0, 2_000),
         };
         const lineChars = line.message.length + (line.service?.length ?? 0) + 32;
-        if (charCount + lineChars > maxChars || lines.length >= maxEvents) {
+        if (lines.length >= maxEvents) {
             break;
+        }
+        if (charCount + lineChars > maxChars) {
+            continue;
         }
         lines.push(line);
         charCount += lineChars;

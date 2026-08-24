@@ -22,4 +22,19 @@ describe('slimPlatformLogsForAnalysis', () => {
     it('空输入返回空数组', () => {
         expect(slimPlatformLogsForAnalysis([])).toEqual([]);
     });
+
+    it('跳过超长相关行并继续收集后续可放入 budget 的事件', () => {
+        const events: WorkersPlatformLogEvent[] = [
+            {
+                message: `fetch browser overflow ${'x'.repeat(200)}`,
+            },
+            {
+                message: 'summary because=usable_body path=llm',
+                timestamp: '2026-08-24T00:01:00Z',
+            },
+        ];
+        const slim = slimPlatformLogsForAnalysis(events, { maxChars: 120 });
+        expect(slim).toHaveLength(1);
+        expect(slim[0].message).toContain('usable_body');
+    });
 });
