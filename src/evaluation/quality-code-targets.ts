@@ -56,7 +56,7 @@ export function inferSuspectedLayerFromIncident(
     if (/fetch|browser|article_fetch/i.test(chain) || /fetch/i.test(path)) {
         return 'fetch';
     }
-    if (/summarize|summary|title_only|llm/i.test(chain) || /summarize|title_only/i.test(path)) {
+    if (/summarize|summary|title_only/i.test(chain) || /summarize|title_only/i.test(path)) {
         return 'summarize';
     }
     if (/notify/i.test(chain)) {

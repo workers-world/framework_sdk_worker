@@ -39,6 +39,8 @@ describe('isLikelyProductLandingUrl', () => {
     it('still treats short marketing single-segment as landing', () => {
         expect(isLikelyProductLandingUrl('https://example.com/pricing')).toBe(true);
         expect(isLikelyProductLandingUrl('https://example.com/sign-up')).toBe(true);
+        expect(isLikelyProductLandingUrl('https://example.com/get-started-now')).toBe(true);
+        expect(isLikelyProductLandingUrl('https://example.com/sign-up-free')).toBe(true);
     });
 
     it('rejects known article hosts', () => {

@@ -107,6 +107,18 @@ function pathSegments(pathname: string): string[] {
         });
 }
 
+function isArticleLikeSingleSegmentSlug(seg: string): boolean {
+    const parts = seg.split('-').filter(Boolean);
+    const hyphenCount = parts.length - 1;
+    if (hyphenCount < 2) {
+        return false;
+    }
+    const maxPartLen = Math.max(...parts.map((p) => p.length));
+    const lastPartLen = parts[parts.length - 1]?.length ?? 0;
+    // 连字符 alone 不足以判定；需叠加长词/多段等文章 slug 特征
+    return hyphenCount >= 3 || maxPartLen >= 12 || lastPartLen >= 9;
+}
+
 /** 纯函数：URL 是否像产品落地页（根路径或单段营销页） */
 export function isLikelyProductLandingUrl(url: string): boolean {
     if (!url?.trim()) {
@@ -144,8 +156,7 @@ export function isLikelyProductLandingUrl(url: string): boolean {
             if (seg.length > 48) {
                 return false;
             }
-            // 两个及以上连字符（如 ai-chip-architectures）更像文章 slug，非营销页
-            if ((seg.match(/-/g) || []).length >= 2) {
+            if (isArticleLikeSingleSegmentSlug(seg)) {
                 return false;
             }
             return true;
