@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.2.99",
+  "version": "0.3.0",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -262,6 +262,10 @@
     "./mcp/ensure-server": {
       "import": "./dist/mcp/ensure-server.js",
       "types": "./dist/mcp/ensure-server.d.ts"
+    },
+    "./mcp/qa-response-trim": {
+      "import": "./dist/mcp/qa-response-trim.js",
+      "types": "./dist/mcp/qa-response-trim.d.ts"
     },
     "./meta": {
       "import": "./dist/meta/index.js",

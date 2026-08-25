@@ -72,6 +72,7 @@ export default defineConfig({
         'mcp/host-router': 'src/mcp/host-router.ts',
         'mcp/fallback-spec': 'src/mcp/fallback-spec.ts',
         'mcp/ensure-server': 'src/mcp/ensure-server.ts',
+        'mcp/qa-response-trim': 'src/mcp/qa-response-trim.ts',
         'meta/index': 'src/meta/index.ts',
         'meta/types': 'src/meta/types.ts',
         'meta/build-meta': 'src/meta/build-meta.ts',
