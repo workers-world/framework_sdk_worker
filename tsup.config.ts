@@ -63,6 +63,7 @@ export default defineConfig({
         'evaluation/summary-decision-because': 'src/evaluation/summary-decision-because.ts',
         'evaluation/article-fetch-reason': 'src/evaluation/article-fetch-reason.ts',
         'evaluation/quality-reject-detail': 'src/evaluation/quality-reject-detail.ts',
+        'evaluation/article-text-quality': 'src/evaluation/article-text-quality.ts',
         'evaluation/quality-code-targets': 'src/evaluation/quality-code-targets.ts',
         'observability/platform-log': 'src/observability/platform-log.ts',
         'observability/slim-platform-logs': 'src/observability/slim-platform-logs.ts',
