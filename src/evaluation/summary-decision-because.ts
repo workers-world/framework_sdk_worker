@@ -42,6 +42,10 @@ export const SummaryDecisionBecause = {
         code: 'thin_snippet',
         zh: '抓取失败且邮件片段过薄，仅标题摘要',
     },
+    paywall: {
+        code: 'paywall',
+        zh: '注册墙/付费墙，仅标题摘要',
+    },
 } as const;
 
 export type SummaryDecisionBecauseCode =

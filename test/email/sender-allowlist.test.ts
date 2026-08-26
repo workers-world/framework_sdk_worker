@@ -15,6 +15,12 @@ describe('extractEmailAddress', () => {
             'attacker@evil.example',
         );
     });
+
+    it('ignores bracketed allowlisted address embedded in quoted display name', () => {
+        expect(extractEmailAddress('"<allowed@example.com>" <attacker@evil.example>')).toBe(
+            'attacker@evil.example',
+        );
+    });
 });
 
 describe('isAllowedSender', () => {
@@ -26,6 +32,9 @@ describe('isAllowedSender', () => {
 
     it('rejects attacker when allowlisted address appears only in display name', () => {
         expect(isAllowedSender(allowlist, '"allowed@example.com" <attacker@evil.example>')).toBe(
+            false,
+        );
+        expect(isAllowedSender(allowlist, '"<allowed@example.com>" <attacker@evil.example>')).toBe(
             false,
         );
     });
