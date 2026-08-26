@@ -11,7 +11,7 @@ export const QualityRejectDetail = {
     thin: { code: 'thin', zh: '正文过薄' },
     cookie: { code: 'cookie', zh: 'Cookie/同意墙文案' },
     junk: { code: 'junk', zh: '垃圾标记命中' },
-    paywall: { code: 'paywall', zh: '付费墙（需登录/订阅）' },
+    paywall: { code: 'paywall', zh: '付费墙/注册墙（需登录/订阅/注册）' },
     binary_content: { code: 'binary_content', zh: '二进制或非文本' },
 } as const;
 

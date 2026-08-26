@@ -21,6 +21,9 @@ describe('summary / fetch / quality code tables', () => {
         expect(
             describeSummaryDecisionBecause(SummaryDecisionBecause.article_url_bypass.code),
         ).toContain('强制 LLM');
+        expect(describeSummaryDecisionBecause(SummaryDecisionBecause.paywall.code)).toContain(
+            '注册墙',
+        );
         expect(describeSummaryDecisionBecause('unknown_code')).toBe('unknown_code');
     });
 
@@ -35,6 +38,7 @@ describe('summary / fetch / quality code tables', () => {
 
     it('describes QualityRejectDetail and soft-keep whitelist', () => {
         expect(describeQualityRejectDetail(QualityRejectDetail.nav_shell.code)).toContain('导航壳');
+        expect(describeQualityRejectDetail(QualityRejectDetail.paywall.code)).toContain('注册墙');
         expect(isQualitySoftKeepDetail(QualityRejectDetail.thin.code)).toBe(true);
         expect(isQualitySoftKeepDetail(QualityRejectDetail.paywall.code)).toBe(true);
         expect(isQualitySoftKeepDetail(QualityRejectDetail.nav_shell.code)).toBe(false);
