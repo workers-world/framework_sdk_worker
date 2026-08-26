@@ -3,6 +3,7 @@ import {
     classifyPageMetaForFetch,
     resolveLandingOrArticleFetch,
 } from '../../src/http/fetch-page-meta.js';
+import { createFetchImplWithDns } from './dns-fetch-mock.js';
 
 describe('classifyPageMetaForFetch', () => {
     it('classifies SaaS marketing meta as landing', () => {
@@ -53,7 +54,7 @@ const ESSAY_HTML = `<!DOCTYPE html><html><head>
 
 describe('resolveLandingOrArticleFetch', () => {
     it('routes confident landing URLs directly to landing path', async () => {
-        const fetchImpl = vi.fn().mockResolvedValue(
+        const fetchImpl = createFetchImplWithDns(
             new Response(TRIAL_LANDING_HTML, {
                 status: 200,
                 headers: { 'content-type': 'text/html' },
@@ -67,7 +68,7 @@ describe('resolveLandingOrArticleFetch', () => {
     });
 
     it('routes ambiguous marketing slug to landing after meta probe', async () => {
-        const fetchImpl = vi.fn().mockResolvedValue(
+        const fetchImpl = createFetchImplWithDns(
             new Response(TRIAL_LANDING_HTML, {
                 status: 200,
                 headers: { 'content-type': 'text/html' },
@@ -82,7 +83,7 @@ describe('resolveLandingOrArticleFetch', () => {
     });
 
     it('routes ambiguous essay slug to article after meta probe', async () => {
-        const fetchImpl = vi.fn().mockResolvedValue(
+        const fetchImpl = createFetchImplWithDns(
             new Response(ESSAY_HTML, {
                 status: 200,
                 headers: { 'content-type': 'text/html' },

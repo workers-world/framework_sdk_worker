@@ -4,10 +4,10 @@ export function extractEmailAddress(from: string | undefined): string {
     if (!trimmed) {
         return '';
     }
-    // RFC 5322 显示名形式：只认尖括号内的实际邮箱，避免显示名里嵌套 allowlisted 地址绕过
-    const bracketMatch = trimmed.match(/<([^>]+)>/);
-    if (bracketMatch) {
-        const email = bracketMatch[1].trim().toLowerCase();
+    // RFC 5322：mailbox 为末尾 <addr-spec>；显示名可含尖括号，须取最后一对
+    const bracketMatches = [...trimmed.matchAll(/<([^>]+)>/g)];
+    if (bracketMatches.length > 0) {
+        const email = bracketMatches[bracketMatches.length - 1][1].trim().toLowerCase();
         return email.includes('@') ? email : '';
     }
     const bareMatch = trimmed.match(/^[\w.+-]+@[\w.-]+$/);

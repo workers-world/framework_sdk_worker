@@ -20,6 +20,16 @@ const META_HTML_MAX_BYTES = 64 * 1024;
 const META_FETCH_MAX_REDIRECTS = 5;
 
 const BLOCKED_FETCH_HOSTNAMES = new Set(['localhost', 'metadata.google.internal']);
+const DNS_JSON_ENDPOINT = 'https://cloudflare-dns.com/dns-query';
+const DNS_LOOKUP_TIMEOUT_MS = 3_000;
+
+function isIpv4Literal(host: string): boolean {
+    return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host);
+}
+
+function isIpv6Literal(host: string): boolean {
+    return host.includes(':');
+}
 
 function isPrivateIpv4Literal(host: string): boolean {
     const parts = host.split('.');
@@ -66,6 +76,83 @@ function isPrivateIpv6Literal(host: string): boolean {
     return false;
 }
 
+function isPrivateIpLiteral(host: string): boolean {
+    return isPrivateIpv4Literal(host) || isPrivateIpv6Literal(host);
+}
+
+function normalizeHostname(hostname: string): string {
+    let host = hostname.toLowerCase();
+    if (host.startsWith('[') && host.endsWith(']')) {
+        host = host.slice(1, -1);
+    }
+    return host;
+}
+
+interface DnsJsonAnswer {
+    name: string;
+    type: number;
+    TTL: number;
+    data: string;
+}
+
+interface DnsJsonResponse {
+    Status: number;
+    Answer?: DnsJsonAnswer[];
+}
+
+async function queryDnsRecords(
+    hostname: string,
+    recordType: 1 | 28,
+    fetchFn: typeof fetch,
+): Promise<string[]> {
+    const url = `${DNS_JSON_ENDPOINT}?name=${encodeURIComponent(hostname)}&type=${recordType}`;
+    const resp = await fetchFn(url, {
+        headers: { Accept: 'application/dns-json' },
+        signal: AbortSignal.timeout(DNS_LOOKUP_TIMEOUT_MS),
+    });
+    if (!resp.ok) {
+        return [];
+    }
+    const data = (await resp.json()) as DnsJsonResponse;
+    if (data.Status !== 0) {
+        return [];
+    }
+    return (data.Answer ?? [])
+        .filter((answer) => answer.type === recordType)
+        .map((answer) => answer.data);
+}
+
+/**
+ * 解析 hostname 并返回可连接的公网地址；私网/无记录/解析失败 → null（fail-closed）。
+ * IP 字面量已在 sync 阶段校验，此处直接回传。
+ */
+export async function resolvePublicFetchAddresses(
+    hostname: string,
+    fetchFn: typeof fetch = fetch,
+): Promise<string[] | null> {
+    const normalized = normalizeHostname(hostname);
+    if (isIpv4Literal(normalized) || isIpv6Literal(normalized)) {
+        return isPrivateIpLiteral(normalized) ? null : [normalized];
+    }
+
+    try {
+        const [ipv4, ipv6] = await Promise.all([
+            queryDnsRecords(normalized, 1, fetchFn),
+            queryDnsRecords(normalized, 28, fetchFn),
+        ]);
+        const addresses = [...ipv4, ...ipv6];
+        if (addresses.length === 0) {
+            return null;
+        }
+        if (addresses.some((address) => isPrivateIpLiteral(address))) {
+            return null;
+        }
+        return addresses;
+    } catch {
+        return null;
+    }
+}
+
 /** 是否允许对外发起 HTTP(S) 抓取（阻断 loopback / 私网 / link-local / metadata） */
 export function isPublicFetchUrl(url: URL): boolean {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
@@ -75,10 +162,7 @@ export function isPublicFetchUrl(url: URL): boolean {
         return false;
     }
 
-    let hostname = url.hostname.toLowerCase();
-    if (hostname.startsWith('[') && hostname.endsWith(']')) {
-        hostname = hostname.slice(1, -1);
-    }
+    const hostname = normalizeHostname(url.hostname);
 
     if (BLOCKED_FETCH_HOSTNAMES.has(hostname)) {
         return false;
@@ -90,10 +174,22 @@ export function isPublicFetchUrl(url: URL): boolean {
     ) {
         return false;
     }
-    if (isPrivateIpv4Literal(hostname) || isPrivateIpv6Literal(hostname)) {
+    if (isPrivateIpLiteral(hostname)) {
         return false;
     }
     return true;
+}
+
+/** sync 主机名校验 + DNS 解析目标均为公网（防 rebinding） */
+export async function isPublicFetchDestination(
+    url: URL,
+    fetchFn: typeof fetch = fetch,
+): Promise<boolean> {
+    if (!isPublicFetchUrl(url)) {
+        return false;
+    }
+    const addresses = await resolvePublicFetchAddresses(url.hostname, fetchFn);
+    return addresses !== null && addresses.length > 0;
 }
 
 async function fetchWithSafeRedirects(
@@ -107,7 +203,15 @@ async function fetchWithSafeRedirects(
         if (!isPublicFetchUrl(current)) {
             return null;
         }
-        const resp = await fetchFn(current.toString(), { ...init, redirect: 'manual' });
+        const resolvedAddresses = await resolvePublicFetchAddresses(current.hostname, fetchFn);
+        if (!resolvedAddresses || resolvedAddresses.length === 0) {
+            return null;
+        }
+        const resp = await fetchFn(current.toString(), {
+            ...init,
+            redirect: 'manual',
+            cf: { resolveOverride: resolvedAddresses[0] },
+        });
         if (resp.status >= 300 && resp.status < 400) {
             const location = resp.headers.get('location');
             if (!location) {

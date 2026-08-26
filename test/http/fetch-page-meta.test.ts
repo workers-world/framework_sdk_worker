@@ -7,9 +7,12 @@ import {
     formatProductLandingSnippet,
     hasUsablePageMeta,
     isCreativeContentPageMeta,
+    isPublicFetchDestination,
     isPublicFetchUrl,
     parsePageMetaFromHtml,
+    resolvePublicFetchAddresses,
 } from '../../src/http/fetch-page-meta.js';
+import { createFetchImplWithDns, dnsJsonResponseForType } from './dns-fetch-mock.js';
 
 const SAMPLE_HTML = `<!DOCTYPE html>
 <html>
@@ -124,9 +127,53 @@ describe('isPublicFetchUrl', () => {
     });
 });
 
+describe('resolvePublicFetchAddresses', () => {
+    it('rejects hostnames that resolve to private addresses', async () => {
+        const fetchFn = vi.fn((input: string | URL | Request) => {
+            const url = typeof input === 'string' ? input : input.toString();
+            if (url.includes('type=1')) {
+                return Promise.resolve(dnsJsonResponseForType(['127.0.0.1'], 1));
+            }
+            return Promise.resolve(dnsJsonResponseForType([], 28));
+        });
+
+        expect(await resolvePublicFetchAddresses('rebind.example', fetchFn)).toBeNull();
+    });
+
+    it('accepts hostnames that resolve only to public addresses', async () => {
+        const fetchFn = vi.fn((input: string | URL | Request) => {
+            const url = typeof input === 'string' ? input : input.toString();
+            if (url.includes('type=1')) {
+                return Promise.resolve(dnsJsonResponseForType(['93.184.216.34'], 1));
+            }
+            return Promise.resolve(dnsJsonResponseForType([], 28));
+        });
+
+        expect(await resolvePublicFetchAddresses('example.com', fetchFn)).toEqual([
+            '93.184.216.34',
+        ]);
+    });
+});
+
+describe('isPublicFetchDestination', () => {
+    it('blocks public-looking hostnames that resolve to loopback', async () => {
+        const fetchFn = vi.fn((input: string | URL | Request) => {
+            const url = typeof input === 'string' ? input : input.toString();
+            if (url.includes('type=1')) {
+                return Promise.resolve(dnsJsonResponseForType(['127.0.0.1'], 1));
+            }
+            return Promise.resolve(dnsJsonResponseForType([], 28));
+        });
+
+        expect(await isPublicFetchDestination(new URL('https://rebind.example/'), fetchFn)).toBe(
+            false,
+        );
+    });
+});
+
 describe('fetchPageMeta', () => {
     it('parses html from fetchImpl', async () => {
-        const fetchImpl = vi.fn().mockResolvedValue(
+        const fetchImpl = createFetchImplWithDns(
             new Response(SAMPLE_HTML, {
                 status: 200,
                 headers: { 'content-type': 'text/html; charset=utf-8' },
@@ -138,12 +185,12 @@ describe('fetchPageMeta', () => {
     });
 
     it('returns none on non-ok or pdf content-type', async () => {
-        const notOk = vi.fn().mockResolvedValue(new Response('x', { status: 403 }));
+        const notOk = createFetchImplWithDns(new Response('x', { status: 403 }));
         expect(await fetchPageMeta('https://example.com/', { fetchImpl: notOk })).toEqual({
             source: 'none',
         });
 
-        const pdf = vi.fn().mockResolvedValue(
+        const pdf = createFetchImplWithDns(
             new Response('%PDF', {
                 status: 200,
                 headers: { 'content-type': 'application/pdf' },
@@ -165,12 +212,23 @@ describe('fetchPageMeta', () => {
     it('does not follow redirects to private hosts', async () => {
         const fetchImpl = vi
             .fn()
-            .mockResolvedValueOnce(
-                new Response('', {
-                    status: 302,
-                    headers: { location: 'http://127.0.0.1/secret' },
-                }),
-            )
+            .mockImplementationOnce((input: string | URL | Request) => {
+                const url = typeof input === 'string' ? input : input.toString();
+                if (url.includes('cloudflare-dns.com/dns-query')) {
+                    const parsed = new URL(url);
+                    const type = parsed.searchParams.get('type');
+                    if (type === '1') {
+                        return Promise.resolve(dnsJsonResponseForType(['93.184.216.34'], 1));
+                    }
+                    return Promise.resolve(dnsJsonResponseForType([], 28));
+                }
+                return Promise.resolve(
+                    new Response('', {
+                        status: 302,
+                        headers: { location: 'http://127.0.0.1/secret' },
+                    }),
+                );
+            })
             .mockResolvedValue(
                 new Response(SAMPLE_HTML, {
                     status: 200,
@@ -181,13 +239,40 @@ describe('fetchPageMeta', () => {
         expect(await fetchPageMeta('https://example.com/redirect', { fetchImpl })).toEqual({
             source: 'none',
         });
-        expect(fetchImpl).toHaveBeenCalledOnce();
+        expect(fetchImpl.mock.calls.some(([url]) => String(url).includes('127.0.0.1'))).toBe(false);
+    });
+
+    it('blocks hostnames that resolve to private addresses without page fetch', async () => {
+        const fetchImpl = vi.fn((input: string | URL | Request) => {
+            const url = typeof input === 'string' ? input : input.toString();
+            if (url.includes('cloudflare-dns.com/dns-query')) {
+                const parsed = new URL(url);
+                const type = parsed.searchParams.get('type');
+                if (type === '1') {
+                    return Promise.resolve(dnsJsonResponseForType(['127.0.0.1'], 1));
+                }
+                return Promise.resolve(dnsJsonResponseForType([], 28));
+            }
+            return Promise.resolve(
+                new Response(SAMPLE_HTML, {
+                    status: 200,
+                    headers: { 'content-type': 'text/html; charset=utf-8' },
+                }),
+            );
+        });
+
+        expect(await fetchPageMeta('https://rebind.example/admin', { fetchImpl })).toEqual({
+            source: 'none',
+        });
+        expect(
+            fetchImpl.mock.calls.some(([url]) => String(url).includes('rebind.example/admin')),
+        ).toBe(false);
     });
 });
 
 describe('fetchProductLandingSnippet', () => {
     it('merges meta and visible copy in one fetch', async () => {
-        const fetchImpl = vi.fn().mockResolvedValue(
+        const fetchImpl = createFetchImplWithDns(
             new Response(IMPULSE_LANDING_HTML, {
                 status: 200,
                 headers: { 'content-type': 'text/html; charset=utf-8' },
@@ -196,7 +281,11 @@ describe('fetchProductLandingSnippet', () => {
         const result = await fetchProductLandingSnippet('https://ovidem.com/impulsetracker/', {
             fetchImpl,
         });
-        expect(fetchImpl).toHaveBeenCalledOnce();
+        expect(fetchImpl).toHaveBeenCalledTimes(3);
+        const pageFetches = fetchImpl.mock.calls.filter(
+            ([url]) => !String(url).includes('cloudflare-dns.com'),
+        );
+        expect(pageFetches).toHaveLength(1);
         expect(result.meta.description).toContain('short story');
         expect(result.snippet).toContain('类型：创作推广');
         expect(result.snippet).toContain('页面可见文案：');
