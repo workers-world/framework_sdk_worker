@@ -1,5 +1,5 @@
 export async function mapWithConcurrency<T, R>(
-    items: T[],
+    items: readonly T[],
     concurrency: number,
     mapper: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {

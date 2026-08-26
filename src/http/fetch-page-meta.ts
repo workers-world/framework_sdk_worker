@@ -362,6 +362,8 @@ export function formatProductLandingSnippet(meta: PageMeta, visibleCopy?: string
 export interface ProductLandingFetchResult {
     meta: PageMeta;
     snippet: string;
+    /** 已抓取的 HTML 前缀，供下游复用避免二次请求 */
+    htmlPrefix?: string;
 }
 
 function isRejectedContentType(contentType: string | null): boolean {
@@ -495,6 +497,7 @@ export async function fetchProductLandingSnippet(
     return {
         meta,
         snippet: formatProductLandingSnippet(meta, visibleCopy),
+        htmlPrefix: html,
     };
 }
 
@@ -504,6 +507,8 @@ export interface LandingOrArticleFetchResult {
     path: LandingOrArticleFetchPath;
     meta: PageMeta;
     snippet: string;
+    /** resolve 阶段已抓取的 HTML 前缀；path=article 时可复用解析，避免二次 bare fetch */
+    htmlPrefix?: string;
 }
 
 /**
@@ -524,19 +529,44 @@ export async function resolveLandingOrArticleFetch(
     if (!hasUsablePageMeta(landing.meta)) {
         return tier === 'landing'
             ? { path: 'landing_failed', meta: landing.meta, snippet: '' }
-            : { path: 'article', meta: landing.meta, snippet: '' };
+            : {
+                  path: 'article',
+                  meta: landing.meta,
+                  snippet: '',
+                  htmlPrefix: landing.htmlPrefix,
+              };
     }
 
     if (tier === 'landing') {
-        return { path: 'landing', meta: landing.meta, snippet: landing.snippet };
+        return {
+            path: 'landing',
+            meta: landing.meta,
+            snippet: landing.snippet,
+            htmlPrefix: landing.htmlPrefix,
+        };
     }
 
     const kind = classifyPageMetaForFetch(landing.meta);
     if (kind === 'landing') {
-        return { path: 'landing', meta: landing.meta, snippet: landing.snippet };
+        return {
+            path: 'landing',
+            meta: landing.meta,
+            snippet: landing.snippet,
+            htmlPrefix: landing.htmlPrefix,
+        };
     }
     if (kind === 'article') {
-        return { path: 'article', meta: landing.meta, snippet: '' };
+        return {
+            path: 'article',
+            meta: landing.meta,
+            snippet: '',
+            htmlPrefix: landing.htmlPrefix,
+        };
     }
-    return { path: 'article', meta: landing.meta, snippet: '' };
+    return {
+        path: 'article',
+        meta: landing.meta,
+        snippet: '',
+        htmlPrefix: landing.htmlPrefix,
+    };
 }

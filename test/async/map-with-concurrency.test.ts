@@ -26,4 +26,10 @@ describe('mapWithConcurrency', () => {
         expect(out).toEqual([1, 2, 3, 4, 5]);
         expect(maxActive).toBeLessThanOrEqual(2);
     });
+
+    it('accepts readonly arrays without copying', async () => {
+        const items: readonly number[] = [1, 2, 3];
+        const out = await mapWithConcurrency(items, 2, async (value) => value * 2);
+        expect(out).toEqual([2, 4, 6]);
+    });
 });
