@@ -8,6 +8,7 @@ import {
     formatQualityCaptureDigestMarkdown,
     normalizeQualityIncident,
     reconstructQualityChain,
+    shouldCaptureQualityIncident,
     validateQualityDiagnosis,
 } from '../../src/evaluation/quality-incident.js';
 
@@ -68,6 +69,43 @@ describe('evaluateQualityIncident', () => {
         );
         expect(result.pass).toBe(false);
         expect(result.ruleId).toBe('quality.fetch-ok-but-title-only');
+    });
+});
+
+describe('shouldCaptureQualityIncident', () => {
+    it('skips summary.llm usable_body happy path', () => {
+        expect(
+            shouldCaptureQualityIncident({
+                service: 'email-rule-worker',
+                kind: 'summary.llm',
+                because: 'usable_body',
+                url: 'https://finance.yahoo.com/news/foo',
+                fields: { fetchFailed: false, path: 'llm', bodyLen: 6001 },
+            }),
+        ).toBe(false);
+    });
+
+    it('captures title_only thin_snippet', () => {
+        expect(
+            shouldCaptureQualityIncident({
+                service: 'email-rule-worker',
+                kind: 'summary.title_only',
+                because: 'thin_snippet',
+                url: 'https://example.com/long-article',
+                fields: { fetchFailed: true, path: 'title_only', urlKind: 'other' },
+            }),
+        ).toBe(true);
+    });
+
+    it('skips silentBecause video_link', () => {
+        expect(
+            shouldCaptureQualityIncident({
+                service: 'email-rule-worker',
+                kind: 'summary.title_only',
+                because: 'video_link',
+                fields: { fetchFailed: true },
+            }),
+        ).toBe(false);
     });
 });
 
