@@ -246,6 +246,19 @@ export function evaluateQualityIncident(
     };
 }
 
+type QualityIncidentPartial = Omit<QualityIncident, 'clusterKey' | 'ts'> & {
+    clusterKey?: string;
+    ts?: string;
+};
+
+/** 是否进入质量监管（emit / KV / Capture / 日报）；pass=true 的 happy path 返回 false */
+export function shouldCaptureQualityIncident(
+    partial: QualityIncidentPartial,
+    rules: QualityOpsRules = DEFAULT_QUALITY_OPS_RULES,
+): boolean {
+    return !evaluateQualityIncident(normalizeQualityIncident(partial), rules).pass;
+}
+
 /** 多条 incident 聚类（仅含 pass=false 的条目） */
 export function aggregateQualityClusters(
     incidents: QualityIncident[],
