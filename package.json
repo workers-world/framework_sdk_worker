@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
