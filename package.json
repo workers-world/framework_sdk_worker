@@ -251,6 +251,10 @@
       "import": "./dist/observability/slim-platform-logs.js",
       "types": "./dist/observability/slim-platform-logs.d.ts"
     },
+    "./observability/quality-sample": {
+      "import": "./dist/observability/quality-sample.js",
+      "types": "./dist/observability/quality-sample.d.ts"
+    },
     "./mcp": {
       "import": "./dist/mcp/index.js",
       "types": "./dist/mcp/index.d.ts"

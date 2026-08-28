@@ -69,6 +69,7 @@ export default defineConfig({
         'evaluation/quality-code-targets': 'src/evaluation/quality-code-targets.ts',
         'observability/platform-log': 'src/observability/platform-log.ts',
         'observability/slim-platform-logs': 'src/observability/slim-platform-logs.ts',
+        'observability/quality-sample': 'src/observability/quality-sample.ts',
         'mcp/index': 'src/mcp/index.ts',
         'mcp/types': 'src/mcp/types.ts',
         'mcp/openapi': 'src/mcp/openapi.ts',
