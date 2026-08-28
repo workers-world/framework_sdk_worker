@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     aggregateQualityClusters,
     buildClusterKey,
+    emitQualityIncident,
     evaluateQualityIncident,
     formatClusterAlertMarkdown,
     formatQualityCaptureDigestCsv,
@@ -106,6 +107,68 @@ describe('shouldCaptureQualityIncident', () => {
                 fields: { fetchFailed: true },
             }),
         ).toBe(false);
+    });
+
+    it('captures invest-chain LLM failures as hard', () => {
+        expect(
+            shouldCaptureQualityIncident({
+                service: 'invest-rss-worker',
+                kind: 'llm.enrich',
+                because: 'llm_failed',
+                fields: { error: '校验失败' },
+            }),
+        ).toBe(true);
+        expect(
+            evaluateQualityIncident(
+                normalizeQualityIncident({
+                    service: 'advisor-worker',
+                    kind: 'llm.advisor',
+                    because: 'validation_failed',
+                    fields: {},
+                }),
+            ).severity,
+        ).toBe('hard');
+    });
+
+    it('captures invest fetch quality_rejected', () => {
+        expect(
+            shouldCaptureQualityIncident({
+                service: 'invest-rss-worker',
+                kind: 'fetch.invest',
+                because: 'quality_rejected',
+                fields: { fetchFailed: true },
+            }),
+        ).toBe(true);
+    });
+
+    it('emitQualityIncident skips pass=true and missing queue', async () => {
+        const send = vi.fn();
+        await emitQualityIncident(undefined, {
+            service: 'invest-rss-worker',
+            kind: 'llm.enrich',
+            because: 'llm_failed',
+            fields: {},
+        });
+        await emitQualityIncident(
+            { send },
+            {
+                service: 'email-rule-worker',
+                kind: 'summary.llm',
+                because: 'usable_body',
+                fields: { fetchFailed: false, path: 'llm' },
+            },
+        );
+        expect(send).not.toHaveBeenCalled();
+        await emitQualityIncident(
+            { send },
+            {
+                service: 'invest-rss-worker',
+                kind: 'llm.enrich',
+                because: 'llm_failed',
+                fields: {},
+            },
+        );
+        expect(send).toHaveBeenCalledOnce();
     });
 });
 

@@ -1,6 +1,6 @@
 /**
  * 产物质量事件契约与 Hard Evaluator（跨 Worker 质量监管 Phase 0/1）。
- * 上游：email-rule / invest-rss 等 emit QualityIncident
+ * 上游：email-rule / invest-rss / advisor / desk emit QualityIncident
  * 下游：orchestrator 聚类告警、QualityAuditPipeline 诊断
  * 不变量：pass=true 表示静默（预期降级）；pass=false 触发告警/工单
  */
@@ -229,6 +229,18 @@ export function evaluateQualityIncident(
         };
     }
 
+    if (
+        (kind === 'llm.enrich' || kind === 'llm.advisor' || kind === 'llm.desk') &&
+        (because === 'llm_failed' || because === 'validation_failed')
+    ) {
+        return {
+            pass: false,
+            severity: 'hard',
+            ruleId: 'quality.llm-failed',
+            feedback: `投资链 LLM 产物失败 kind=${kind} because=${because}`,
+        };
+    }
+
     if (kind.startsWith('fetch.') && because === ArticleFetchReason.quality_rejected.code) {
         return {
             pass: false,
@@ -246,7 +258,7 @@ export function evaluateQualityIncident(
     };
 }
 
-type QualityIncidentPartial = Omit<QualityIncident, 'clusterKey' | 'ts'> & {
+export type QualityIncidentPartial = Omit<QualityIncident, 'clusterKey' | 'ts'> & {
     clusterKey?: string;
     ts?: string;
 };
@@ -257,6 +269,32 @@ export function shouldCaptureQualityIncident(
     rules: QualityOpsRules = DEFAULT_QUALITY_OPS_RULES,
 ): boolean {
     return !evaluateQualityIncident(normalizeQualityIncident(partial), rules).pass;
+}
+
+/**
+ * 旁路入队质量事件：无队列或 send 失败仅 warn；pass=true 不入队。
+ * 上游：email-rule / invest-rss / advisor / desk。
+ * 下游：Q_QUALITY_INCIDENTS → orchestrator。
+ */
+export async function emitQualityIncident(
+    queue: { send: (body: QualityIncident) => Promise<unknown> } | undefined,
+    partial: QualityIncidentPartial,
+): Promise<void> {
+    if (!queue) {
+        return;
+    }
+    const incident = normalizeQualityIncident(partial);
+    if (!shouldCaptureQualityIncident(incident)) {
+        return;
+    }
+    try {
+        await queue.send(incident);
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn(
+            `质量事件入队失败 kind=${partial.kind} because=${partial.because} error=${msg}`,
+        );
+    }
 }
 
 /** 多条 incident 聚类（仅含 pass=false 的条目） */
