@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -199,6 +199,10 @@
       "import": "./dist/desk/desk-signal.js",
       "types": "./dist/desk/desk-signal.d.ts"
     },
+    "./desk/reject-reason": {
+      "import": "./dist/desk/reject-reason.js",
+      "types": "./dist/desk/reject-reason.d.ts"
+    },
     "./desk/resolve-underlying": {
       "import": "./dist/desk/resolve-underlying.js",
       "types": "./dist/desk/resolve-underlying.d.ts"
@@ -210,6 +214,10 @@
     "./evaluation/content-filter": {
       "import": "./dist/evaluation/content-filter.js",
       "types": "./dist/evaluation/content-filter.d.ts"
+    },
+    "./evaluation/interrupt-inbox": {
+      "import": "./dist/evaluation/interrupt-inbox.js",
+      "types": "./dist/evaluation/interrupt-inbox.d.ts"
     },
     "./evaluation/quality-incident": {
       "import": "./dist/evaluation/quality-incident.js",

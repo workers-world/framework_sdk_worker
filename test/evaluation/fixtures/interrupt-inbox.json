@@ -1,0 +1,38 @@
+[
+    {
+        "name": "ordinary_event_dashboard",
+        "input": { "importance": 5, "portfolioHit": false },
+        "channel": "dashboard",
+        "reason": "default_quiet"
+    },
+    {
+        "name": "material_change_email",
+        "input": { "materialChange": true },
+        "channel": "email",
+        "reason": "material_change"
+    },
+    {
+        "name": "quality_incident_email",
+        "input": { "qualityIncidentHard": true },
+        "channel": "email",
+        "reason": "quality_incident"
+    },
+    {
+        "name": "portfolio_low_usefulness_dashboard",
+        "input": { "portfolioHit": true, "usefulnessPrior": 3 },
+        "channel": "dashboard",
+        "reason": "default_quiet"
+    },
+    {
+        "name": "portfolio_high_usefulness_email",
+        "input": { "portfolioHit": true, "usefulnessPrior": 4 },
+        "channel": "email",
+        "reason": "portfolio_high_usefulness"
+    },
+    {
+        "name": "portfolio_high_importance_email",
+        "input": { "portfolioHit": true, "importance": 8 },
+        "channel": "email",
+        "reason": "portfolio_high_importance"
+    }
+]
