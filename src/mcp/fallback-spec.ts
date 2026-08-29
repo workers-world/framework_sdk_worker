@@ -1,3 +1,4 @@
+import { DRAFT_REJECT_REASONS } from '../desk/reject-reason.js';
 import type { McpServiceEntry, OpenApiDoc } from './types.js';
 
 /**
@@ -359,6 +360,10 @@ export const DEFAULT_FALLBACK_SPEC: OpenApiDoc = {
                                         enum: ['draft', 'reviewed', 'pushed', 'discarded'],
                                     },
                                     note: { type: 'string' },
+                                    rejectReason: {
+                                        type: 'string',
+                                        enum: [...DRAFT_REJECT_REASONS],
+                                    },
                                 },
                                 required: ['status'],
                             },

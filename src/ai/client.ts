@@ -14,6 +14,10 @@ export interface LlmChatParams {
     temperature?: number;
     max_tokens?: number;
     response_format?: { type: string };
+    /** 与 notify/quality incident 同源，便于 gateway 日志关联 */
+    dedupKey?: string;
+    /** 跨 Worker 追踪；缺省时调用方可传 D1 tech_trace_id */
+    traceId?: string;
 }
 
 export interface LlmChatResponse {
@@ -77,6 +81,12 @@ async function chatAt(
             ...(await authHeader(env.LLM_GATEWAY_AUTH_TOKEN)),
             'Content-Type': 'application/json',
         };
+        if (params.dedupKey) {
+            headers['X-Dedup-Key'] = params.dedupKey;
+        }
+        if (params.traceId) {
+            headers['X-Trace-Id'] = params.traceId;
+        }
     } catch (e: unknown) {
         return {
             ok: false,
@@ -88,7 +98,15 @@ async function chatAt(
     const resp = await env.SVC_LLM_GATEWAY.fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify(params),
+        body: JSON.stringify({
+            model: params.model,
+            messages: params.messages,
+            temperature: params.temperature,
+            max_tokens: params.max_tokens,
+            response_format: params.response_format,
+            dedupKey: params.dedupKey,
+            traceId: params.traceId,
+        }),
         signal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS),
     });
 
