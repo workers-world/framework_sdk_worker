@@ -28,9 +28,9 @@ export function isCircuitOpen(name = 'default'): boolean {
         return false;
     }
     if (Date.now() - state.lastFailureTime > RECOVERY_TIMEOUT_MS) {
-        state.open = false;
-        state.failures = 0;
-        console.log(`circuit half-open→closed name=${name} reason=recovery_timeout`);
+        // 半开态：放行探针请求。成功走 recordCircuitSuccess 关闭；失败走 recordCircuitFailure
+        // 立即重开并重置恢复窗口。并发场景下可能放行多个探针（isolate 内无锁），可接受。
+        console.log(`circuit half-open name=${name} reason=recovery_timeout`);
         return false;
     }
     return true;
@@ -47,6 +47,12 @@ export function recordCircuitSuccess(name = 'default'): void {
 
 export function recordCircuitFailure(name = 'default'): void {
     const state = getState(name);
+    if (state.open && Date.now() - state.lastFailureTime > RECOVERY_TIMEOUT_MS) {
+        // 半开态探针失败：立即重新熔断，而不是重新累计 3 次
+        state.lastFailureTime = Date.now();
+        console.log(`circuit open name=${name} reason=probe_failed`);
+        return;
+    }
     state.failures++;
     state.lastFailureTime = Date.now();
     if (state.failures >= FAILURE_THRESHOLD && !state.open) {
@@ -57,7 +63,11 @@ export function recordCircuitFailure(name = 'default'): void {
     }
 }
 
-/** KV 子集：跨 isolate 持久化熔断（llm-gateway 等）。未传 kv 时回退进程内 Map。 */
+/**
+ * KV 子集：跨 isolate 持久化熔断（llm-gateway 等）。未传 kv 时回退进程内 Map。
+ * 一致性假设：KV 读有秒级陈旧窗口、读改写非原子——失败计数在高并发下可能少计，
+ * 本模块是 best-effort 熔断。内存版阈值按 isolate 独立计算（多 isolate ≈ 阈值×N）。
+ */
 export type CircuitKv = {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
@@ -100,13 +110,23 @@ export async function isCircuitOpenKv(
     if (!kv) {
         return isCircuitOpen(name);
     }
-    const state = await readKvState(kv, name);
+    let state: CircuitState;
+    try {
+        state = await readKvState(kv, name);
+    } catch (e: unknown) {
+        // best-effort：KV 读失败（限速/配额）视为未熔断，不阻断请求
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn(`circuit state read failed name=${name} error=${msg} (treated as closed)`);
+        return false;
+    }
     if (!state.open) {
         return false;
     }
     if (now - state.lastFailureTime > RECOVERY_TIMEOUT_MS) {
-        await writeKvState(kv, name, createState());
-        console.log(`circuit half-open→closed name=${name} reason=recovery_timeout backend=kv`);
+        // 半开态（不回写 KV：转换由 lastFailureTime 派生，幂等）。探针成功/失败见
+        // recordCircuitSuccessKv / recordCircuitFailureKv。
+        // 注意：KV 读有陈旧窗口（秒级），跨 isolate 状态可能短暂滞后。
+        console.log(`circuit half-open name=${name} reason=recovery_timeout backend=kv`);
         return false;
     }
     return true;
@@ -120,13 +140,20 @@ export async function recordCircuitSuccessKv(
         recordCircuitSuccess(name);
         return;
     }
-    const state = await readKvState(kv, name);
-    if (state.open || state.failures > 0) {
-        console.log(
-            `circuit closed name=${name} failures=${state.failures} reason=probe_success backend=kv`,
-        );
+    try {
+        const state = await readKvState(kv, name);
+        if (state.open || state.failures > 0) {
+            console.log(
+                `circuit closed name=${name} failures=${state.failures} reason=probe_success backend=kv`,
+            );
+        }
+        await writeKvState(kv, name, createState());
+    } catch (e: unknown) {
+        // best-effort：熔断状态记账失败不向调用方传播——否则 AI 调用成功后
+        // 一次 KV 限速写失败会把整个成功请求变成 5xx
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn(`circuit success record failed name=${name} error=${msg} (non-fatal)`);
     }
-    await writeKvState(kv, name, createState());
 }
 
 export async function recordCircuitFailureKv(
@@ -138,14 +165,26 @@ export async function recordCircuitFailureKv(
         recordCircuitFailure(name);
         return;
     }
-    const state = await readKvState(kv, name);
-    state.failures += 1;
-    state.lastFailureTime = now;
-    if (state.failures >= FAILURE_THRESHOLD && !state.open) {
-        state.open = true;
-        console.log(
-            `circuit open name=${name} failures=${state.failures} reason=consecutive_failures backend=kv`,
-        );
+    try {
+        const state = await readKvState(kv, name);
+        if (state.open && now - state.lastFailureTime > RECOVERY_TIMEOUT_MS) {
+            // 半开态探针失败：立即重新熔断并重置恢复窗口
+            state.lastFailureTime = now;
+            console.log(`circuit open name=${name} reason=probe_failed backend=kv`);
+            await writeKvState(kv, name, state);
+            return;
+        }
+        state.failures += 1;
+        state.lastFailureTime = now;
+        if (state.failures >= FAILURE_THRESHOLD && !state.open) {
+            state.open = true;
+            console.log(
+                `circuit open name=${name} failures=${state.failures} reason=consecutive_failures backend=kv`,
+            );
+        }
+        await writeKvState(kv, name, state);
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn(`circuit failure record failed name=${name} error=${msg} (non-fatal)`);
     }
-    await writeKvState(kv, name, state);
 }

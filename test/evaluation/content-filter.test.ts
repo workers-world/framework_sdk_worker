@@ -105,6 +105,42 @@ describe('evaluateContentFilter', () => {
         });
         expect(result.hit).toBeNull();
     });
+
+    it('regex with g flag still matches every field (cached regex is state-free)', () => {
+        // 回归：曾用 pattern:flags 缓存 RegExp，'g' 的 lastIndex 跨 test() 推进导致漏报
+        const config: ContentFilterConfig = {
+            version: 1,
+            rules: [
+                {
+                    id: 'g-flag',
+                    enabled: true,
+                    stage: 'before',
+                    action: 'block',
+                    match: {
+                        type: 'regex',
+                        fields: ['title', 'snippet'],
+                        pattern: 'bad',
+                        flags: 'g',
+                    },
+                },
+            ],
+        };
+        // 第一条字段先命中会命中；这里让 title 不含、snippet 含，验证从 lastIndex=0 之外的位置仍可命中
+        const result = evaluateContentFilter(config, {
+            stage: 'before',
+            title: 'clean title',
+            snippet: 'prefix bad suffix',
+        });
+        expect(result.hit?.ruleId).toBe('g-flag');
+
+        // 连续两次 evaluate（新 cache，但同 isolate 内复用编译逻辑）都应一致命中
+        const again = evaluateContentFilter(config, {
+            stage: 'before',
+            title: 'clean title',
+            snippet: 'prefix bad suffix',
+        });
+        expect(again.hit?.ruleId).toBe('g-flag');
+    });
 });
 
 describe('dispatchContentFilterAction', () => {
@@ -221,5 +257,48 @@ describe('validateContentFilterConfig', () => {
             ],
         };
         expect(() => validateContentFilterConfig(bad)).toThrow(/正则无效/);
+    });
+
+    it('rejects stateful g/y flags', () => {
+        const bad: ContentFilterConfig = {
+            version: 1,
+            rules: [
+                {
+                    id: 'stateful',
+                    enabled: true,
+                    stage: 'before',
+                    match: { type: 'regex', fields: ['title'], pattern: 'x', flags: 'g' },
+                },
+            ],
+        };
+        expect(() => validateContentFilterConfig(bad)).toThrow(/不允许 g\/y/);
+    });
+
+    it('rejects overlong and nested-quantifier patterns (ReDoS guard)', () => {
+        const nested: ContentFilterConfig = {
+            version: 1,
+            rules: [
+                {
+                    id: 'nested',
+                    enabled: true,
+                    stage: 'before',
+                    match: { type: 'regex', fields: ['title'], pattern: '(a+)+$' },
+                },
+            ],
+        };
+        expect(() => validateContentFilterConfig(nested)).toThrow(/回溯风险|嵌套/);
+
+        const long: ContentFilterConfig = {
+            version: 1,
+            rules: [
+                {
+                    id: 'long',
+                    enabled: true,
+                    stage: 'before',
+                    match: { type: 'regex', fields: ['title'], pattern: `a${'a?'.repeat(400)}` },
+                },
+            ],
+        };
+        expect(() => validateContentFilterConfig(long)).toThrow(/回溯风险|过|long/);
     });
 });

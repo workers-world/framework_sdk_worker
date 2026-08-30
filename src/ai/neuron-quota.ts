@@ -15,6 +15,9 @@ export interface FetchNeuronsResult {
 /** 兼容再导出：新代码请从 `framework_sdk_worker/time` 导入 */
 export { secondsUntilNextUtcDay, utcDayRangeIso, utcYmdDash } from '../time.js';
 
+/** GraphQL 配额查询超时：api.cloudflare.com 偶发挂起时不拖死调用方 */
+const NEURONS_QUERY_TIMEOUT_MS = 10_000;
+
 /** 判断 billable/usage 返回的记录是否属于 Workers AI（Neurons 计费） */
 export function isWorkersAiMetric(record: BillableUsageRecord): boolean {
     const metric = (record.x_BillableMetricId || '').toLowerCase();
@@ -65,13 +68,14 @@ export async function fetchTodayNeuronsUsed(
                     end,
                 },
             }),
+            signal: AbortSignal.timeout(NEURONS_QUERY_TIMEOUT_MS),
         });
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         return { ok: false, used: 0, error: msg };
     }
 
-    const data = (await resp.json()) as {
+    const data = (await resp.json().catch(() => null)) as {
         data?: {
             viewer?: {
                 accounts?: Array<{
@@ -80,13 +84,21 @@ export async function fetchTodayNeuronsUsed(
             };
         };
         errors?: unknown[];
-    };
+    } | null;
 
     if (!resp.ok) {
         return {
             ok: false,
             used: 0,
             error: `graphql neurons query failed: HTTP ${resp.status}`,
+        };
+    }
+
+    if (!data) {
+        return {
+            ok: false,
+            used: 0,
+            error: `graphql neurons query failed: 非 JSON 响应（HTTP ${resp.status}）`,
         };
     }
 
@@ -138,14 +150,22 @@ export function extractAiErrorMessage(value: unknown): string {
     return String(value);
 }
 
+/**
+ * 4006 必须伴随配额语境才认定：裸 "4006" 子串会把 token 数 40060、
+ * 参数 steps=4006 等无关报错误判为当日额度耗尽（曾致网关全站 429 到次日）。
+ */
+const NEURON_QUOTA_4006_RE = /\b4006\b/;
+const NEURON_QUOTA_CONTEXT_RE = /quota|allocation|neuron|limit|exceeded/;
+
 function isNeuronQuotaMessage(message: string): boolean {
     const lower = message.toLowerCase();
-    return (
-        lower.includes('4006') ||
-        lower.includes('neuron_quota_exceeded') ||
-        lower.includes('daily free allocation') ||
-        (lower.includes('neurons') && lower.includes('upgrade'))
-    );
+    if (lower.includes('neuron_quota_exceeded') || lower.includes('daily free allocation')) {
+        return true;
+    }
+    if (lower.includes('neurons') && lower.includes('upgrade')) {
+        return true;
+    }
+    return NEURON_QUOTA_4006_RE.test(lower) && NEURON_QUOTA_CONTEXT_RE.test(lower);
 }
 
 /** 识别 Workers AI 日 Neurons 额度错误（4006 等） */

@@ -1,3 +1,4 @@
+import type { Env } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
@@ -5,9 +6,29 @@ export interface CreateWorkerAppOptions {
     cors?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createWorkerApp(options?: CreateWorkerAppOptions): any {
-    const app = new Hono();
+/**
+ * register* 系列的最小结构类型：兼容任意 env 泛型的 Hono 实例，避免 any。
+ * 必须用方法语法（bivariance）——属性式函数类型在 Hono 的 use 重载下不可满足，
+ * 会破坏消费方 typecheck（0.4.0 曾因此破坏 llm-gateway）。
+ */
+export interface RegisterableApp {
+    use(path: string, handler: unknown): unknown;
+    get(
+        path: string,
+        handler: (c: {
+            json: (body: unknown, status?: number) => Response;
+        }) => Response | Promise<Response>,
+    ): unknown;
+    onError(
+        handler: (
+            err: unknown,
+            c: { json: (body: unknown, status?: number) => Response },
+        ) => Response | Promise<Response>,
+    ): unknown;
+}
+
+export function createWorkerApp(options?: CreateWorkerAppOptions): Hono<Env> {
+    const app = new Hono<Env>();
 
     if (options?.cors) {
         app.use('*', cors());
@@ -16,25 +37,20 @@ export function createWorkerApp(options?: CreateWorkerAppOptions): any {
     return app;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function registerHealthRoute(app: any): void {
-    app.get('/health', (c: { json: (body: unknown) => Response }) => c.json({ ok: true }));
+export function registerHealthRoute(app: RegisterableApp): void {
+    app.get('/health', (c) => c.json({ ok: true }));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function registerNotFoundRoute(app: any): void {
-    app.get('*', (c: { json: (body: unknown, status?: number) => Response }) =>
-        c.json({ error: 'Not Found' }, 404),
-    );
+export function registerNotFoundRoute(app: RegisterableApp): void {
+    app.get('*', (c) => c.json({ error: 'Not Found' }, 404));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerGlobalErrorHandler(
-    app: any,
+    app: RegisterableApp,
     message = '内部错误',
     code = 'INTERNAL_ERROR',
 ): void {
-    app.onError((err: unknown, c: { json: (body: unknown, status?: number) => Response }) => {
+    app.onError((err, c) => {
         console.error(err);
         return c.json({ error: message, code }, 500);
     });

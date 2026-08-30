@@ -1,6 +1,16 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {defineConfig} from 'tsup';
 
+const pkg = JSON.parse(
+    readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf8'),
+) as { version: string };
+
 export default defineConfig({
+    // SDK_VERSION 单一版本源：构建时注入 package.json version（src/meta/types.ts）
+    define: {
+        __SDK_VERSION__: JSON.stringify(pkg.version),
+    },
     entry: {
         index: 'src/index.ts',
         'async/sleep': 'src/async/sleep.ts',
@@ -9,28 +19,21 @@ export default defineConfig({
         'd1/escape-like': 'src/d1/escape-like.ts',
         'd1/tech-meta': 'src/d1/tech-meta.ts',
         'notify/client': 'src/notify/client.ts',
-        'auth/bearer': 'src/auth/bearer.ts',
         'auth/middleware': 'src/auth/middleware.ts',
         'auth/require-admin': 'src/auth/require-admin.ts',
         'http/parse-json': 'src/http/parse-json.ts',
-        'http/errors': 'src/http/errors.ts',
         'http/fetch-page-meta': 'src/http/fetch-page-meta.ts',
         'hono/create-app': 'src/hono/create-app.ts',
         'r2/put': 'src/r2/put.ts',
         'r2/gold-price': 'src/r2/gold-price.ts',
         'kv/dedup': 'src/kv/dedup.ts',
-        'time/shanghai': 'src/time/shanghai.ts',
-        'time/trading-session': 'src/time/trading-session.ts',
-        'time/utc': 'src/time/utc.ts',
         'time/index': 'src/time/index.ts',
-        'url/video-link': 'src/url/video-link.ts',
-        'url/pdf-link': 'src/url/pdf-link.ts',
         'url/product-landing-link': 'src/url/product-landing-link.ts',
-        'url/article-link': 'src/url/article-link.ts',
         'url/index': 'src/url/index.ts',
         'ai/gateway': 'src/ai/gateway.ts',
         'ai/neuron-quota': 'src/ai/neuron-quota.ts',
         'ai/client': 'src/ai/client.ts',
+        'ai/direct': 'src/ai/direct.ts',
         'secrets/resolve': 'src/secrets/resolve.ts',
         'logger/index': 'src/logger/index.ts',
         'types/env': 'src/types/env.ts',
@@ -48,11 +51,11 @@ export default defineConfig({
         'ops-error/index': 'src/ops-error/index.ts',
         'fund/types': 'src/fund/types.ts',
         'fund/normalize-code': 'src/fund/normalize-code.ts',
+        'fund/parse-utils': 'src/fund/parse-utils.ts',
         'fund/tencent-nav': 'src/fund/tencent-nav.ts',
         'fund/eastmoney-estimate': 'src/fund/eastmoney-estimate.ts',
         'fund/quote': 'src/fund/quote.ts',
         'monitor/threshold': 'src/monitor/threshold.ts',
-        'test/fake-bindings': 'src/test/fake-bindings.ts',
         perf: 'src/perf.ts',
         'text/cap-input': 'src/text/cap-input.ts',
         'desk/desk-signal': 'src/desk/desk-signal.ts',
@@ -79,7 +82,6 @@ export default defineConfig({
         'mcp/qa-response-trim': 'src/mcp/qa-response-trim.ts',
         'meta/index': 'src/meta/index.ts',
         'meta/types': 'src/meta/types.ts',
-        'meta/build-meta': 'src/meta/build-meta.ts',
     },
     format: ['esm'],
     dts: true,

@@ -28,11 +28,21 @@ function resolveAlertTo(env: OpsErrorEnv, override?: string): string | undefined
     return override?.trim() || env.OPS_ALERT_TO?.trim() || undefined;
 }
 
+/** 告警邮件单行截断上限：context 值可能携带大段原文（已脱敏但仍需封顶） */
+const OPS_CONTEXT_LINE_MAX = 500;
+
+/** 告警邮件 error 字段截断上限（与 ops-error/logger.ts 的 OPS_ERROR_MESSAGE_MAX 对齐） */
+const OPS_ERROR_MESSAGE_MAX = 800;
+
+function truncateLine(text: string, max: number): string {
+    return text.length > max ? `${text.slice(0, max)}…(截断)` : text;
+}
+
 function formatContextLines(context: LogFields): string[] {
     return Object.entries(context).map(([key, value]) => {
         const rendered =
             value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
-        return `${key}: ${rendered}`;
+        return truncateLine(`${key}: ${rendered}`, OPS_CONTEXT_LINE_MAX);
     });
 }
 
@@ -41,7 +51,7 @@ function buildOpsEmailBody(payload: OpsErrorPayload, context: LogFields): string
         `Worker: ${payload.worker}`,
         `Reason: ${payload.reason}`,
         `Time: ${shanghaiIsoString()}`,
-        `Error: ${payload.error}`,
+        `Error: ${truncateLine(payload.error, OPS_ERROR_MESSAGE_MAX)}`,
         '',
         ...formatContextLines(context),
     ].filter((line, index) => line !== '' || index < 5);

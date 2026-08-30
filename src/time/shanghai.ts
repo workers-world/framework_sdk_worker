@@ -94,19 +94,50 @@ export function shanghaiIsoWeekKey(date: Date = new Date()): string {
 }
 
 /**
+ * 上海墙钟分量（数字），供时段/窗口逻辑组合（如 digest 窗口判断）。
+ * 此前 notify-worker 自写 shanghaiInstant 只为取时/分/秒，SDK 收编该需求。
+ */
+export function shanghaiClock(date: Date = new Date()): {
+    year: number;
+    month: number;
+    day: number;
+    hour: number;
+    minute: number;
+    second: number;
+} {
+    const sh = new Date(date.getTime() + SHANGHAI_OFFSET_MS);
+    return {
+        year: sh.getUTCFullYear(),
+        month: sh.getUTCMonth() + 1,
+        day: sh.getUTCDate(),
+        hour: sh.getUTCHours(),
+        minute: sh.getUTCMinutes(),
+        second: sh.getUTCSeconds(),
+    };
+}
+
+/** 14 位紧凑时间戳 `YYYYMMDDHHmmss`（shanghaiTechTime 的语义化别名） */
+export function shanghaiStamp14(date: Date = new Date()): string {
+    return shanghaiTechTime(date);
+}
+
+/**
  * 上海日 `YYYY-MM-DD` 0 点对应的 Unix 秒。
- * 非法/缺省返回 null。
+ * 非法/越界（如 2024-02-31、2024-13-01）返回 null，不做日历滚动。
  */
 export function shanghaiDayStartUnix(ymd: string | undefined): number | null {
     if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
         return null;
     }
     const [y, m, d] = ymd.split('-').map((p) => parseInt(p, 10));
-    const utcMidnight = Date.UTC(y, m - 1, d);
-    if (!Number.isFinite(utcMidnight)) {
+    if (m < 1 || m > 12) {
         return null;
     }
-    return Math.floor(utcMidnight / 1000) - 8 * 3600;
+    const probe = new Date(Date.UTC(y, m - 1, d));
+    if (probe.getUTCFullYear() !== y || probe.getUTCMonth() !== m - 1 || probe.getUTCDate() !== d) {
+        return null;
+    }
+    return Math.floor(probe.getTime() / 1000) - 8 * 3600;
 }
 
 /**

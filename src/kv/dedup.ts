@@ -4,6 +4,10 @@
  *
  * claimSendSlot → confirmSent / releaseClaim：发信前 pending 占位，成功后 sent，
  * 明确失败时 release；429/瞬态失败保留 pending，避免并发双发。
+ *
+ * 一致性假设（重要）：Workers KV 为最终一致（跨 POP 传播最长 ~60s），且
+ * claimSendSlot 的 get→put 非原子——本模块是 best-effort 防重，用于消除绝大多数
+ * 重复发送，不构成强互斥；需要强一致的占位请改用 D1（唯一约束）或 Durable Object。
  */
 
 /** KV key 上限 512 字节；超长 rawKey 哈希为固定长度 dedup:{sha256} */
@@ -52,7 +56,7 @@ export async function markSent(
     await kv.put(safeKey, `sent:${new Date().toISOString()}`, { expirationTtl: ttlSeconds });
 }
 
-/** 发信前占位 pending，阻止并发/重试窗口内重复发送。key 超长自动 SHA-256 截断 */
+/** 发信前占位 pending。best-effort 防重（KV 最终一致 + get→put 非原子，见模块头注释）；key 超长自动 SHA-256 截断 */
 export async function claimSendSlot(
     kv: KVNamespace | undefined,
     dedupKey: string | undefined,
@@ -85,6 +89,12 @@ function sleepMs(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** 日志用 key 指纹：dedupKey 常含邮箱/主题等业务内容，只输出 SHA-256 前 16 位 */
+async function dedupKeyFingerprint(safeKey: string): Promise<string> {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(safeKey));
+    return bytesToHex(new Uint8Array(digest)).slice(0, 16);
+}
+
 /** 明确失败时释放占位，允许后续重试。KV.delete 失败重试 1 次 */
 export async function releaseClaim(
     kv: KVNamespace | undefined,
@@ -98,29 +108,17 @@ export async function releaseClaim(
         await kv.delete(safeKey);
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        console.error(`kv releaseClaim first attempt failed dedupKey=${dedupKey} error=${msg}`);
+        console.error(
+            `kv releaseClaim first attempt failed keyFp=${await dedupKeyFingerprint(safeKey)} error=${msg}`,
+        );
         await sleepMs(200);
         try {
             await kv.delete(safeKey);
         } catch (e2: unknown) {
             const msg2 = e2 instanceof Error ? e2.message : String(e2);
-            console.error(`kv releaseClaim retry also failed dedupKey=${dedupKey} error=${msg2}`);
+            console.error(
+                `kv releaseClaim retry also failed keyFp=${await dedupKeyFingerprint(safeKey)} error=${msg2}`,
+            );
         }
     }
-}
-
-/** @deprecated  Prefer claimSendSlot + confirmSent / releaseClaim */
-export async function shouldSend(
-    kv: KVNamespace | undefined,
-    dedupKey: string | undefined,
-    ttlSeconds: number,
-): Promise<boolean> {
-    if (!dedupKey || !kv) {
-        return true;
-    }
-    if (await checkDuplicate(kv, dedupKey)) {
-        return false;
-    }
-    await markSent(kv, dedupKey, ttlSeconds);
-    return true;
 }

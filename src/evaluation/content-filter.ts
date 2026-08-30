@@ -4,6 +4,7 @@
  * 下游：流水线 gate（skip LLM / skip notify）
  * 不变量：KV 读取失败由调用方 fail-open；未注册 action fail-safe 为 stop
  */
+import { assertSafeRegexPattern } from '../email/regex-pattern.js';
 import type {
     ContentFilterAction,
     ContentFilterConfig,
@@ -97,12 +98,20 @@ function matchesKeyword(
     return false;
 }
 
+/**
+ * 剥离 g/y：编译结果会被按 (pattern, flags) 缓存复用，状态化 flags 会让
+ * RegExp.test 从残留 lastIndex 开始匹配，造成跨字段静默漏报。
+ */
+function sanitizeRegexFlags(flags: string | undefined): string {
+    return (flags ?? 'i').replace(/[gy]/gi, '');
+}
+
 function matchesRegex(
     match: Extract<ContentFilterMatch, { type: 'regex' }>,
     input: ContentFilterInput,
     compiled?: RegExp,
 ): boolean {
-    const regex = compiled ?? new RegExp(match.pattern, match.flags ?? 'i');
+    const regex = compiled ?? new RegExp(match.pattern, sanitizeRegexFlags(match.flags));
     for (const field of match.fields) {
         const value = fieldValue(input, field);
         if (value && regex.test(value)) {
@@ -120,11 +129,13 @@ function matchesRule(
     if (rule.match.type === 'keyword') {
         return matchesKeyword(rule.match, input);
     }
-    const cacheKey = `${rule.match.pattern}:${rule.match.flags ?? 'i'}`;
+    const flags = sanitizeRegexFlags(rule.match.flags);
+    const cacheKey = `${rule.match.pattern}:${flags}`;
     let compiled = regexCache?.get(cacheKey);
     if (!compiled) {
         try {
-            compiled = new RegExp(rule.match.pattern, rule.match.flags ?? 'i');
+            assertSafeRegexPattern(rule.match.pattern);
+            compiled = new RegExp(rule.match.pattern, flags);
             regexCache?.set(cacheKey, compiled);
         } catch {
             return false;
@@ -268,10 +279,17 @@ export function validateContentFilterConfig(
             if (!match.pattern?.trim()) {
                 throw new Error(`规则 ${rule.id} regex pattern 不能为空`);
             }
+            if (/[gy]/i.test(match.flags ?? '')) {
+                throw new Error(
+                    `规则 ${rule.id} regex flags 不允许 g/y：引擎按状态无关方式缓存编译，状态化匹配会漏报`,
+                );
+            }
             try {
-                new RegExp(match.pattern, match.flags ?? 'i');
-            } catch {
-                throw new Error(`规则 ${rule.id} 正则无效`);
+                assertSafeRegexPattern(match.pattern);
+                new RegExp(match.pattern, sanitizeRegexFlags(match.flags));
+            } catch (e: unknown) {
+                const detail = e instanceof Error ? e.message : String(e);
+                throw new Error(`规则 ${rule.id} 正则无效或存在回溯风险: ${detail}`);
             }
         } else {
             throw new Error(`规则 ${rule.id} match.type 无效`);

@@ -20,8 +20,19 @@ export {
  * 在 Hono app 上注册 `GET /v1/meta`。
  * 鉴权默认 `RULES_ADMIN_TOKEN`；响应为运行时 SDK/构建信息，不含 env 值。
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function registerMetaRoute(app: any, options: RegisterMetaRouteOptions): void {
+export function registerMetaRoute(
+    app: {
+        use(path: string, handler: unknown): unknown;
+        get(
+            path: string,
+            handler: (c: {
+                env: object;
+                json: (body: unknown, status?: number) => Response;
+            }) => Response | Promise<Response>,
+        ): unknown;
+    },
+    options: RegisterMetaRouteOptions,
+): void {
     const authEnvKey = options.authEnvKey ?? 'RULES_ADMIN_TOKEN';
     const sdkVersion = options.sdkVersion ?? SDK_VERSION;
     const auth = createBearerAuthMiddleware(authEnvKey);

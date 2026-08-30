@@ -5,6 +5,12 @@
  */
 import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 
+/** 上游 audit-log-worker 挂起时避免拖死调用方 isolate */
+const AUDIT_LOG_TIMEOUT_MS = 10_000;
+
+/** queryMaintenanceLogsSince 分页上限：上游分页异常时不至于烧穿 subrequest 配额 */
+const MAX_PAGINATION_PAGES = 100;
+
 export interface MaintenanceLogEntry {
     ts: string;
     actor: string;
@@ -81,20 +87,33 @@ export async function writeMaintenanceLog(
         return { ok: false, error: 'AUDIT_LOG_AUTH_TOKEN not configured' };
     }
 
-    const resp = await logger.fetch('https://audit-log/v1/log', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${resolved}`,
-        },
-        body: JSON.stringify(entry satisfies MaintenanceLogEntry),
-    });
+    try {
+        const resp = await logger.fetch('https://audit-log/v1/log', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${resolved}`,
+            },
+            body: JSON.stringify(entry satisfies MaintenanceLogEntry),
+            signal: AbortSignal.timeout(AUDIT_LOG_TIMEOUT_MS),
+        });
 
-    const data = (await resp.json()) as WriteLogResult & { error?: string };
-    if (!resp.ok) {
-        return { ok: false, error: data.error || resp.statusText };
+        const data = (await resp.json().catch(() => null)) as
+            | (WriteLogResult & {
+                  error?: string;
+              })
+            | null;
+        if (!resp.ok) {
+            return { ok: false, error: data?.error || resp.statusText };
+        }
+        if (!data) {
+            return { ok: false, error: `audit-log 响应非 JSON（HTTP ${resp.status}）` };
+        }
+        return data;
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return { ok: false, error: msg };
     }
-    return data;
 }
 
 /** 查询维护日志（单页）；order=asc + afterId 用于日报增量分页。 */
@@ -140,27 +159,36 @@ export async function queryMaintenanceLogs(
         params.set('limit', String(query.limit));
     }
 
-    const resp = await logger.fetch(`https://audit-log/v1/logs?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${resolved}` },
-    });
+    try {
+        const resp = await logger.fetch(`https://audit-log/v1/logs?${params.toString()}`, {
+            headers: { Authorization: `Bearer ${resolved}` },
+            signal: AbortSignal.timeout(AUDIT_LOG_TIMEOUT_MS),
+        });
 
-    const data = (await resp.json()) as {
-        ok?: boolean;
-        rows?: Record<string, unknown>[];
-        nextAfterId?: number;
-        error?: string;
-    };
-    if (!resp.ok) {
-        return { ok: false, error: data.error || resp.statusText };
+        const data = (await resp.json().catch(() => null)) as {
+            ok?: boolean;
+            rows?: Record<string, unknown>[];
+            nextAfterId?: number;
+            error?: string;
+        } | null;
+        if (!resp.ok) {
+            return { ok: false, error: data?.error || resp.statusText };
+        }
+        if (!data) {
+            return { ok: false, error: `audit-log 响应非 JSON（HTTP ${resp.status}）` };
+        }
+        return {
+            ok: true,
+            rows: (data.rows ?? []).map(rowFromDb),
+            nextAfterId: data.nextAfterId,
+        };
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return { ok: false, error: msg };
     }
-    return {
-        ok: true,
-        rows: (data.rows ?? []).map(rowFromDb),
-        nextAfterId: data.nextAfterId,
-    };
 }
 
-/** 拉取 since 基准线以来的全部行（分页直至取尽）。 */
+/** 拉取 since 基准线以来的全部行（分页直至取尽；受 MAX_PAGINATION_PAGES 上限保护）。 */
 export async function queryMaintenanceLogsSince(
     logger: Fetcher | undefined,
     token: SecretLike | undefined,
@@ -169,26 +197,38 @@ export async function queryMaintenanceLogsSince(
 ): Promise<{ ok: boolean; rows: MaintenanceLogRow[]; error?: string }> {
     const rows: MaintenanceLogRow[] = [];
     let afterId: number | undefined;
+    let exhausted = false;
 
-    for (;;) {
-        const page = await queryMaintenanceLogs(logger, token, {
+    for (let page = 0; page < MAX_PAGINATION_PAGES; page++) {
+        const result = await queryMaintenanceLogs(logger, token, {
             ...query,
             order: query.order ?? 'asc',
             limit: pageSize,
             afterId,
         });
-        if (!page.ok) {
-            return { ok: false, rows, error: page.error };
+        if (!result.ok) {
+            return { ok: false, rows, error: result.error };
         }
-        const batch = page.rows ?? [];
+        const batch = result.rows ?? [];
         if (batch.length === 0) {
+            exhausted = true;
             break;
         }
         rows.push(...batch);
-        if (page.nextAfterId == null || batch.length < pageSize) {
+        if (result.nextAfterId == null || batch.length < pageSize) {
+            exhausted = true;
             break;
         }
-        afterId = page.nextAfterId;
+        if (result.nextAfterId === afterId) {
+            // 上游游标未前进：继续翻页只会重复，终止并如实上报
+            return { ok: false, rows, error: 'audit-log 分页游标未前进' };
+        }
+        afterId = result.nextAfterId;
+    }
+
+    if (!exhausted) {
+        // 达到分页页数上限仍未取尽：按失败上报，避免静默截断
+        return { ok: false, rows, error: `audit-log 分页超过 ${MAX_PAGINATION_PAGES} 页上限` };
     }
 
     return { ok: true, rows };

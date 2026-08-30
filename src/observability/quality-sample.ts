@@ -9,6 +9,7 @@
  *   blob1  = kind
  *   blob2  = because
  *   blob3  = route
+ *   blob4  = caller（调用方标识 `<worker>:<场景>`，可选）
  *   double1 = latency_ms
  *   double2 = ok (1/0)
  *   double3 = extra（tokens / 驳回条数等，可选）
@@ -33,6 +34,8 @@ export interface QualitySample {
     kind: string;
     because: string;
     route?: string;
+    /** 调用方标识 `<worker>:<场景>`（如 `advisor-worker:advice-cluster`），可选 */
+    caller?: string;
     latencyMs: number;
     ok: boolean;
     extra?: number;
@@ -76,6 +79,7 @@ export function recordQualitySample(
                 clipChars(sample.kind, BLOB_MAX_CHARS),
                 clipChars(sample.because, BLOB_MAX_CHARS),
                 clipChars(sample.route ?? '', BLOB_MAX_CHARS),
+                clipChars(sample.caller ?? '', BLOB_MAX_CHARS),
             ],
             doubles: [
                 finiteNonNeg(sample.latencyMs),

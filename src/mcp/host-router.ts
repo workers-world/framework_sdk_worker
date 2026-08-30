@@ -4,9 +4,27 @@ import type { ApiRequestOptions, McpServiceEntry } from './types.js';
 /** 默认上游超时（LLM 类长调用由 entry.timeoutMs 覆盖） */
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+/** 归一化路径：解析 . / .. 段，防止 /v1/x/../admin 形式穿越前缀白名单 */
+function normalizePath(p: string): string {
+    const [pathname, search] = p.split('?');
+    const segments: string[] = [];
+    for (const seg of pathname.split('/')) {
+        if (!seg || seg === '.') {
+            continue;
+        }
+        if (seg === '..') {
+            segments.pop();
+            continue;
+        }
+        segments.push(seg);
+    }
+    const normalized = `/${segments.join('/')}`;
+    return search ? `${normalized}?${search}` : normalized;
+}
+
 /** 按 path 前缀匹配注册的服务；无匹配返回 null（靠前的条目先匹配） */
 export function matchEntry(entries: McpServiceEntry[], path: string): McpServiceEntry | null {
-    const p = path.split('?')[0] || path;
+    const p = normalizePath(path).split('?')[0] || normalizePath(path);
     for (const entry of entries) {
         if (entry.matchPrefixes.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))) {
             return entry;
@@ -77,7 +95,12 @@ export function createHostRouter(
             return { error: 'svc_missing', message: `${entry.svcKey} 未配置` };
         }
         const token = await resolveSecret(envRecord[entry.tokenKey] as SecretLike | undefined);
-        const url = buildUrl(entry.baseUrl, options.path, options.query);
+        if (!token) {
+            // 空 Bearer 在下游必被 401；这里显式失败，避免 LLM 侧把 401 误判为业务错误
+            return { error: 'token_missing', message: `${entry.tokenKey} 未配置` };
+        }
+        const path = normalizePath(options.path);
+        const url = buildUrl(entry.baseUrl, path, options.query);
 
         // HEAD 与 GET 同语义：下游无 HEAD 特化实现，按 GET 取回体
         const execMethod = method === 'HEAD' ? 'GET' : method;

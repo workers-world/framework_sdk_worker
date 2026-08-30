@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    type CircuitKv,
     isCircuitOpen,
     isCircuitOpenKv,
     recordCircuitFailure,
@@ -61,6 +62,24 @@ describe('circuit-breaker', () => {
         expect(isCircuitOpen(name)).toBe(false);
     });
 
+    it('re-opens immediately when half-open probe fails', () => {
+        const name = 'test-probe-failed';
+        recordCircuitFailure(name);
+        recordCircuitFailure(name);
+        recordCircuitFailure(name);
+        expect(isCircuitOpen(name)).toBe(true);
+
+        // 半开窗口：探针放行
+        vi.advanceTimersByTime(60_001);
+        expect(isCircuitOpen(name)).toBe(false);
+
+        // 探针失败：立即重新熔断，且恢复窗口重置
+        recordCircuitFailure(name);
+        expect(isCircuitOpen(name)).toBe(true);
+        vi.advanceTimersByTime(30_000);
+        expect(isCircuitOpen(name)).toBe(true);
+    });
+
     it('isolates state by circuit name', () => {
         recordCircuitFailure('circuit-a');
         recordCircuitFailure('circuit-a');
@@ -83,6 +102,28 @@ describe('circuit-breaker kv', () => {
         expect(await isCircuitOpenKv(kv, name, 1_000 + 60_001)).toBe(false);
     });
 
+    it('never throws on KV read/write failures (best-effort)', async () => {
+        // 回归：网关曾在 AI 调用成功后因 KV 限速写失败把成功请求变 502
+        const failingPut = {
+            get: async () => null,
+            put: async () => {
+                throw new Error('KV rate limited');
+            },
+        } as unknown as CircuitKv;
+        await expect(recordCircuitSuccessKv(failingPut, 'kv-put-fail')).resolves.toBeUndefined();
+        await expect(recordCircuitFailureKv(failingPut, 'kv-put-fail')).resolves.toBeUndefined();
+
+        const failingGet = {
+            get: async () => {
+                throw new Error('KV read failed');
+            },
+            put: async () => undefined,
+        } as unknown as CircuitKv;
+        await expect(isCircuitOpenKv(failingGet, 'kv-get-fail')).resolves.toBe(false);
+        await expect(recordCircuitSuccessKv(failingGet, 'kv-get-fail')).resolves.toBeUndefined();
+        await expect(recordCircuitFailureKv(failingGet, 'kv-get-fail')).resolves.toBeUndefined();
+    });
+
     it('resets on success', async () => {
         const kv = makeFakeKv();
         const name = 'kv-success';
@@ -100,5 +141,22 @@ describe('circuit-breaker kv', () => {
         await recordCircuitFailureKv(undefined, name);
         await recordCircuitFailureKv(undefined, name);
         expect(await isCircuitOpenKv(undefined, name)).toBe(true);
+    });
+
+    it('re-opens immediately when half-open probe fails (kv)', async () => {
+        const kv = makeFakeKv();
+        const name = 'kv-probe-failed';
+        await recordCircuitFailureKv(kv, name, 0);
+        await recordCircuitFailureKv(kv, name, 0);
+        await recordCircuitFailureKv(kv, name, 0);
+        expect(await isCircuitOpenKv(kv, name, 0)).toBe(true);
+
+        // 半开窗口
+        expect(await isCircuitOpenKv(kv, name, 60_001)).toBe(false);
+
+        // 探针失败：立即重开
+        await recordCircuitFailureKv(kv, name, 60_001);
+        expect(await isCircuitOpenKv(kv, name, 60_001)).toBe(true);
+        expect(await isCircuitOpenKv(kv, name, 90_000)).toBe(true);
     });
 });

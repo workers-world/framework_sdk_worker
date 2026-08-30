@@ -113,5 +113,13 @@ export async function callAiModel(
         ? aiGatewayRunOptions(config)
         : buildExtraHeadersOnly(config);
 
-    return ai.run(model as any, inputs as any, options as any);
+    // Ai.run 的静态签名把 model 限定为 keyof AiModels（Workers AI 目录）；
+    // 本函数按设计接受任意 provider 的动态模型名/入参（含 gateway 代理场景），
+    // 在此单一类型边界收口，避免散布 as any。
+    const run = ai.run as (
+        model: string,
+        inputs: Record<string, unknown>,
+        options?: unknown,
+    ) => Promise<unknown>;
+    return run(model, inputs, options);
 }
