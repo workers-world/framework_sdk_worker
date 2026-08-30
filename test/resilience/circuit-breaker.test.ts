@@ -61,6 +61,24 @@ describe('circuit-breaker', () => {
         expect(isCircuitOpen(name)).toBe(false);
     });
 
+    it('re-opens immediately when half-open probe fails', () => {
+        const name = 'test-probe-failed';
+        recordCircuitFailure(name);
+        recordCircuitFailure(name);
+        recordCircuitFailure(name);
+        expect(isCircuitOpen(name)).toBe(true);
+
+        // 半开窗口：探针放行
+        vi.advanceTimersByTime(60_001);
+        expect(isCircuitOpen(name)).toBe(false);
+
+        // 探针失败：立即重新熔断，且恢复窗口重置
+        recordCircuitFailure(name);
+        expect(isCircuitOpen(name)).toBe(true);
+        vi.advanceTimersByTime(30_000);
+        expect(isCircuitOpen(name)).toBe(true);
+    });
+
     it('isolates state by circuit name', () => {
         recordCircuitFailure('circuit-a');
         recordCircuitFailure('circuit-a');
@@ -100,5 +118,22 @@ describe('circuit-breaker kv', () => {
         await recordCircuitFailureKv(undefined, name);
         await recordCircuitFailureKv(undefined, name);
         expect(await isCircuitOpenKv(undefined, name)).toBe(true);
+    });
+
+    it('re-opens immediately when half-open probe fails (kv)', async () => {
+        const kv = makeFakeKv();
+        const name = 'kv-probe-failed';
+        await recordCircuitFailureKv(kv, name, 0);
+        await recordCircuitFailureKv(kv, name, 0);
+        await recordCircuitFailureKv(kv, name, 0);
+        expect(await isCircuitOpenKv(kv, name, 0)).toBe(true);
+
+        // 半开窗口
+        expect(await isCircuitOpenKv(kv, name, 60_001)).toBe(false);
+
+        // 探针失败：立即重开
+        await recordCircuitFailureKv(kv, name, 60_001);
+        expect(await isCircuitOpenKv(kv, name, 60_001)).toBe(true);
+        expect(await isCircuitOpenKv(kv, name, 90_000)).toBe(true);
     });
 });

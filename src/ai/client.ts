@@ -95,42 +95,51 @@ async function chatAt(
         };
     }
 
-    const resp = await env.SVC_LLM_GATEWAY.fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-            model: params.model,
-            messages: params.messages,
-            temperature: params.temperature,
-            max_tokens: params.max_tokens,
-            response_format: params.response_format,
-            dedupKey: params.dedupKey,
-            traceId: params.traceId,
-        }),
-        signal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS),
-    });
+    try {
+        const resp = await env.SVC_LLM_GATEWAY.fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                model: params.model,
+                messages: params.messages,
+                temperature: params.temperature,
+                max_tokens: params.max_tokens,
+                response_format: params.response_format,
+                dedupKey: params.dedupKey,
+                traceId: params.traceId,
+            }),
+            signal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS),
+        });
 
-    const data = (await resp.json().catch(() => ({}))) as {
-        choices?: Array<{ message?: { content?: string } }>;
-        error?: string;
-        detail?: string;
-    };
+        const data = (await resp.json().catch(() => ({}))) as {
+            choices?: Array<{ message?: { content?: string } }>;
+            error?: string;
+            detail?: string;
+        };
 
-    if (!resp.ok) {
+        if (!resp.ok) {
+            return {
+                ok: false,
+                status: resp.status,
+                error: data.error || data.detail || resp.statusText || `HTTP ${resp.status}`,
+                raw: data,
+            };
+        }
+
+        const content = data.choices?.[0]?.message?.content?.trim();
+        if (!content) {
+            return { ok: false, status: resp.status, error: 'LLM 返回空内容', raw: data };
+        }
+
+        return { ok: true, status: resp.status, content, raw: data };
+    } catch (e: unknown) {
+        // 契约统一：超时/网络错误与 HTTP 错误一样返回 {ok:false}，不抛裸异常
         return {
             ok: false,
-            status: resp.status,
-            error: data.error || data.detail || resp.statusText || `HTTP ${resp.status}`,
-            raw: data,
+            status: 0,
+            error: e instanceof Error ? e.message : String(e),
         };
     }
-
-    const content = data.choices?.[0]?.message?.content?.trim();
-    if (!content) {
-        return { ok: false, status: resp.status, error: 'LLM 返回空内容', raw: data };
-    }
-
-    return { ok: true, status: resp.status, content, raw: data };
 }
 
 export async function checkNeuronQuota(

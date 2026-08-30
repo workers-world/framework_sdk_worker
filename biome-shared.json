@@ -16,11 +16,9 @@
       "recommended": true,
       "style": {
         "useBlockStatements": "error",
-        "noNonNullAssertion": "off",
         "useNodejsImportProtocol": "off"
       },
       "suspicious": {
-        "noExplicitAny": "off",
         "noAssignInExpressions": "off",
         "noImplicitAnyLet": "off"
       },

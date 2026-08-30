@@ -51,7 +51,7 @@ const CONSENT_MARKERS = [
     /technische identifikationsmerkmale/i,
 ];
 
-function stripAggregatorEmailNoiseCore(text: string): string {
+export function stripAggregatorEmailNoise(text: string): string {
     let cleaned = text.replace(/\r\n/g, '\n').trim();
     const cutPatterns = [
         /\nYou are receiving this email because[\s\S]*/i,
@@ -69,13 +69,7 @@ function stripAggregatorEmailNoiseCore(text: string): string {
     return cleaned;
 }
 
-export function stripAggregatorEmailNoise(
-    ...args: Parameters<typeof stripAggregatorEmailNoiseCore>
-) {
-    return stripAggregatorEmailNoiseCore(...args);
-}
-
-function isConsentOrBoilerplateTextCore(text: string): boolean {
+export function isConsentOrBoilerplateText(text: string): boolean {
     const normalized = text.replace(/\s+/g, ' ').trim();
     const hits = CONSENT_MARKERS.filter((re) => re.test(normalized)).length;
     if (hits >= 2) {
@@ -93,13 +87,7 @@ function isConsentOrBoilerplateTextCore(text: string): boolean {
     return false;
 }
 
-export function isConsentOrBoilerplateText(
-    ...args: Parameters<typeof isConsentOrBoilerplateTextCore>
-) {
-    return isConsentOrBoilerplateTextCore(...args);
-}
-
-function isThinArticleBodyCore(text: string): boolean {
+export function isThinArticleBody(text: string): boolean {
     const normalized = text.replace(/\s+/g, ' ').trim();
     if (normalized.length < 80) {
         return true;
@@ -124,10 +112,6 @@ function isThinArticleBodyCore(text: string): boolean {
     return false;
 }
 
-export function isThinArticleBody(...args: Parameters<typeof isThinArticleBodyCore>) {
-    return isThinArticleBodyCore(...args);
-}
-
 const BINARY_SAMPLE_MAX = 2048;
 const MIN_PRINTABLE_RATIO = 0.85;
 
@@ -143,7 +127,11 @@ function printableRatio(sample: string): number {
             code === 9 ||
             code === 10 ||
             code === 13 ||
-            code >= 0x4e00
+            // 主要文字区段：西里尔、CJK 标点/假名/谚文兼容/CJK 统一表意、谚文、CJK 扩展 B+
+            (code >= 0x0400 && code <= 0x04ff) ||
+            (code >= 0x3000 && code <= 0x9fff) ||
+            (code >= 0xac00 && code <= 0xd7af) ||
+            code >= 0x20000
         ) {
             printable++;
         }
@@ -151,7 +139,7 @@ function printableRatio(sample: string): number {
     return printable / sample.length;
 }
 
-function isBinaryOrNonTextContentCore(text: string): boolean {
+export function isBinaryOrNonTextContent(text: string): boolean {
     const sample = text.slice(0, BINARY_SAMPLE_MAX);
     if (!sample.trim()) {
         return false;
@@ -172,10 +160,6 @@ function isBinaryOrNonTextContentCore(text: string): boolean {
     return false;
 }
 
-export function isBinaryOrNonTextContent(...args: Parameters<typeof isBinaryOrNonTextContentCore>) {
-    return isBinaryOrNonTextContentCore(...args);
-}
-
 const SITE_NAV_MARKERS = [
     /行情中心/,
     /数据中心/,
@@ -184,7 +168,7 @@ const SITE_NAV_MARKERS = [
     /finance\.eastmoney\.com\/yaowen/i,
 ];
 
-function isSiteNavigationShellCore(text: string): boolean {
+export function isSiteNavigationShell(text: string): boolean {
     const normalized = text.replace(/\s+/g, ' ').trim();
     if (normalized.length < 120) {
         return false;
@@ -213,11 +197,7 @@ function isSiteNavigationShellCore(text: string): boolean {
     return false;
 }
 
-export function isSiteNavigationShell(...args: Parameters<typeof isSiteNavigationShellCore>) {
-    return isSiteNavigationShellCore(...args);
-}
-
-function isUsableExtractedSnippetCore(text: string): boolean {
+export function isUsableExtractedSnippet(text: string): boolean {
     const normalized = text.replace(/\s+/g, ' ').trim();
     if (normalized.length < 80) {
         return false;
@@ -237,17 +217,13 @@ function isUsableExtractedSnippetCore(text: string): boolean {
     return true;
 }
 
-export function isUsableExtractedSnippet(...args: Parameters<typeof isUsableExtractedSnippetCore>) {
-    return isUsableExtractedSnippetCore(...args);
-}
-
 export type QualityRejectDetail = QualityRejectDetailCode;
 
 /** 带中文描述的质检子原因表 */
 export const QualityRejectDetail = QualityRejectDetailTable;
 
 /** 质检拒绝子原因，供日志 detail= 字段 */
-function describeQualityRejectCore(text: string): QualityRejectDetailCode {
+export function describeQualityReject(text: string): QualityRejectDetailCode {
     const normalized = text.replace(/\s+/g, ' ').trim();
     if (!normalized) {
         return QualityRejectDetail.empty.code;
@@ -273,10 +249,6 @@ function describeQualityRejectCore(text: string): QualityRejectDetailCode {
     return QualityRejectDetail.junk.code;
 }
 
-export function describeQualityReject(...args: Parameters<typeof describeQualityRejectCore>) {
-    return describeQualityRejectCore(...args);
-}
-
 export function textBodyMetrics(text: string): { bodyLen: number; linkCount: number } {
     const normalized = text.replace(/\s+/g, ' ').trim();
     return {
@@ -285,7 +257,7 @@ export function textBodyMetrics(text: string): { bodyLen: number; linkCount: num
     };
 }
 
-function isUsableFetchedTextCore(text: string): boolean {
+export function isUsableFetchedText(text: string): boolean {
     const normalized = text.replace(/\s+/g, ' ').trim();
     if (normalized.length < 180) {
         return false;
@@ -303,8 +275,4 @@ function isUsableFetchedTextCore(text: string): boolean {
         return false;
     }
     return !isThinArticleBody(text);
-}
-
-export function isUsableFetchedText(...args: Parameters<typeof isUsableFetchedTextCore>) {
-    return isUsableFetchedTextCore(...args);
 }

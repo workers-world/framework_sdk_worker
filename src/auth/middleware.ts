@@ -6,17 +6,19 @@ export interface BearerAuthMiddlewareOptions {
     missingConfigMessage?: string;
 }
 
+/** 中间件上下文的最小结构类型（兼容任意 env 泛型的 Hono Context） */
+interface BearerAuthContext {
+    env: object;
+    req: { header(name: string): string | undefined };
+    json(body: unknown, status?: number): Response;
+}
+
 /**
  * 按 Env 字段名取 Bearer token（string 或 Secrets Store）。
  */
 export function createBearerAuthMiddleware(envKey: string, options?: BearerAuthMiddlewareOptions) {
     return async (
-        c: {
-            // Hono Bindings Env 通常无 index signature；用宽松类型兼容
-            env: object;
-            req: { header(name: string): string | undefined };
-            json(body: unknown, status?: number): Response;
-        },
+        c: BearerAuthContext,
         next: () => Promise<void>,
     ): Promise<Response | undefined> => {
         const envRecord = c.env as Record<string, unknown>;
@@ -39,10 +41,7 @@ export function createBearerAuthMiddleware(envKey: string, options?: BearerAuthM
  */
 export function registerBearerAuthRoutes(
     app: {
-        use: (
-            path: string,
-            handler: (c: any, next: () => Promise<void>) => Promise<Response | undefined>,
-        ) => unknown;
+        use: (path: string, handler: unknown) => unknown;
     },
     paths: string[],
     envKey: string,

@@ -38,10 +38,17 @@ function writeLog(
     }
 }
 
+/** 告警邮件 error 字段截断上限：调用方把大段原文塞进 error/message 时封顶泄漏面 */
+const OPS_ERROR_MESSAGE_MAX = 800;
+
+function truncate(text: string, max: number): string {
+    return text.length > max ? `${text.slice(0, max)}…(截断)` : text;
+}
+
 function extractErrorMessage(fields: LogFields, event: string): string {
     const fromFields = fields.error ?? fields.message;
     if (typeof fromFields === 'string' && fromFields.trim()) {
-        return fromFields.trim();
+        return truncate(fromFields.trim(), OPS_ERROR_MESSAGE_MAX);
     }
     return event;
 }

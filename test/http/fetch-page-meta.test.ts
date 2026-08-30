@@ -125,6 +125,41 @@ describe('isPublicFetchUrl', () => {
         expect(isPublicFetchUrl(new URL('http://169.254.169.254/'))).toBe(false);
         expect(isPublicFetchUrl(new URL('http://metadata.google.internal/'))).toBe(false);
     });
+
+    it('blocks IPv4-mapped IPv6 in hex form (bypass regression)', () => {
+        // ::ffff:7f00:1 == 127.0.0.1；曾因 slice 后非 dotted-quad 而放行
+        expect(isPublicFetchUrl(new URL('http://[::ffff:7f00:1]/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://[::ffff:0a00:0001]/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://[::ffff:10.0.0.1]/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://[0:0:0:0:0:ffff:10.0.0.1]/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://[0:0:0:0:0:ffff:c0a8:0001]/'))).toBe(false);
+    });
+
+    it('allows public IPv4-mapped IPv6 and real public IPv6', () => {
+        expect(isPublicFetchUrl(new URL('http://[::ffff:8.8.8.8]/'))).toBe(true);
+        expect(isPublicFetchUrl(new URL('http://[::ffff:808:808]/'))).toBe(true);
+        expect(isPublicFetchUrl(new URL('http://[2606:4700:4700::1111]/'))).toBe(true);
+    });
+
+    it('blocks multicast, reserved, benchmark, and TEST-NET ranges', () => {
+        expect(isPublicFetchUrl(new URL('http://224.0.0.1/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://239.255.255.250/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://240.0.0.1/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://255.255.255.255/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://198.18.0.1/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://198.19.255.255/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://192.0.0.1/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://192.0.2.9/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://198.51.100.7/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://203.0.113.5/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://0.0.0.0/'))).toBe(false);
+        expect(isPublicFetchUrl(new URL('http://100.64.0.1/'))).toBe(false);
+    });
+
+    it('still allows normal public IPv4 literals', () => {
+        expect(isPublicFetchUrl(new URL('http://1.1.1.1/'))).toBe(true);
+        expect(isPublicFetchUrl(new URL('http://8.8.8.8/'))).toBe(true);
+    });
 });
 
 describe('resolvePublicFetchAddresses', () => {

@@ -36,27 +36,73 @@ function isPrivateIpv4Literal(host: string): boolean {
     if (parts.length !== 4) {
         return false;
     }
-    const octets = parts.map((p) => Number.parseInt(p, 10));
-    if (octets.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) {
+    if (parts.some((p) => !/^\d{1,3}$/.test(p))) {
         return false;
     }
-    const [a, b] = octets;
-    if (a === 10 || a === 127 || a === 0) {
-        return true;
+    const octets = parts.map((p) => Number.parseInt(p, 10));
+    const [a, b, c] = octets;
+    if (a === 0 || a === 10 || a === 127) {
+        return true; // 本网段 / 私网 / 环回
     }
     if (a === 169 && b === 254) {
-        return true;
+        return true; // link-local
     }
     if (a === 172 && b >= 16 && b <= 31) {
-        return true;
+        return true; // 私网
     }
     if (a === 192 && b === 168) {
-        return true;
+        return true; // 私网
     }
     if (a === 100 && b >= 64 && b <= 127) {
-        return true;
+        return true; // CGNAT
+    }
+    if (a === 192 && b === 0 && c === 0) {
+        return true; // 192.0.0.0/24 IETF 协议保留
+    }
+    if (a === 198 && (b === 18 || b === 19)) {
+        return true; // 198.18.0.0/15 基准测试
+    }
+    if (a === 192 && b === 0 && c === 2) {
+        return true; // TEST-NET-1
+    }
+    if (a === 198 && b === 51 && c === 100) {
+        return true; // TEST-NET-2
+    }
+    if (a === 203 && b === 0 && c === 113) {
+        return true; // TEST-NET-3
+    }
+    if (a >= 224) {
+        return true; // 组播 224/4 + 保留 240/4 + 广播
     }
     return false;
+}
+
+/** 解析 IPv4-mapped IPv6 的内嵌 IPv4（dotted-quad 或 hex 对），非映射形式返回 null */
+function mappedIpv4FromIpv6(host: string): string | null {
+    let rest: string | null = null;
+    if (host.startsWith('::ffff:')) {
+        rest = host.slice('::ffff:'.length);
+    } else {
+        // 全展开形式 0:0:0:0:0:ffff:x（可能再带 :: 前导压缩）
+        const match = host.match(/^(?:::)?0:0:0:0:0:ffff:(.+)$/);
+        if (match) {
+            rest = match[1];
+        }
+    }
+    if (!rest) {
+        return null;
+    }
+    if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(rest)) {
+        return rest;
+    }
+    // ::ffff:7f00:1 十六进制形式（= 127.0.0.1）
+    const groups = rest.split(':');
+    if (groups.length === 2 && groups.every((g) => /^[0-9a-f]{1,4}$/i.test(g))) {
+        const hi = Number.parseInt(groups[0], 16);
+        const lo = Number.parseInt(groups[1], 16);
+        return `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
+    }
+    return null;
 }
 
 function isPrivateIpv6Literal(host: string): boolean {
@@ -70,9 +116,12 @@ function isPrivateIpv6Literal(host: string): boolean {
     if (normalized.startsWith('fe80:')) {
         return true;
     }
-    if (normalized.startsWith('::ffff:')) {
-        return isPrivateIpv4Literal(normalized.slice('::ffff:'.length));
+    // IPv4-mapped（含 ::ffff:7f00:1 / ::ffff:0a00:0001 十六进制变体与 0:...:ffff:x 全展开形式）
+    const mapped = mappedIpv4FromIpv6(normalized);
+    if (mapped) {
+        return isPrivateIpv4Literal(mapped);
     }
+    // 已知限制：NAT64（64:ff9b::/96）等内嵌翻译前缀未覆盖——Workers 出网无 NAT64 网关可走，风险可忽略
     return false;
 }
 
@@ -210,6 +259,9 @@ async function fetchWithSafeRedirects(
         const resp = await fetchFn(current.toString(), {
             ...init,
             redirect: 'manual',
+            // 防 rebinding 双保险：逐跳 DoH 校验（主防线）+ resolveOverride 钉扎。
+            // 注意：resolveOverride 传裸 IP 的行为属平台实现细节（官方文档面向 hostname），
+            // 即使被运行时忽略，上方的逐跳私网校验仍会阻断重定向到私网。
             cf: { resolveOverride: resolvedAddresses[0] },
         });
         if (resp.status >= 300 && resp.status < 400) {

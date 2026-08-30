@@ -5,8 +5,13 @@
 
 export const SDK_PACKAGE = '@workers-world/framework_sdk_worker';
 
-/** 与 package.json version 同步；发版时一并 bump */
-export const SDK_VERSION = '0.2.10';
+/**
+ * 构建时由 tsup define 注入 package.json version（src/meta/globals.d.ts 声明）。
+ * 曾为人工同步字面量，多次漂移（0.2.10 vs 实际 0.3.2）后改为单一版本源；
+ * typeof 守卫兜底未注入 define 的环境（如直接 ts-node / 无配置 vitest）。
+ */
+export const SDK_VERSION: string =
+    typeof __SDK_VERSION__ !== 'undefined' ? __SDK_VERSION__ : '0.0.0-dev';
 
 export interface WorkerVersionMetadataView {
     id: string;

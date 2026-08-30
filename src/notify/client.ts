@@ -135,6 +135,15 @@ export async function sendNotify(
             status: resp.status,
         };
     }
+    // 上游 2xx 但 body 里 ok 字段缺失（如 {}）：类型上承诺 ok:boolean，这里归一为失败
+    if (data.ok !== true) {
+        return {
+            ok: false,
+            error: data.error || 'notify 响应缺少 ok:true',
+            status: resp.status,
+            reason: data.reason,
+        };
+    }
     return data;
 }
 
@@ -176,6 +185,14 @@ export async function sendNotifyAsync(
             ok: false,
             error: data.error || resp.statusText,
             status: resp.status,
+        };
+    }
+    if (data.ok !== true) {
+        return {
+            ok: false,
+            error: data.error || 'notify 响应缺少 ok:true',
+            status: resp.status,
+            reason: data.reason,
         };
     }
     return data;

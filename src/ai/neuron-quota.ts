@@ -15,6 +15,9 @@ export interface FetchNeuronsResult {
 /** 兼容再导出：新代码请从 `framework_sdk_worker/time` 导入 */
 export { secondsUntilNextUtcDay, utcDayRangeIso, utcYmdDash } from '../time.js';
 
+/** GraphQL 配额查询超时：api.cloudflare.com 偶发挂起时不拖死调用方 */
+const NEURONS_QUERY_TIMEOUT_MS = 10_000;
+
 /** 判断 billable/usage 返回的记录是否属于 Workers AI（Neurons 计费） */
 export function isWorkersAiMetric(record: BillableUsageRecord): boolean {
     const metric = (record.x_BillableMetricId || '').toLowerCase();
@@ -65,13 +68,14 @@ export async function fetchTodayNeuronsUsed(
                     end,
                 },
             }),
+            signal: AbortSignal.timeout(NEURONS_QUERY_TIMEOUT_MS),
         });
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         return { ok: false, used: 0, error: msg };
     }
 
-    const data = (await resp.json()) as {
+    const data = (await resp.json().catch(() => null)) as {
         data?: {
             viewer?: {
                 accounts?: Array<{
@@ -80,13 +84,21 @@ export async function fetchTodayNeuronsUsed(
             };
         };
         errors?: unknown[];
-    };
+    } | null;
 
     if (!resp.ok) {
         return {
             ok: false,
             used: 0,
             error: `graphql neurons query failed: HTTP ${resp.status}`,
+        };
+    }
+
+    if (!data) {
+        return {
+            ok: false,
+            used: 0,
+            error: `graphql neurons query failed: 非 JSON 响应（HTTP ${resp.status}）`,
         };
     }
 

@@ -1,3 +1,8 @@
+/**
+ * 基金净值抓取（天天基金/Eastmoney API）。
+ * 命名说明：模块沿用历史名 tencent-nav，实际数据源是 fundcomapi.tiantianfunds.com
+ * （东方财富/天天基金，非腾讯）；导出名 fetchTencentNav 保持不变以兼容消费方。
+ */
 import { sleep } from '../async/sleep.js';
 import { normalizeFundCode } from './normalize-code.js';
 import { formatNavDate, parseDecimal, parsePct } from './parse-utils.js';

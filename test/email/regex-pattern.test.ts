@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { compileEmailPattern, tryCompileEmailPattern } from '../../src/email/regex-pattern.js';
+import {
+    assertSafeRegexPattern,
+    compileEmailPattern,
+    tryCompileEmailPattern,
+} from '../../src/email/regex-pattern.js';
 
 describe('compileEmailPattern', () => {
     it('compiles plain regex', () => {
@@ -34,7 +38,23 @@ describe('tryCompileEmailPattern', () => {
 
     it('throws descriptive error on invalid pattern', () => {
         expect(() => tryCompileEmailPattern('[', 'subjectPattern')).toThrow(
-            'subjectPattern 正则无效: [',
+            'subjectPattern 正则无效或存在回溯风险: [',
         );
+    });
+});
+
+describe('assertSafeRegexPattern (ReDoS guard)', () => {
+    it('accepts ordinary bounded patterns', () => {
+        expect(() => assertSafeRegexPattern('^invest-[0-9]{6}@example\\.com$')).not.toThrow();
+    });
+
+    it('rejects nested quantifiers', () => {
+        expect(() => assertSafeRegexPattern('(a+)+')).toThrow(/nested quantifier/);
+        expect(() => assertSafeRegexPattern('(\\w*)*')).toThrow(/nested quantifier/);
+        expect(() => assertSafeRegexPattern('(a+){2,}')).toThrow(/nested quantifier/);
+    });
+
+    it('rejects overlong patterns', () => {
+        expect(() => assertSafeRegexPattern(`a${'a?'.repeat(400)}`)).toThrow(/too long/);
     });
 });

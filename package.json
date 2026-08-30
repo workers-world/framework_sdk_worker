@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -10,7 +10,8 @@
     "prepublishOnly": "npm run build",
     "lint": "npx --yes @biomejs/biome@2.5.1 check src test",
     "format": "npx --yes @biomejs/biome@2.5.1 format --write src test",
-    "check": "npm run lint"
+    "typecheck": "tsc --noEmit -p tsconfig.src.json",
+    "check": "npm run lint && npm run typecheck"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -182,10 +183,6 @@
     "./monitor/threshold": {
       "import": "./dist/monitor/threshold.js",
       "types": "./dist/monitor/threshold.d.ts"
-    },
-    "./test/fake-bindings": {
-      "import": "./dist/test/fake-bindings.js",
-      "types": "./dist/test/fake-bindings.d.ts"
     },
     "./perf": {
       "import": "./dist/perf.js",
