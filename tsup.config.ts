@@ -33,6 +33,7 @@ export default defineConfig({
         'ai/gateway': 'src/ai/gateway.ts',
         'ai/neuron-quota': 'src/ai/neuron-quota.ts',
         'ai/client': 'src/ai/client.ts',
+        'ai/direct': 'src/ai/direct.ts',
         'secrets/resolve': 'src/secrets/resolve.ts',
         'logger/index': 'src/logger/index.ts',
         'types/env': 'src/types/env.ts',

@@ -22,14 +22,14 @@ export {
  */
 export function registerMetaRoute(
     app: {
-        use: (path: string, handler: unknown) => unknown;
-        get: (
+        use(path: string, handler: unknown): unknown;
+        get(
             path: string,
             handler: (c: {
                 env: object;
                 json: (body: unknown, status?: number) => Response;
             }) => Response | Promise<Response>,
-        ) => unknown;
+        ): unknown;
     },
     options: RegisterMetaRouteOptions,
 ): void {

@@ -21,6 +21,16 @@ describe('neuron-quota', () => {
         expect(isNeuronQuotaError('network timeout')).toBe(false);
     });
 
+    it('isNeuronQuotaError requires quota context around 4006 (misjudge guard)', () => {
+        // 回归：裸 '4006' 子串曾把无关报错误判为当日配额耗尽，导致网关全站 429 到次日
+        expect(isNeuronQuotaError('AiError: you have exceeded your daily free allocation (4006)')).toBe(true);
+        expect(isNeuronQuotaError('error code 4006, neuron quota exceeded')).toBe(true);
+        // 反例：token 数 / 参数值恰好包含 4006
+        expect(isNeuronQuotaError('token count 40060 exceeds model limit')).toBe(false);
+        expect(isNeuronQuotaError('invalid value for steps=4006')).toBe(false);
+        expect(isNeuronQuotaError('4006')).toBe(false);
+    });
+
     it('extractAiErrorMessage handles AiError objects', () => {
         const aiError = {
             name: 'AiError',

@@ -6,21 +6,25 @@ export interface CreateWorkerAppOptions {
     cors?: boolean;
 }
 
-/** register* 系列的最小结构类型：兼容任意 env 泛型的 Hono 实例，避免 any */
+/**
+ * register* 系列的最小结构类型：兼容任意 env 泛型的 Hono 实例，避免 any。
+ * 必须用方法语法（bivariance）——属性式函数类型在 Hono 的 use 重载下不可满足，
+ * 会破坏消费方 typecheck（0.4.0 曾因此破坏 llm-gateway）。
+ */
 export interface RegisterableApp {
-    use: (path: string, handler: unknown) => unknown;
-    get: (
+    use(path: string, handler: unknown): unknown;
+    get(
         path: string,
         handler: (c: {
             json: (body: unknown, status?: number) => Response;
         }) => Response | Promise<Response>,
-    ) => unknown;
-    onError: (
+    ): unknown;
+    onError(
         handler: (
             err: unknown,
             c: { json: (body: unknown, status?: number) => Response },
         ) => Response | Promise<Response>,
-    ) => unknown;
+    ): unknown;
 }
 
 export function createWorkerApp(options?: CreateWorkerAppOptions): Hono<Env> {

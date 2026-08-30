@@ -150,14 +150,22 @@ export function extractAiErrorMessage(value: unknown): string {
     return String(value);
 }
 
+/**
+ * 4006 必须伴随配额语境才认定：裸 "4006" 子串会把 token 数 40060、
+ * 参数 steps=4006 等无关报错误判为当日额度耗尽（曾致网关全站 429 到次日）。
+ */
+const NEURON_QUOTA_4006_RE = /\b4006\b/;
+const NEURON_QUOTA_CONTEXT_RE = /quota|allocation|neuron|limit|exceeded/;
+
 function isNeuronQuotaMessage(message: string): boolean {
     const lower = message.toLowerCase();
-    return (
-        lower.includes('4006') ||
-        lower.includes('neuron_quota_exceeded') ||
-        lower.includes('daily free allocation') ||
-        (lower.includes('neurons') && lower.includes('upgrade'))
-    );
+    if (lower.includes('neuron_quota_exceeded') || lower.includes('daily free allocation')) {
+        return true;
+    }
+    if (lower.includes('neurons') && lower.includes('upgrade')) {
+        return true;
+    }
+    return NEURON_QUOTA_4006_RE.test(lower) && NEURON_QUOTA_CONTEXT_RE.test(lower);
 }
 
 /** 识别 Workers AI 日 Neurons 额度错误（4006 等） */

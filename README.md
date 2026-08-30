@@ -36,6 +36,7 @@ Cloudflare Worker 公共基座 SDK（npm 包 `@workers-world/framework_sdk_worke
 - `framework_sdk_worker/kv` — KV 去重
 - `framework_sdk_worker/time` — 上海时区工具（`shanghaiYmd` / `shanghaiYmdDash` / `shanghaiIsoString` / `shanghaiYmPath` / `shanghaiMinuteBucket` / `shanghaiClock` / `shanghaiStamp14`）
 - `framework_sdk_worker/ai` — AI Gateway 配置与 LLM Gateway 客户端
+- `framework_sdk_worker/ai/direct` — env.AI 直连统一封装（Agent/tool-loop 场景；超时 + `{ok:false}` 契约 + AI Gateway 注入）
 - `framework_sdk_worker/logger` — 轻量日志（带脱敏）
 
 ### `/v1/meta` 接入

@@ -41,7 +41,7 @@ export function createBearerAuthMiddleware(envKey: string, options?: BearerAuthM
  */
 export function registerBearerAuthRoutes(
     app: {
-        use: (path: string, handler: unknown) => unknown;
+        use(path: string, handler: unknown): unknown;
     },
     paths: string[],
     envKey: string,

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    type CircuitKv,
     isCircuitOpen,
     isCircuitOpenKv,
     recordCircuitFailure,
@@ -99,6 +100,28 @@ describe('circuit-breaker kv', () => {
         await recordCircuitFailureKv(kv, name, 1_000);
         expect(await isCircuitOpenKv(kv, name, 1_000)).toBe(true);
         expect(await isCircuitOpenKv(kv, name, 1_000 + 60_001)).toBe(false);
+    });
+
+    it('never throws on KV read/write failures (best-effort)', async () => {
+        // 回归：网关曾在 AI 调用成功后因 KV 限速写失败把成功请求变 502
+        const failingPut = {
+            get: async () => null,
+            put: async () => {
+                throw new Error('KV rate limited');
+            },
+        } as unknown as CircuitKv;
+        await expect(recordCircuitSuccessKv(failingPut, 'kv-put-fail')).resolves.toBeUndefined();
+        await expect(recordCircuitFailureKv(failingPut, 'kv-put-fail')).resolves.toBeUndefined();
+
+        const failingGet = {
+            get: async () => {
+                throw new Error('KV read failed');
+            },
+            put: async () => undefined,
+        } as unknown as CircuitKv;
+        await expect(isCircuitOpenKv(failingGet, 'kv-get-fail')).resolves.toBe(false);
+        await expect(recordCircuitSuccessKv(failingGet, 'kv-get-fail')).resolves.toBeUndefined();
+        await expect(recordCircuitFailureKv(failingGet, 'kv-get-fail')).resolves.toBeUndefined();
     });
 
     it('resets on success', async () => {
