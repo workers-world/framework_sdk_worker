@@ -38,9 +38,24 @@ describe('recordQualitySample', () => {
         expect(write).toHaveBeenCalledOnce();
         expect(write.mock.calls[0][0]).toEqual({
             indexes: ['decision-desk-worker'],
-            blobs: ['llm.desk', 'llm_failed', 'draft-gen'],
+            blobs: ['llm.desk', 'llm_failed', 'draft-gen', ''],
             doubles: [340, 0, 2],
         });
+    });
+
+    it('writes caller as blob4 when provided', () => {
+        const { ds, write } = fakeDataset();
+        recordQualitySample(ds, {
+            service: 'llm-gateway-worker',
+            kind: 'llm.chat',
+            because: 'ok',
+            route: '/v1/chat/general',
+            caller: 'advisor-worker:advice-cluster',
+            latencyMs: 12,
+            ok: true,
+        });
+        const point = write.mock.calls[0][0] as { blobs: string[] };
+        expect(point.blobs[3]).toBe('advisor-worker:advice-cluster');
     });
 
     it('treats ok=true as double2=1 and clips index to 96 bytes', () => {

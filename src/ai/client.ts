@@ -18,6 +18,11 @@ export interface LlmChatParams {
     dedupKey?: string;
     /** 跨 Worker 追踪；缺省时调用方可传 D1 tech_trace_id */
     traceId?: string;
+    /**
+     * 调用方标识，约定 `<worker>:<服务场景>`（如 `advisor-worker:advice-cluster`）。
+     * 以 X-Caller 头送达网关，进入 AE quality_slo blob 与失败事件 detail，供按调用方统计。
+     */
+    caller?: string;
 }
 
 export interface LlmChatResponse {
@@ -86,6 +91,9 @@ async function chatAt(
         }
         if (params.traceId) {
             headers['X-Trace-Id'] = params.traceId;
+        }
+        if (params.caller) {
+            headers['X-Caller'] = params.caller;
         }
     } catch (e: unknown) {
         return {
