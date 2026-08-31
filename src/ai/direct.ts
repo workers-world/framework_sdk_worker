@@ -6,7 +6,7 @@
  * Neuron 配额预检请按需配合 checkNeuronQuota（需 SVC_LLM_GATEWAY）。
  */
 import { withTimeout } from '../async/with-timeout.js';
-import { callAiModel, type AiGatewayConfig } from './gateway.js';
+import { type AiGatewayConfig, callAiModel } from './gateway.js';
 
 export type { AiGatewayConfig } from './gateway.js';
 
