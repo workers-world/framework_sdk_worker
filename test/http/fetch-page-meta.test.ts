@@ -317,9 +317,14 @@ describe('fetchProductLandingSnippet', () => {
             fetchImpl,
         });
         expect(fetchImpl).toHaveBeenCalledTimes(3);
-        const pageFetches = fetchImpl.mock.calls.filter(
-            ([url]) => !String(url).includes('cloudflare-dns.com'),
-        );
+        const pageFetches = fetchImpl.mock.calls.filter(([url]) => {
+            const urlString = String(url);
+            try {
+                return new URL(urlString).hostname !== 'cloudflare-dns.com';
+            } catch {
+                return true;
+            }
+        });
         expect(pageFetches).toHaveLength(1);
         expect(result.meta.description).toContain('short story');
         expect(result.snippet).toContain('类型：创作推广');
