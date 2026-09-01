@@ -283,7 +283,6 @@ async function fetchWithSafeRedirects(
 
 function unescapeHtml(text: string): string {
     return text
-        .replace(/&amp;/gi, '&')
         .replace(/&lt;/gi, '<')
         .replace(/&gt;/gi, '>')
         .replace(/&quot;/gi, '"')
@@ -296,7 +295,8 @@ function unescapeHtml(text: string): string {
         .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => {
             const code = Number.parseInt(h, 16);
             return Number.isFinite(code) ? String.fromCharCode(code) : _;
-        });
+        })
+        .replace(/&amp;/gi, '&');
 }
 
 function normalizeMetaValue(raw: string | undefined): string | undefined {
