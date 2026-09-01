@@ -299,6 +299,16 @@ function unescapeHtml(text: string): string {
         .replace(/&amp;/gi, '&');
 }
 
+function stripHtmlTagsFully(text: string): string {
+    let current = text;
+    let previous: string;
+    do {
+        previous = current;
+        current = current.replace(/<[^>]+>/g, '');
+    } while (current !== previous);
+    return current;
+}
+
 function normalizeMetaValue(raw: string | undefined): string | undefined {
     if (!raw) {
         return undefined;
@@ -329,7 +339,7 @@ function extractMetaByProperty(html: string, property: string): string | undefin
 
 function extractTitleTag(html: string): string | undefined {
     const m = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
-    return normalizeMetaValue(m?.[1]?.replace(/<[^>]+>/g, ''));
+    return normalizeMetaValue(m?.[1] ? stripHtmlTagsFully(m[1]) : undefined);
 }
 
 /** 从 HTML 片段解析 og/meta/title（纯函数，便于单测） */
