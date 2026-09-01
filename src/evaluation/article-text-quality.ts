@@ -174,8 +174,9 @@ export function isSiteNavigationShell(text: string): boolean {
         return false;
     }
 
-    const markdownLinks = text.match(/\[[^\]]+\]\(https?:\/\/[^)]+\)/g) ?? [];
-    const listLinks = text.match(/^\s*[*-]\s+\[[^\]]+\]\(/gm) ?? [];
+    const markdownLinks =
+        text.match(/\[[^\]\n]{1,200}\]\(https?:\/\/[^\s)"]{1,500}\)/g) ?? [];
+    const listLinks = text.match(/^\s*[*-]\s+\[[^\]\n]{1,200}\]\(/gm) ?? [];
     const httpCount = (text.match(/https?:\/\//gi) || []).length;
     const navMarkerHits = SITE_NAV_MARKERS.filter((re) => re.test(text)).length;
 
@@ -187,7 +188,7 @@ export function isSiteNavigationShell(text: string): boolean {
     }
     if (listLinks.length >= 8 || markdownLinks.length >= 12) {
         const withoutLinks = normalized
-            .replace(/\[[^\]]*\]\([^)]*\)/g, ' ')
+            .replace(/\[[^\]\n]{0,200}\]\([^)\n]{0,500}\)/g, ' ')
             .replace(/https?:\/\/\S+/g, ' ')
             .trim();
         if (withoutLinks.length < normalized.length * 0.4) {

@@ -299,12 +299,35 @@ function unescapeHtml(text: string): string {
         .replace(/&amp;/gi, '&');
 }
 
-function stripHtmlTagsFully(text: string): string {
+function stripTagLikeSegment(text: string, replacement = ''): string {
+    let result = '';
+    let i = 0;
+    while (i < text.length) {
+        if (text[i] !== '<') {
+            result += text[i];
+            i++;
+            continue;
+        }
+        const gt = text.indexOf('>', i + 1);
+        if (gt === -1) {
+            result += text[i];
+            i++;
+            continue;
+        }
+        if (replacement) {
+            result += replacement;
+        }
+        i = gt + 1;
+    }
+    return result;
+}
+
+function stripHtmlTagsFully(text: string, replacement = ''): string {
     let current = text;
     let previous: string;
     do {
         previous = current;
-        current = current.replace(/<[^>]+>/g, '');
+        current = stripTagLikeSegment(current, replacement);
     } while (current !== previous);
     return current;
 }
