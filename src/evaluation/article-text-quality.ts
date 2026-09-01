@@ -165,7 +165,7 @@ const SITE_NAV_MARKERS = [
     /数据中心/,
     /globalNav/i,
     /\[财经\]\(/,
-    /finance\.eastmoney\.com\/yaowen/i,
+    /(^|[/:.])finance\.eastmoney\.com\/yaowen(?=$|[/:?#\s])/i,
 ];
 
 export function isSiteNavigationShell(text: string): boolean {
