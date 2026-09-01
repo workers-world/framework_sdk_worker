@@ -12,7 +12,7 @@ import {
 const THIN_BODY_MAX_CHARS = 400;
 
 const AGGREGATOR_MARKERS = [
-    /blogtrottr\.com/i,
+    /(^|[/:.])(?:[a-z0-9-]+\.)*blogtrottr\.com(?=$|[/:?#\s])/i,
     /you are receiving this email because you subscribed/i,
     /if you no longer wish to receive these emails/i,
     /at yahoo finance, you get free stock quotes/i,
