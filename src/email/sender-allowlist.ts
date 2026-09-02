@@ -5,10 +5,13 @@ export function extractEmailAddress(from: string | undefined): string {
         return '';
     }
     // RFC 5322：mailbox 为末尾 <addr-spec>；显示名可含尖括号，须取最后一对
-    const bracketMatches = [...trimmed.matchAll(/<([^>]+)>/g)];
-    if (bracketMatches.length > 0) {
-        const email = bracketMatches[bracketMatches.length - 1][1].trim().toLowerCase();
-        return email.includes('@') ? email : '';
+    const close = trimmed.lastIndexOf('>');
+    if (close !== -1) {
+        const open = trimmed.lastIndexOf('<', close);
+        if (open !== -1) {
+            const email = trimmed.slice(open + 1, close).trim().toLowerCase();
+            return email.includes('@') ? email : '';
+        }
     }
     const bareMatch = trimmed.match(/^[\w.+-]+@[\w.-]+$/);
     return bareMatch?.[0]?.toLowerCase() ?? '';
