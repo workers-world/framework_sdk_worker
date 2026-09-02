@@ -54,6 +54,11 @@ describe('parsePageMetaFromHtml', () => {
         expect(parsePageMetaFromHtml('')).toEqual({ source: 'none' });
         expect(hasUsablePageMeta({ source: 'none' })).toBe(false);
     });
+
+    it('strips html tags from title content', () => {
+        const meta = parsePageMetaFromHtml('<title>Hello <em>World</em></title>');
+        expect(meta.title).toBe('Hello World');
+    });
 });
 
 describe('formatPageMetaSnippet', () => {

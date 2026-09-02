@@ -299,6 +299,39 @@ function unescapeHtml(text: string): string {
         .replace(/&amp;/gi, '&');
 }
 
+function stripTagLikeSegment(text: string, replacement = ''): string {
+    let result = '';
+    let i = 0;
+    while (i < text.length) {
+        if (text[i] !== '<') {
+            result += text[i];
+            i++;
+            continue;
+        }
+        const gt = text.indexOf('>', i + 1);
+        if (gt === -1) {
+            result += text[i];
+            i++;
+            continue;
+        }
+        if (replacement) {
+            result += replacement;
+        }
+        i = gt + 1;
+    }
+    return result;
+}
+
+function stripHtmlTagsFully(text: string, replacement = ''): string {
+    let current = text;
+    let previous: string;
+    do {
+        previous = current;
+        current = stripTagLikeSegment(current, replacement);
+    } while (current !== previous);
+    return current;
+}
+
 function normalizeMetaValue(raw: string | undefined): string | undefined {
     if (!raw) {
         return undefined;
@@ -329,7 +362,7 @@ function extractMetaByProperty(html: string, property: string): string | undefin
 
 function extractTitleTag(html: string): string | undefined {
     const m = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
-    return normalizeMetaValue(m?.[1]?.replace(/<[^>]+>/g, ''));
+    return normalizeMetaValue(m?.[1] ? stripHtmlTagsFully(m[1]) : undefined);
 }
 
 /** 从 HTML 片段解析 og/meta/title（纯函数，便于单测） */
