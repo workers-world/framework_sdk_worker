@@ -116,10 +116,10 @@ export async function callAiModel(
     // Ai.run 的静态签名把 model 限定为 keyof AiModels（Workers AI 目录）；
     // 本函数按设计接受任意 provider 的动态模型名/入参（含 gateway 代理场景），
     // 在此单一类型边界收口，避免散布 as any。
-    const run = ai.run as (
-        model: string,
-        inputs: Record<string, unknown>,
-        options?: unknown,
-    ) => Promise<unknown>;
-    return run(model, inputs, options);
+    // 必须经 binding 对象调用 run()：detached 引用会丢失 this，运行时报
+    // "Cannot set properties of undefined (setting '#options')"。
+    const aiBinding = ai as unknown as {
+        run(model: string, inputs: Record<string, unknown>, options?: unknown): Promise<unknown>;
+    };
+    return aiBinding.run(model, inputs, options);
 }
