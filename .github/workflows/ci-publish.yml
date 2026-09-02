@@ -24,72 +24,9 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/sync-package-lock
         with:
-          node-version: "22"
-
-      - name: Regenerate package-lock.json when package.json changed
-        run: |
-          set -euo pipefail
-
-          git fetch origin "${GITHUB_REF_NAME}"
-          git pull --ff-only origin "${GITHUB_REF_NAME}"
-
-          root_deps_in_sync() {
-            [[ -f package-lock.json ]] || return 1
-            node -e '
-              const fs = require("fs");
-              const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-              const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
-              const root = lock.packages?.[""] || {};
-              function same(a, b) {
-                const aa = a || {};
-                const bb = b || {};
-                const keys = new Set([...Object.keys(aa), ...Object.keys(bb)]);
-                for (const k of keys) {
-                  if (String(aa[k] ?? "") !== String(bb[k] ?? "")) process.exit(1);
-                }
-              }
-              same(pkg.dependencies, root.dependencies);
-              same(pkg.devDependencies, root.devDependencies);
-            '
-          }
-
-          if root_deps_in_sync; then
-            echo "lock 已与 package.json 同步，跳过"
-            exit 0
-          fi
-
-          echo "按 package.json 刷新 package-lock.json"
-          npm install --ignore-scripts --no-fund --no-audit
-
-          if ! root_deps_in_sync; then
-            echo "::error::刷新后 package-lock 根依赖仍与 package.json 不一致。"
-            exit 1
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          if git diff --cached --quiet; then
-            echo "package-lock 与 remote 一致，无需提交"
-            exit 0
-          fi
-          git commit -m "CI action 自动刷新 package-lock" -m "package.json 根依赖与 lock 不一致时由 sync-lock job 生成。"
-
-          push_with_rebase() {
-            local push_token="$1"
-            git fetch origin "${GITHUB_REF_NAME}"
-            git pull --rebase origin "${GITHUB_REF_NAME}"
-            git push "https://x-access-token:${push_token}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
-          }
-
-          PUSH_TOKEN="${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}"
-          if push_with_rebase "${PUSH_TOKEN}"; then
-            exit 0
-          fi
-          echo "push 被拒，rebase 后重试一次…"
-          push_with_rebase "${PUSH_TOKEN}"
+          push-token: ${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}
 
   verify:
     needs: sync-lock

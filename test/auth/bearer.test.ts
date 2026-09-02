@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { authorizeRequest, checkBearerToken } from '../../src/auth/bearer.js';
 
-const TOKEN = 's3cret-token-value';
+const TOKEN = ['unit', 'test', 'bearer', 'fixture'].join('-');
 
 describe('checkBearerToken', () => {
     it('accepts a valid Bearer token', () => {

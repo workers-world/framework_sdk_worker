@@ -1,4 +1,4 @@
-import { sanitizeForLog } from '../ops-error/sanitize.js';
+import { sanitizeForLog } from '../ops-error';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 

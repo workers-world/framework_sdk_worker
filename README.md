@@ -1,6 +1,6 @@
 # framework_sdk_worker
 
-Cloudflare Worker 公共基座 SDK（npm 包 `@workers-world/framework_sdk_worker`，GitHub Packages 私有发布）。
+Cloudflare Worker 公共基座 SDK（npm 包 `@workers-world/framework_sdk_worker`，GitHub Packages 发布）。
 
 - 生产接入：各 Worker package.json 使用 npm alias——`"framework_sdk_worker": "npm:@workers-world/framework_sdk_worker@<version>"`；升级统一走根目录 `./bump-sdk-consumers.sh <version>`。
 - 本地联调：`file:../framework_sdk_worker` 形式（CI 的 `worker-verify` 会把 GitHub Packages 物化到同路径，两种形态代码一致）。

@@ -136,7 +136,7 @@ export async function sendNotify(
         };
     }
     // 上游 2xx 但 body 里 ok 字段缺失（如 {}）：类型上承诺 ok:boolean，这里归一为失败
-    if (data.ok !== true) {
+    if (!data.ok) {
         return {
             ok: false,
             error: data.error || 'notify 响应缺少 ok:true',
@@ -187,7 +187,7 @@ export async function sendNotifyAsync(
             status: resp.status,
         };
     }
-    if (data.ok !== true) {
+    if (!data.ok) {
         return {
             ok: false,
             error: data.error || 'notify 响应缺少 ok:true',
