@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.3",
+  "version": "0.4.2",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -71,10 +71,6 @@
     "./r2/gold-price": {
       "import": "./dist/r2/gold-price.js",
       "types": "./dist/r2/gold-price.d.ts"
-    },
-    "./r2/retry": {
-      "import": "./dist/r2/retry.js",
-      "types": "./dist/r2/retry.d.ts"
     },
     "./kv": {
       "import": "./dist/kv/dedup.js",
