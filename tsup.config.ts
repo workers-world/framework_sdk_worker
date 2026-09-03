@@ -25,6 +25,7 @@ export default defineConfig({
         'http/fetch-page-meta': 'src/http/fetch-page-meta.ts',
         'hono/create-app': 'src/hono/create-app.ts',
         'r2/put': 'src/r2/put.ts',
+        'r2/retry': 'src/r2/retry.ts',
         'r2/gold-price': 'src/r2/gold-price.ts',
         'kv/dedup': 'src/kv/dedup.ts',
         'time/index': 'src/time/index.ts',

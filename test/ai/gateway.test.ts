@@ -121,4 +121,43 @@ describe('callAiModel', () => {
             aiGatewayRunOptions(undefined),
         );
     });
+
+    it('calls run through binding object so this is preserved', async () => {
+        class AiBindingMock {
+            #options: unknown;
+            async run(
+                _model: string,
+                _inputs: Record<string, unknown>,
+                options?: unknown,
+            ): Promise<{ response: string }> {
+                this.#options = options;
+                return { response: 'ok' };
+            }
+            capturedOptions(): unknown {
+                return this.#options;
+            }
+        }
+
+        const binding = new AiBindingMock();
+        const detached = binding.run;
+        await expect(
+            detached(
+                'dynamic/invest-fallback',
+                { messages: [{ role: 'user', content: 'hi' }] },
+                {},
+            ),
+        ).rejects.toThrow();
+
+        const inputs = { messages: [{ role: 'user', content: 'hi' }] };
+        const result = await callAiModel(
+            binding as unknown as Ai,
+            'dynamic/invest-fallback',
+            inputs,
+            { gatewayId: 'gtw_invest' },
+        );
+        expect(result).toEqual({ response: 'ok' });
+        expect(binding.capturedOptions()).toEqual(
+            expect.objectContaining({ gateway: { id: 'gtw_invest' } }),
+        );
+    });
 });
