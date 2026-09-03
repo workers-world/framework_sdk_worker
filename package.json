@@ -68,6 +68,10 @@
       "import": "./dist/r2/put.js",
       "types": "./dist/r2/put.d.ts"
     },
+    "./r2/retry": {
+      "import": "./dist/r2/retry.js",
+      "types": "./dist/r2/retry.d.ts"
+    },
     "./r2/gold-price": {
       "import": "./dist/r2/gold-price.js",
       "types": "./dist/r2/gold-price.d.ts"
