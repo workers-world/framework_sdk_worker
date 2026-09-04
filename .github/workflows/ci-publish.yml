@@ -110,7 +110,7 @@ jobs:
 
   sdk-golden-verify:
     needs: publish
-    if: needs.publish.result == 'success'
+    if: always() && needs.publish.result == 'success'
     runs-on: ${{ vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
