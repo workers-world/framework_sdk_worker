@@ -26,4 +26,11 @@ export {
     type TradingSession,
 } from './trading-session.js';
 
-export { secondsUntilNextUtcDay, utcDayRangeIso, utcYmdDash } from './utc.js';
+export {
+    normalizeUtcIso,
+    secondsUntilNextUtcDay,
+    utcDayRangeIso,
+    utcIsoString,
+    utcMonthRangeIso,
+    utcYmdDash,
+} from './utc.js';
