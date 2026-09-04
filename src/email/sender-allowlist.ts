@@ -9,7 +9,10 @@ export function extractEmailAddress(from: string | undefined): string {
     if (close !== -1) {
         const open = trimmed.lastIndexOf('<', close);
         if (open !== -1) {
-            const email = trimmed.slice(open + 1, close).trim().toLowerCase();
+            const email = trimmed
+                .slice(open + 1, close)
+                .trim()
+                .toLowerCase();
             return email.includes('@') ? email : '';
         }
     }
