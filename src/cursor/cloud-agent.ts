@@ -158,7 +158,38 @@ export async function createCursorAgent(
 
 const TERMINAL = new Set(['FINISHED', 'ERROR', 'CANCELLED', 'EXPIRED', 'FAILED']);
 
-/** Poll run 直至终态或超时 */
+/** 单次查询 run 状态（不循环）：供调用方实现 step 化轮询（轮询间可检查取消/暂停标志） */
+export async function fetchCursorAgentRun(
+    apiKey: SecretLike,
+    ref: CursorAgentRunRef,
+): Promise<CursorAgentRunResult & { terminal: boolean }> {
+    const resolved = await resolveSecret(apiKey);
+    if (!resolved) {
+        return { status: 'ERROR', terminal: true, error: 'CURSOR_API_KEY not configured' };
+    }
+    const resp = await cursorFetch<CursorRunResponse>(
+        resolved,
+        `/agents/${encodeURIComponent(ref.agentId)}/runs/${encodeURIComponent(ref.runId)}`,
+    );
+    if (!resp.ok) {
+        return {
+            status: 'ERROR',
+            terminal: true,
+            error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
+        };
+    }
+    const status = resp.data.status ?? 'UNKNOWN';
+    const prUrl = resp.data.git?.branches?.find((b) => b.prUrl)?.prUrl;
+    return {
+        status,
+        terminal: TERMINAL.has(status),
+        resultText: resp.data.result,
+        prUrl,
+        error: status === 'FINISHED' ? undefined : formatCursorApiError(resp.data.error, status),
+    };
+}
+
+/** Poll run 直至终态或超时（非 step 环境/简单场景用；Workflows 里建议 fetchCursorAgentRun + step.sleep 循环） */
 export async function pollCursorAgentRun(
     apiKey: SecretLike,
     ref: CursorAgentRunRef,
@@ -173,28 +204,13 @@ export async function pollCursorAgentRun(
     const intervalMs = options?.intervalMs ?? 15_000;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const resp = await cursorFetch<CursorRunResponse>(
-            resolved,
-            `/agents/${encodeURIComponent(ref.agentId)}/runs/${encodeURIComponent(ref.runId)}`,
-        );
-        if (!resp.ok) {
+        const result = await fetchCursorAgentRun(apiKey, ref);
+        if (result.terminal) {
             return {
-                status: 'ERROR',
-                error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
-            };
-        }
-
-        const status = resp.data.status ?? 'UNKNOWN';
-        if (TERMINAL.has(status)) {
-            const prUrl = resp.data.git?.branches?.find((b) => b.prUrl)?.prUrl;
-            return {
-                status,
-                resultText: resp.data.result,
-                prUrl,
-                error:
-                    status === 'FINISHED'
-                        ? undefined
-                        : formatCursorApiError(resp.data.error, status),
+                status: result.status,
+                resultText: result.resultText,
+                prUrl: result.prUrl,
+                error: result.error,
             };
         }
 
