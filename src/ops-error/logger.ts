@@ -1,3 +1,4 @@
+import { buildOpsErrorIntake, type IntakeEnv, submitIntakeEventAsync } from '../intake/index.js';
 import type { OpsErrorEnv } from './report.js';
 import { reportOpsErrorAsync } from './report.js';
 import { type LogFields, sanitizeForLog } from './sanitize.js';
@@ -5,7 +6,7 @@ import { type LogFields, sanitizeForLog } from './sanitize.js';
 export type OpsLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface OpsLoggerOptions {
-    env?: OpsErrorEnv;
+    env?: OpsErrorEnv & IntakeEnv;
     ctx?: Pick<ExecutionContext, 'waitUntil'>;
 }
 
@@ -73,6 +74,16 @@ export function createOpsLogger(workerName: string, options: OpsLoggerOptions = 
             },
             ctx,
         );
+        if (fields.intake === true) {
+            const intakeEvent = buildOpsErrorIntake({
+                producer: workerName,
+                worker: workerName,
+                reason: event,
+                error: extractErrorMessage(fields, event),
+                context,
+            });
+            submitIntakeEventAsync(env, intakeEvent, ctx);
+        }
     };
 
     return {
