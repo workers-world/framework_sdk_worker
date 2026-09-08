@@ -28,7 +28,11 @@ export async function ghFetch(token: string, url: string, init?: RequestInit): P
 }
 
 /** GitHub API：对 429/5xx/网络错误做指数退避重试；仍失败返回最后一次 Response（网络错误返回 null）。 */
-export async function ghFetchWithRetry(token: string, url: string, init?: RequestInit): Promise<Response | null> {
+export async function ghFetchWithRetry(
+    token: string,
+    url: string,
+    init?: RequestInit,
+): Promise<Response | null> {
     for (let attempt = 0; ; attempt++) {
         try {
             const resp = await ghFetch(token, url, init);
@@ -67,7 +71,10 @@ export async function getIssue(
     repo: string,
     issueNumber: number,
 ): Promise<IssueSnapshot | null> {
-    const resp = await ghFetchWithRetry(token, `https://api.github.com/repos/${repo}/issues/${issueNumber}`);
+    const resp = await ghFetchWithRetry(
+        token,
+        `https://api.github.com/repos/${repo}/issues/${issueNumber}`,
+    );
     if (!resp?.ok) {
         return null;
     }

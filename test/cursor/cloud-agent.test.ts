@@ -22,9 +22,15 @@ describe('createCursorAgent', () => {
     });
 
     it('creates agent and returns ref', async () => {
-        vi.stubGlobal('fetch', mockFetch([
-            { status: 200, body: { agent: { id: 'a1' }, run: { id: 'r1', status: 'RUNNING' } } },
-        ]));
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: { agent: { id: 'a1' }, run: { id: 'r1', status: 'RUNNING' } },
+                },
+            ]),
+        );
 
         const result = await createCursorAgent({
             apiKey: API_KEY,
@@ -46,9 +52,10 @@ describe('createCursorAgent', () => {
     });
 
     it('returns ok:false on api error with formatted message', async () => {
-        vi.stubGlobal('fetch', mockFetch([
-            { status: 402, body: { error: { code: 'E1', message: 'billing' } } },
-        ]));
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([{ status: 402, body: { error: { code: 'E1', message: 'billing' } } }]),
+        );
         const result = await createCursorAgent({
             apiKey: API_KEY,
             repoUrl: 'x',
@@ -65,19 +72,34 @@ describe('pollCursorAgentRun', () => {
     });
 
     it('returns prUrl on FINISHED', async () => {
-        vi.stubGlobal('fetch', mockFetch([
-            { status: 200, body: { status: 'FINISHED', git: { branches: [{ prUrl: 'https://github.com/o/r/pull/1' }] } } },
-        ]));
-        const result = await pollCursorAgentRun(API_KEY, { agentId: 'a1', runId: 'r1' }, { intervalMs: 1 });
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: {
+                        status: 'FINISHED',
+                        git: { branches: [{ prUrl: 'https://github.com/o/r/pull/1' }] },
+                    },
+                },
+            ]),
+        );
+        const result = await pollCursorAgentRun(
+            API_KEY,
+            { agentId: 'a1', runId: 'r1' },
+            { intervalMs: 1 },
+        );
         expect(result.status).toBe('FINISHED');
         expect(result.prUrl).toBe('https://github.com/o/r/pull/1');
     });
 
     it('returns TIMEOUT when never terminal', async () => {
-        vi.stubGlobal('fetch', mockFetch([
-            { status: 200, body: { status: 'RUNNING' } },
-        ]));
-        const result = await pollCursorAgentRun(API_KEY, { agentId: 'a1', runId: 'r1' }, { maxAttempts: 2, intervalMs: 1 });
+        vi.stubGlobal('fetch', mockFetch([{ status: 200, body: { status: 'RUNNING' } }]));
+        const result = await pollCursorAgentRun(
+            API_KEY,
+            { agentId: 'a1', runId: 'r1' },
+            { maxAttempts: 2, intervalMs: 1 },
+        );
         expect(result.status).toBe('TIMEOUT');
     });
 });

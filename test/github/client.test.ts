@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     addIssueLabels,
     createIssueComment,
+    getIssue,
     ghFetch,
     ghFetchWithRetry,
-    getIssue,
     removeIssueLabel,
 } from '../../src/github/client.js';
 
@@ -16,7 +16,9 @@ describe('ghFetch', () => {
     });
 
     it('sends auth + api version headers', async () => {
-        const spy = vi.fn(async (_url: string, init?: RequestInit) => new Response('{}', { status: 200 }));
+        const spy = vi.fn(
+            async (_url: string, _init?: RequestInit) => new Response('{}', { status: 200 }),
+        );
         vi.stubGlobal('fetch', spy);
 
         await ghFetch(TOKEN, 'https://api.github.com/repos/o/r/issues/1');
@@ -35,10 +37,13 @@ describe('ghFetchWithRetry', () => {
 
     it('retries on 502 then succeeds', async () => {
         let calls = 0;
-        vi.stubGlobal('fetch', vi.fn(async () => {
-            calls += 1;
-            return new Response('bad gateway', { status: calls === 1 ? 502 : 200 });
-        }));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => {
+                calls += 1;
+                return new Response('bad gateway', { status: calls === 1 ? 502 : 200 });
+            }),
+        );
 
         const resp = await ghFetchWithRetry(TOKEN, 'https://api.github.com/x');
         expect(resp?.status).toBe(200);
@@ -61,23 +66,32 @@ describe('issue helpers', () => {
     });
 
     it('getIssue maps snapshot fields', async () => {
-        vi.stubGlobal('fetch', vi.fn(async () =>
-            new Response(JSON.stringify({
-                number: 7,
-                state: 'open',
-                title: 'T',
-                body: 'B',
-                labels: [{ name: 'a' }, { name: 'b' }],
-                updated_at: '2026-09-06T00:00:00Z',
-            }), { status: 200 }),
-        ));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                async () =>
+                    new Response(
+                        JSON.stringify({
+                            number: 7,
+                            state: 'open',
+                            title: 'T',
+                            body: 'B',
+                            labels: [{ name: 'a' }, { name: 'b' }],
+                            updated_at: '2026-09-06T00:00:00Z',
+                        }),
+                        { status: 200 },
+                    ),
+            ),
+        );
 
         const snap = await getIssue(TOKEN, 'o/r', 7);
         expect(snap).toMatchObject({ number: 7, state: 'open', title: 'T', labels: ['a', 'b'] });
     });
 
     it('addIssueLabels / removeIssueLabel / createIssueComment hit right paths', async () => {
-        const spy = vi.fn(async (url: string) => new Response(JSON.stringify({ id: 1 }), { status: 201 }));
+        const spy = vi.fn(
+            async (_url: string) => new Response(JSON.stringify({ id: 1 }), { status: 201 }),
+        );
         vi.stubGlobal('fetch', spy);
 
         await addIssueLabels(TOKEN, 'o/r', 7, ['x']);

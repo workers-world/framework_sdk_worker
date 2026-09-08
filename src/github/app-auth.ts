@@ -99,7 +99,13 @@ export function createGithubAppAuth(
             const jwt = await createGithubAppJwt(config);
             const resp = await fetchImpl(
                 `https://api.github.com/app/installations/${installationId}/access_tokens`,
-                { method: 'POST', headers: { Authorization: `Bearer ${jwt}`, Accept: 'application/vnd.github+json' } },
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${jwt}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                },
             );
             if (!resp.ok) {
                 const text = await resp.text();
