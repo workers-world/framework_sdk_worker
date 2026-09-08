@@ -1,4 +1,4 @@
-import { buildOpsErrorIntake, type IntakeEnv, submitIntakeEventAsync } from '../intake/index.js';
+import { buildOpsErrorIntake, type IntakeEnv, submitIntakeEventAsync } from '../intake.js';
 import type { OpsErrorEnv } from './report.js';
 import { reportOpsErrorAsync } from './report.js';
 import { type LogFields, sanitizeForLog } from './sanitize.js';

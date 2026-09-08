@@ -1,6 +1,5 @@
-import { hashString, normalizeError } from '../ops-error/normalize.js';
-import { type LogFields, sanitizeForLog } from '../ops-error/sanitize.js';
-import { shanghaiIsoString, shanghaiYmdDash } from '../time/index.js';
+import { hashString, type LogFields, normalizeError, sanitizeForLog } from '../ops-error.js';
+import { shanghaiIsoString, shanghaiYmdDash } from '../time.js';
 import {
     INTAKE_KIND_OPS_ERROR,
     INTAKE_KIND_QUALITY_CLUSTER,
