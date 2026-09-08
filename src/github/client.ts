@@ -129,6 +129,51 @@ export async function removeIssueLabel(
     return Boolean(resp?.ok || resp?.status === 404);
 }
 
+export interface CreateIssueInput {
+    title: string;
+    body: string;
+    labels?: string[];
+}
+
+export interface CreatedIssue {
+    number: number;
+    htmlUrl: string;
+    state: 'open' | 'closed';
+}
+
+/** 创建 Issue；失败返回 null */
+export async function createIssue(
+    token: string,
+    repo: string,
+    input: CreateIssueInput,
+): Promise<CreatedIssue | null> {
+    const resp = await ghFetchWithRetry(token, `https://api.github.com/repos/${repo}/issues`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: input.title,
+            body: input.body,
+            labels: input.labels ?? [],
+        }),
+    });
+    if (!resp?.ok) {
+        return null;
+    }
+    const data = (await resp.json()) as {
+        number?: number;
+        html_url?: string;
+        state?: string;
+    };
+    if (data.number == null || !data.html_url) {
+        return null;
+    }
+    return {
+        number: data.number,
+        htmlUrl: data.html_url,
+        state: data.state === 'closed' ? 'closed' : 'open',
+    };
+}
+
 /** 创建 Issue 评论；返回评论 id（失败返回 null） */
 export async function createIssueComment(
     token: string,
