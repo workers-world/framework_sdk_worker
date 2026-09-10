@@ -15,8 +15,16 @@ export interface SubmitIntakeOptions {
     ctx?: Pick<ExecutionContext, 'waitUntil'>;
 }
 
+function stripTrailingSlashes(value: string): string {
+    let end = value.length;
+    while (end > 0 && value[end - 1] === '/') {
+        end -= 1;
+    }
+    return value.slice(0, end);
+}
+
 function normalizeIntakeUrl(base: string): string {
-    const trimmed = base.trim().replace(/\/+$/, '');
+    const trimmed = stripTrailingSlashes(base.trim());
     if (trimmed.endsWith('/sch1/intake')) {
         return trimmed;
     }
