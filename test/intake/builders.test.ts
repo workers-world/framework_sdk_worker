@@ -43,6 +43,65 @@ describe('buildQualityClusterIntake', () => {
         expect(event.dedupKey).toBe('quality.cluster:svc|kind|because|host');
         expect(validateIntakeEvent(event)).toBeNull();
     });
+
+    it('accepts agent diagnosis chain auditLogs + auditEnrich', () => {
+        const event = buildQualityClusterIntake({
+            clusterId: 'svc|kind|because|host',
+            windowStart: '2026-09-08 00:00:00',
+            windowEnd: '2026-09-08 00:30:00',
+            caseCount: 1,
+            hardCount: 1,
+            auditEnrich: {
+                fetchedAt: '2026-09-10T16:40:00+08:00',
+                truncated: false,
+                purpose: 'agent_diagnosis_chain',
+            },
+            cases: [
+                {
+                    dedupKey: 'd1',
+                    worker: 'advisor-worker',
+                    auditLogTraceId: 'd1',
+                    auditLogs: [
+                        {
+                            id: 10,
+                            ts: '2026-09-10T16:30:00+08:00',
+                            action: 'quality_capture',
+                            service: 'advisor-worker',
+                            target: 'd1',
+                            traceId: 'd1',
+                            detailPreview: '{"logsCaptured":true}',
+                            parsed: { capture: { logsCaptured: true, timelineCount: 2 } },
+                        },
+                        {
+                            id: 11,
+                            ts: '2026-09-10T16:35:00+08:00',
+                            action: 'quality_diagnosis',
+                            service: 'advisor-worker',
+                            target: 'd1',
+                            traceId: 'd1',
+                            parsed: {
+                                diagnosis: {
+                                    status: 'ok',
+                                    rootCause: 'llm timeout',
+                                    isBug: true,
+                                    suspectedLayer: 'llm',
+                                    recommendation: 'retry',
+                                    suspectedFiles: ['src/x.ts'],
+                                },
+                            },
+                        },
+                    ],
+                },
+            ],
+        });
+        expect(validateIntakeEvent(event)).toBeNull();
+        const payload = event.payload as {
+            auditEnrich?: { purpose: string };
+            cases: Array<{ auditLogs?: unknown[] }>;
+        };
+        expect(payload.auditEnrich?.purpose).toBe('agent_diagnosis_chain');
+        expect(payload.cases[0]?.auditLogs).toHaveLength(2);
+    });
 });
 
 describe('buildQualityLogDigestIntake', () => {

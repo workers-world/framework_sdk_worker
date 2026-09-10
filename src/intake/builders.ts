@@ -14,12 +14,63 @@ export interface OpsErrorIntakePayload {
     requestId?: string;
 }
 
+/** quality_capture detail 诊断子集 */
+export interface QualityClusterAuditCaptureParsed {
+    timelineCount?: number;
+    logsCaptured?: boolean;
+    captureError?: string;
+}
+
+/** quality_diagnosis detail 诊断子集 */
+export interface QualityClusterAuditDiagnosisParsed {
+    status?: string;
+    agentId?: string;
+    rootCause?: string;
+    isBug?: boolean;
+    suspectedLayer?: string;
+    recommendation?: string;
+    suspectedFiles?: string[];
+}
+
+/** quality_fix detail 诊断子集 */
+export interface QualityClusterAuditFixParsed {
+    status?: string;
+    prUrl?: string;
+}
+
+/** Agent 链路单行（audit-log maintenance_log 映射） */
+export interface QualityClusterAuditLogRef {
+    id: number;
+    ts: string;
+    action: string;
+    service: string;
+    target: string;
+    traceId: string;
+    /** 截断后的 detail JSON 原文（兜底） */
+    detailPreview?: string;
+    /** 从 detail 提取的可读诊断子结构 */
+    parsed?: {
+        capture?: QualityClusterAuditCaptureParsed;
+        diagnosis?: QualityClusterAuditDiagnosisParsed;
+        fix?: QualityClusterAuditFixParsed;
+    };
+}
+
 export interface QualityClusterCaseRef {
     dedupKey: string;
     worker?: string;
     ruleId?: string;
     kind?: string;
+    /** = dedupKey；便于反查 audit-log */
     auditLogTraceId?: string;
+    /** 按 ts 升序的 Agent 链路（capture → diagnosis → fix） */
+    auditLogs?: QualityClusterAuditLogRef[];
+}
+
+export interface QualityClusterAuditEnrich {
+    fetchedAt: string;
+    truncated?: boolean;
+    purpose: 'agent_diagnosis_chain';
 }
 
 export interface QualityClusterIntakePayload {
@@ -31,6 +82,8 @@ export interface QualityClusterIntakePayload {
     primaryRepo?: string;
     cases: QualityClusterCaseRef[];
     diagnosisSummary?: string;
+    /** 入站前从 audit-log enrich 的元数据 */
+    auditEnrich?: QualityClusterAuditEnrich;
 }
 
 export interface QualityLogDigestIntakePayload {
@@ -115,6 +168,7 @@ export function buildQualityClusterIntake(input: {
     primaryRepo?: string;
     cases: QualityClusterCaseRef[];
     diagnosisSummary?: string;
+    auditEnrich?: QualityClusterAuditEnrich;
     worker?: string;
     severity?: IntakeSeverity;
     occurredAt?: string;
@@ -132,6 +186,7 @@ export function buildQualityClusterIntake(input: {
         ...(input.diagnosisSummary
             ? { diagnosisSummary: truncate(input.diagnosisSummary, 2000) }
             : {}),
+        ...(input.auditEnrich ? { auditEnrich: input.auditEnrich } : {}),
     };
     const title = truncate(`质量簇 ${input.clusterId} · ${input.caseCount} case`, 120);
     const summary = truncate(
