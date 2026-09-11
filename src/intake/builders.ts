@@ -5,6 +5,7 @@ import {
     INTAKE_KIND_QUALITY_CLUSTER,
     INTAKE_KIND_QUALITY_LOG_DIGEST,
 } from './kinds.js';
+import type { IntakePayloadEnvelope } from './payload-envelope.js';
 import type { IntakeEvent, IntakeLink, IntakeSeverity } from './types.js';
 
 export interface OpsErrorIntakePayload {
@@ -169,13 +170,15 @@ export function buildQualityClusterIntake(input: {
     cases: QualityClusterCaseRef[];
     diagnosisSummary?: string;
     auditEnrich?: QualityClusterAuditEnrich;
+    /** v2 通用 envelope；提供时取代扁平 QualityClusterIntakePayload */
+    payloadEnvelope?: IntakePayloadEnvelope;
     worker?: string;
     severity?: IntakeSeverity;
     occurredAt?: string;
     dedupKey?: string;
     links?: IntakeLink[];
 }): IntakeEvent {
-    const payload: QualityClusterIntakePayload = {
+    const payload: QualityClusterIntakePayload | IntakePayloadEnvelope = input.payloadEnvelope ?? {
         clusterId: input.clusterId,
         windowStart: input.windowStart,
         windowEnd: input.windowEnd,
@@ -222,22 +225,24 @@ export function buildQualityLogDigestIntake(input: {
     attachmentNames: string[];
     bugCaseCount?: number;
     baselineCeiling?: string;
+    payloadEnvelope?: IntakePayloadEnvelope;
     severity?: IntakeSeverity;
     occurredAt?: string;
     dedupKey?: string;
     links?: IntakeLink[];
 }): IntakeEvent {
-    const payload: QualityLogDigestIntakePayload = {
-        digestDate: input.digestDate,
-        partIndex: input.partIndex,
-        partTotal: input.partTotal,
-        captureCount: input.captureCount,
-        repos: input.repos,
-        analyzeMode: input.analyzeMode,
-        attachmentNames: input.attachmentNames,
-        ...(input.bugCaseCount != null ? { bugCaseCount: input.bugCaseCount } : {}),
-        ...(input.baselineCeiling ? { baselineCeiling: input.baselineCeiling } : {}),
-    };
+    const payload: QualityLogDigestIntakePayload | IntakePayloadEnvelope =
+        input.payloadEnvelope ?? {
+            digestDate: input.digestDate,
+            partIndex: input.partIndex,
+            partTotal: input.partTotal,
+            captureCount: input.captureCount,
+            repos: input.repos,
+            analyzeMode: input.analyzeMode,
+            attachmentNames: input.attachmentNames,
+            ...(input.bugCaseCount != null ? { bugCaseCount: input.bugCaseCount } : {}),
+            ...(input.baselineCeiling ? { baselineCeiling: input.baselineCeiling } : {}),
+        };
     const title = truncate(
         `质量日志日报 ${input.digestDate} · part ${input.partIndex}/${input.partTotal}`,
         120,
