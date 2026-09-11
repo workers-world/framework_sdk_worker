@@ -19,7 +19,9 @@ describe('submitIntakeEvent URL normalization', () => {
     });
 
     it('strips trailing slashes without regex backtracking', async () => {
-        const fetchSpy = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        const fetchSpy = vi.fn(
+            async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
         vi.stubGlobal('fetch', fetchSpy);
 
         await submitIntakeEvent(
@@ -36,7 +38,9 @@ describe('submitIntakeEvent URL normalization', () => {
     });
 
     it('appends /sch1/intake when base is origin only', async () => {
-        const fetchSpy = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        const fetchSpy = vi.fn(
+            async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
         vi.stubGlobal('fetch', fetchSpy);
 
         await submitIntakeEvent(
