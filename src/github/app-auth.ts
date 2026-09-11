@@ -104,6 +104,8 @@ export function createGithubAppAuth(
                     headers: {
                         Authorization: `Bearer ${jwt}`,
                         Accept: 'application/vnd.github+json',
+                        'User-Agent': 'framework-sdk-worker',
+                        'X-GitHub-Api-Version': '2022-11-28',
                     },
                 },
             );
