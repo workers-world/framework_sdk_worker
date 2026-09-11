@@ -6,6 +6,7 @@
  */
 import { sleep } from '../async/sleep.js';
 import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+import { readSseStream } from './sse-parser.js';
 
 const CURSOR_API_BASE = 'https://api.cursor.com/v1';
 
@@ -156,7 +157,194 @@ export async function createCursorAgent(
     return { ok: true, ref: { agentId, runId } };
 }
 
-const TERMINAL = new Set(['FINISHED', 'ERROR', 'CANCELLED', 'EXPIRED', 'FAILED']);
+export const CURSOR_RUN_TERMINAL_STATUSES = new Set([
+    'FINISHED',
+    'ERROR',
+    'CANCELLED',
+    'EXPIRED',
+    'FAILED',
+]);
+
+const TERMINAL = CURSOR_RUN_TERMINAL_STATUSES;
+
+export type CursorStreamEvent =
+    | { type: 'status'; runId?: string; status: string }
+    | { type: 'assistant'; text: string }
+    | { type: 'thinking'; text: string }
+    | {
+          type: 'tool_call';
+          callId: string;
+          name: string;
+          status: 'running' | 'completed';
+          args?: unknown;
+          result?: unknown;
+          truncated?: unknown;
+      }
+    | {
+          type: 'result';
+          status: string;
+          runId?: string;
+          text?: string;
+          durationMs?: number;
+          prUrl?: string;
+      }
+    | { type: 'error'; code: string; message: string }
+    | { type: 'done' };
+
+/** SSE 流已过期（HTTP 410 stream_expired）；调用方应 fallback GET run */
+export class CursorStreamExpiredError extends Error {
+    constructor(message = 'stream_expired') {
+        super(message);
+        this.name = 'CursorStreamExpiredError';
+    }
+}
+
+function parseJsonData(data: string): Record<string, unknown> {
+    if (!data.trim()) {
+        return {};
+    }
+    try {
+        const parsed = JSON.parse(data) as unknown;
+        return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+    } catch {
+        return {};
+    }
+}
+
+function prUrlFromGit(git: unknown): string | undefined {
+    if (!git || typeof git !== 'object') {
+        return undefined;
+    }
+    const branches = (git as { branches?: Array<{ prUrl?: string }> }).branches;
+    return branches?.find((b) => b.prUrl)?.prUrl;
+}
+
+/** 将 SSE 帧映射为 CursorStreamEvent；heartbeat / interaction_update 返回 null */
+export function mapCursorSseFrame(frame: {
+    id?: string;
+    event: string;
+    data: string;
+}): (CursorStreamEvent & { id?: string }) | null {
+    const payload = parseJsonData(frame.data);
+    const base = frame.id ? { id: frame.id } : {};
+    switch (frame.event) {
+        case 'status':
+            return {
+                ...base,
+                type: 'status',
+                runId: typeof payload.runId === 'string' ? payload.runId : undefined,
+                status: typeof payload.status === 'string' ? payload.status : 'UNKNOWN',
+            };
+        case 'assistant':
+            return {
+                ...base,
+                type: 'assistant',
+                text: typeof payload.text === 'string' ? payload.text : '',
+            };
+        case 'thinking':
+            return {
+                ...base,
+                type: 'thinking',
+                text: typeof payload.text === 'string' ? payload.text : '',
+            };
+        case 'tool_call':
+            return {
+                ...base,
+                type: 'tool_call',
+                callId: String(payload.callId ?? ''),
+                name: String(payload.name ?? ''),
+                status: payload.status === 'completed' ? 'completed' : 'running',
+                args: payload.args,
+                result: payload.result,
+                truncated: payload.truncated,
+            };
+        case 'result': {
+            const git = payload.git;
+            return {
+                ...base,
+                type: 'result',
+                runId: typeof payload.runId === 'string' ? payload.runId : undefined,
+                status: typeof payload.status === 'string' ? payload.status : 'UNKNOWN',
+                text: typeof payload.text === 'string' ? payload.text : undefined,
+                durationMs: typeof payload.durationMs === 'number' ? payload.durationMs : undefined,
+                prUrl: prUrlFromGit(git),
+            };
+        }
+        case 'error':
+            return {
+                ...base,
+                type: 'error',
+                code: typeof payload.code === 'string' ? payload.code : 'stream_error',
+                message: typeof payload.message === 'string' ? payload.message : frame.data,
+            };
+        case 'done':
+            return { ...base, type: 'done' };
+        case 'heartbeat':
+        case 'interaction_update':
+            return null;
+        default:
+            return null;
+    }
+}
+
+/** 消费 Cursor run SSE 直至 `done` 或连接结束；410 抛 CursorStreamExpiredError */
+export async function* streamCursorAgentRun(
+    apiKey: SecretLike,
+    ref: CursorAgentRunRef,
+    opts?: { lastEventId?: string },
+): AsyncGenerator<CursorStreamEvent & { id?: string }> {
+    const resolved = await resolveSecret(apiKey);
+    if (!resolved) {
+        yield { type: 'error', code: 'config', message: 'CURSOR_API_KEY not configured' };
+        return;
+    }
+
+    const headers: Record<string, string> = {
+        Accept: 'text/event-stream',
+        Authorization: `Basic ${btoa(`${resolved}:`)}`,
+    };
+    if (opts?.lastEventId) {
+        headers['Last-Event-ID'] = opts.lastEventId;
+    }
+
+    const resp = await fetch(
+        `${CURSOR_API_BASE}/agents/${encodeURIComponent(ref.agentId)}/runs/${encodeURIComponent(ref.runId)}/stream`,
+        { headers },
+    );
+
+    if (resp.status === 410) {
+        throw new CursorStreamExpiredError();
+    }
+    if (!resp.ok) {
+        const text = await resp.text();
+        let errBody: unknown;
+        try {
+            errBody = JSON.parse(text) as unknown;
+        } catch {
+            errBody = text;
+        }
+        yield {
+            type: 'error',
+            code: `http_${resp.status}`,
+            message: formatCursorApiError(errBody, text.slice(0, 300), resp.status),
+        };
+        return;
+    }
+    if (!resp.body) {
+        yield { type: 'error', code: 'no_body', message: 'SSE response missing body' };
+        return;
+    }
+
+    for await (const frame of readSseStream(resp.body)) {
+        const mapped = mapCursorSseFrame(frame);
+        if (mapped) {
+            yield mapped;
+            if (mapped.type === 'done') {
+                return;
+            }
+        }
+    }
+}
 
 /** 单次查询 run 状态（不循环）：供调用方实现 step 化轮询（轮询间可检查取消/暂停标志） */
 export async function fetchCursorAgentRun(
