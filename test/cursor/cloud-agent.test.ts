@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     createCursorAgent,
+    fetchCursorAgentUsage,
     formatCursorApiError,
     pollCursorAgentRun,
 } from '../../src/cursor/cloud-agent.js';
@@ -110,5 +111,60 @@ describe('formatCursorApiError', () => {
         expect(formatCursorApiError({ code: 'C', message: 'm' })).toBe('C: m');
         expect(formatCursorApiError(undefined, 'fb')).toBe('fb');
         expect(formatCursorApiError(undefined, undefined, 500)).toBe('HTTP 500');
+    });
+});
+
+describe('fetchCursorAgentUsage', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('reads totalTokens from totalUsage', async () => {
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: {
+                        totalUsage: {
+                            inputTokens: 10,
+                            outputTokens: 20,
+                            totalTokens: 30,
+                        },
+                    },
+                },
+            ]),
+        );
+        const result = await fetchCursorAgentUsage(API_KEY, 'a1', { runId: 'r1' });
+        expect(result.ok).toBe(true);
+        expect(result.totalTokens).toBe(30);
+        expect(result.usage?.inputTokens).toBe(10);
+    });
+
+    it('sums token fields when totalTokens missing', async () => {
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: {
+                        runs: [
+                            {
+                                runId: 'r1',
+                                usage: {
+                                    inputTokens: 1,
+                                    outputTokens: 2,
+                                    cacheWriteTokens: 3,
+                                    cacheReadTokens: 4,
+                                },
+                            },
+                        ],
+                    },
+                },
+            ]),
+        );
+        const result = await fetchCursorAgentUsage(API_KEY, 'a1');
+        expect(result.ok).toBe(true);
+        expect(result.totalTokens).toBe(10);
     });
 });

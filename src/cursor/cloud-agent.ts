@@ -409,3 +409,88 @@ export async function pollCursorAgentRun(
 
     return { status: 'TIMEOUT', error: 'poll timeout' };
 }
+
+export interface CursorTokenUsage {
+    inputTokens: number;
+    outputTokens: number;
+    cacheWriteTokens: number;
+    cacheReadTokens: number;
+    totalTokens: number;
+}
+
+export interface CursorAgentUsageResult {
+    ok: boolean;
+    totalTokens?: number;
+    usage?: CursorTokenUsage;
+    error?: string;
+}
+
+interface CursorUsageResponse {
+    totalUsage?: {
+        inputTokens?: number;
+        outputTokens?: number;
+        cacheWriteTokens?: number;
+        cacheReadTokens?: number;
+        totalTokens?: number;
+    };
+    runs?: Array<{
+        runId?: string;
+        usage?: {
+            inputTokens?: number;
+            outputTokens?: number;
+            cacheWriteTokens?: number;
+            cacheReadTokens?: number;
+            totalTokens?: number;
+        };
+    }>;
+    error?: string | { code?: string; message?: string };
+}
+
+function normalizeUsage(
+    raw:
+        | {
+              inputTokens?: number;
+              outputTokens?: number;
+              cacheWriteTokens?: number;
+              cacheReadTokens?: number;
+              totalTokens?: number;
+          }
+        | null
+        | undefined,
+): CursorTokenUsage {
+    const inputTokens = Number(raw?.inputTokens ?? 0);
+    const outputTokens = Number(raw?.outputTokens ?? 0);
+    const cacheWriteTokens = Number(raw?.cacheWriteTokens ?? 0);
+    const cacheReadTokens = Number(raw?.cacheReadTokens ?? 0);
+    const totalTokens =
+        Number(raw?.totalTokens ?? 0) ||
+        inputTokens + outputTokens + cacheWriteTokens + cacheReadTokens;
+    return { inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens, totalTokens };
+}
+
+/** 查询 Cloud Agent token 用量（可按 runId 过滤） */
+export async function fetchCursorAgentUsage(
+    apiKey: SecretLike,
+    agentId: string,
+    opts?: { runId?: string },
+): Promise<CursorAgentUsageResult> {
+    const resolved = await resolveSecret(apiKey);
+    if (!resolved) {
+        return { ok: false, error: 'CURSOR_API_KEY not configured' };
+    }
+    const qs = opts?.runId ? `?runId=${encodeURIComponent(opts.runId)}` : '';
+    const resp = await cursorFetch<CursorUsageResponse>(
+        resolved,
+        `/agents/${encodeURIComponent(agentId)}/usage${qs}`,
+    );
+    if (!resp.ok) {
+        return {
+            ok: false,
+            error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
+        };
+    }
+    const fromTotal = resp.data.totalUsage ? normalizeUsage(resp.data.totalUsage) : null;
+    const fromRun = resp.data.runs?.[0]?.usage ? normalizeUsage(resp.data.runs[0].usage) : null;
+    const usage = fromTotal ?? fromRun ?? normalizeUsage(undefined);
+    return { ok: true, totalTokens: usage.totalTokens, usage };
+}
