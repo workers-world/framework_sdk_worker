@@ -6,6 +6,8 @@ import {
     ghFetch,
     ghFetchWithRetry,
     removeIssueLabel,
+    updateIssueBody,
+    uploadIssueAttachment,
 } from '../../src/github/client.js';
 
 const TOKEN = 'tok';
@@ -102,5 +104,107 @@ describe('issue helpers', () => {
 
         await createIssueComment(TOKEN, 'o/r', 7, 'hello');
         expect(String(spy.mock.calls[2][0])).toContain('/issues/7/comments');
+    });
+
+    it('updateIssueBody PATCHes issue body', async () => {
+        const spy = vi.fn(async () => new Response('{}', { status: 200 }));
+        vi.stubGlobal('fetch', spy);
+
+        const ok = await updateIssueBody(TOKEN, 'o/r', 9, 'new body');
+        expect(ok).toBe(true);
+        expect(String(spy.mock.calls[0][0])).toContain('/issues/9');
+        const init = spy.mock.calls[0][1] as RequestInit;
+        expect(init.method).toBe('PATCH');
+        expect(JSON.parse(String(init.body))).toEqual({ body: 'new body' });
+    });
+
+    it('uploadIssueAttachment falls back to Contents API when user-attachments fails', async () => {
+        const spy = vi.fn(async (url: string, init?: RequestInit) => {
+            const u = String(url);
+            if (
+                u === 'https://api.github.com/repos/o/r' &&
+                (!init?.method || init.method === 'GET')
+            ) {
+                return new Response(JSON.stringify({ id: 42, default_branch: 'master' }), {
+                    status: 200,
+                });
+            }
+            if (u.startsWith('https://uploads.github.com/user-attachments/assets')) {
+                return new Response('unsupported', { status: 422 });
+            }
+            if (u.includes('/contents/') && init?.method === 'PUT') {
+                return new Response(
+                    JSON.stringify({
+                        content: {
+                            name: 'a.csv',
+                            html_url:
+                                'https://github.com/o/r/blob/master/.sch1/intake-evidence/issue-3/a.csv',
+                            download_url:
+                                'https://raw.githubusercontent.com/o/r/master/.sch1/intake-evidence/issue-3/a.csv',
+                        },
+                    }),
+                    { status: 201 },
+                );
+            }
+            if (u.includes('/contents/')) {
+                return new Response('nf', { status: 404 });
+            }
+            return new Response('unexpected', { status: 500 });
+        });
+        vi.stubGlobal('fetch', spy);
+
+        const uploaded = await uploadIssueAttachment(TOKEN, 'o/r', 3, {
+            filename: 'a.csv',
+            contentType: 'text/csv',
+            bytes: new TextEncoder().encode('x,y\n1,2\n'),
+        });
+        expect(uploaded).toMatchObject({
+            name: 'a.csv',
+            via: 'repo-contents',
+        });
+        expect(uploaded?.url).toContain('raw.githubusercontent.com');
+        expect(
+            spy.mock.calls.some((c) =>
+                String(c[0]).startsWith('https://uploads.github.com/user-attachments/assets'),
+            ),
+        ).toBe(true);
+        expect(
+            spy.mock.calls.some(
+                (c) =>
+                    String(c[0]).includes('/contents/') && (c[1] as RequestInit)?.method === 'PUT',
+            ),
+        ).toBe(true);
+    });
+
+    it('uploadIssueAttachment returns user-attachments url when upload succeeds', async () => {
+        const spy = vi.fn(async (url: string) => {
+            const u = String(url);
+            if (u === 'https://api.github.com/repos/o/r') {
+                return new Response(JSON.stringify({ id: 7, default_branch: 'master' }), {
+                    status: 200,
+                });
+            }
+            if (u.startsWith('https://uploads.github.com/user-attachments/assets')) {
+                return new Response(
+                    JSON.stringify({
+                        url: 'https://github.com/user-attachments/assets/abcd',
+                    }),
+                    { status: 201 },
+                );
+            }
+            return new Response('nf', { status: 404 });
+        });
+        vi.stubGlobal('fetch', spy);
+
+        const uploaded = await uploadIssueAttachment(TOKEN, 'o/r', 1, {
+            filename: 'shot.png',
+            contentType: 'image/png',
+            bytes: new Uint8Array([1, 2, 3]),
+        });
+        expect(uploaded).toEqual({
+            name: 'shot.png',
+            url: 'https://github.com/user-attachments/assets/abcd',
+            via: 'user-attachments',
+        });
     });
 });

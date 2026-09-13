@@ -39,6 +39,7 @@ export default defineConfig({
         'github/client': 'src/github/client.ts',
         'github/repo': 'src/github/repo.ts',
         'cursor/cloud-agent': 'src/cursor/cloud-agent.ts',
+        'agent/index': 'src/agent/index.ts',
         'secrets/resolve': 'src/secrets/resolve.ts',
         'logger/index': 'src/logger/index.ts',
         'types/env': 'src/types/env.ts',

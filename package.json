@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.11",
+  "version": "0.4.12",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -119,6 +119,10 @@
     "./cursor/cloud-agent": {
       "import": "./dist/cursor/cloud-agent.js",
       "types": "./dist/cursor/cloud-agent.d.ts"
+    },
+    "./agent": {
+      "import": "./dist/agent/index.js",
+      "types": "./dist/agent/index.d.ts"
     },
     "./secrets": {
       "import": "./dist/secrets/resolve.js",

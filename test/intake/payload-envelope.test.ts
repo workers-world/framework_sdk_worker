@@ -78,4 +78,29 @@ describe('IntakePayloadEnvelope', () => {
         expect(md).toContain('rootCause: timeout');
         expect(md).toContain('part1.zip');
     });
+
+    it('buildAttachmentRefBlock includes r2Key refs and githubUrl markdown', () => {
+        const block = buildAttachmentRefBlock('atts', [
+            {
+                filename: 'a.csv',
+                r2Key: 'intake-digest/2026-09-12/part-1/a.csv',
+                note: '批准 Issue 时上传 GitHub',
+            },
+            {
+                filename: 'b.zip',
+                githubUrl: 'https://github.com/user-attachments/files/1/b.zip',
+            },
+        ]);
+        expect(block.refs).toEqual([
+            {
+                rel: 'r2Key',
+                value: 'intake-digest/2026-09-12/part-1/a.csv',
+                label: 'a.csv',
+            },
+        ]);
+        expect(block.markdown).toContain('R2 已暂存');
+        expect(block.markdown).toContain(
+            '[b.zip](https://github.com/user-attachments/files/1/b.zip)',
+        );
+    });
 });

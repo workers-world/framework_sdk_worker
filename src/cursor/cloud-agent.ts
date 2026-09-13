@@ -10,6 +10,32 @@ import { readSseStream } from './sse-parser.js';
 
 const CURSOR_API_BASE = 'https://api.cursor.com/v1';
 
+/** Cursor `/v1/models` 原始条目（无 provider） */
+interface CursorApiModel {
+    id: string;
+    name?: string;
+}
+
+/** listCursorModels 返回值；与 `AgentModelsListResult` 结构兼容（provider 固定 cursor） */
+export interface CursorAgentModelsListResult {
+    ok: boolean;
+    provider: 'cursor';
+    models?: Array<{ id: string; name?: string; provider: 'cursor' }>;
+    error?: string;
+    status?: number;
+}
+
+/** @deprecated Prefer {@link AgentModelEntry} from `framework_sdk_worker/agent` (includes `provider`). */
+export type CursorModelEntry = CursorApiModel;
+
+/** @deprecated Prefer {@link AgentModelsListResult} from `framework_sdk_worker/agent`. */
+export type CursorModelsListResult = {
+    ok: boolean;
+    models?: CursorApiModel[];
+    error?: string;
+    status?: number;
+};
+
 export interface CursorAgentCreateInput {
     apiKey: SecretLike;
     /** 仓库 https URL */
@@ -113,6 +139,92 @@ async function cursorFetch<T>(
         }
     }
     return { ok: resp.ok, status: resp.status, data, text };
+}
+
+function normalizeCursorModelEntry(raw: unknown): CursorApiModel | null {
+    if (typeof raw === 'string' && raw.trim()) {
+        return { id: raw.trim() };
+    }
+    if (!raw || typeof raw !== 'object') {
+        return null;
+    }
+    const obj = raw as { id?: unknown; name?: unknown; model?: unknown };
+    const id =
+        (typeof obj.id === 'string' && obj.id.trim()) ||
+        (typeof obj.model === 'string' && obj.model.trim()) ||
+        '';
+    if (!id) {
+        return null;
+    }
+    const name = typeof obj.name === 'string' && obj.name.trim() ? obj.name.trim() : undefined;
+    return { id, name };
+}
+
+function parseCursorModelsPayload(data: unknown): CursorApiModel[] {
+    if (!data || typeof data !== 'object') {
+        return [];
+    }
+    const root = data as {
+        models?: unknown;
+        data?: unknown;
+        items?: unknown;
+    };
+    const candidates = [root.models, root.data, root.items];
+    for (const list of candidates) {
+        if (!Array.isArray(list)) {
+            continue;
+        }
+        const out: CursorApiModel[] = [];
+        for (const item of list) {
+            const entry = normalizeCursorModelEntry(item);
+            if (entry) {
+                out.push(entry);
+            }
+        }
+        if (out.length > 0) {
+            return out;
+        }
+    }
+    return [];
+}
+
+function toCursorAgentModels(
+    models: CursorApiModel[],
+): NonNullable<CursorAgentModelsListResult['models']> {
+    return models.map((m) => ({
+        id: m.id,
+        name: m.name,
+        provider: 'cursor' as const,
+    }));
+}
+
+/** 列出 Cloud Agent 可用模型（GET /v1/models）；返回带 `provider: 'cursor'` 的统一形态 */
+export async function listCursorModels(apiKey: SecretLike): Promise<CursorAgentModelsListResult> {
+    const resolved = await resolveSecret(apiKey);
+    if (!resolved) {
+        return { ok: false, provider: 'cursor', error: 'CURSOR_API_KEY not configured' };
+    }
+    const resp = await cursorFetch<{ models?: unknown; data?: unknown; error?: unknown }>(
+        resolved,
+        '/models',
+    );
+    if (!resp.ok) {
+        return {
+            ok: false,
+            provider: 'cursor',
+            error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
+            status: resp.status,
+        };
+    }
+    const models = parseCursorModelsPayload(resp.data);
+    if (models.length === 0) {
+        return {
+            ok: true,
+            provider: 'cursor',
+            models: toCursorAgentModels([{ id: 'auto', name: 'auto' }]),
+        };
+    }
+    return { ok: true, provider: 'cursor', models: toCursorAgentModels(models) };
 }
 
 /** 创建 Cloud Agent run（autoCreatePR 默认 true，供提 PR 类任务） */

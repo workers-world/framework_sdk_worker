@@ -3,6 +3,7 @@ import {
     createCursorAgent,
     fetchCursorAgentUsage,
     formatCursorApiError,
+    listCursorModels,
     pollCursorAgentRun,
 } from '../../src/cursor/cloud-agent.js';
 
@@ -111,6 +112,41 @@ describe('formatCursorApiError', () => {
         expect(formatCursorApiError({ code: 'C', message: 'm' })).toBe('C: m');
         expect(formatCursorApiError(undefined, 'fb')).toBe('fb');
         expect(formatCursorApiError(undefined, undefined, 500)).toBe('HTTP 500');
+    });
+});
+
+describe('listCursorModels', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('returns model ids from API payload', async () => {
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: {
+                        models: [{ id: 'auto' }, { id: 'composer-2.5', name: 'Composer 2.5' }],
+                    },
+                },
+            ]),
+        );
+        const result = await listCursorModels(API_KEY);
+        expect(result.ok).toBe(true);
+        expect(result.provider).toBe('cursor');
+        expect(result.models).toEqual([
+            { id: 'auto', provider: 'cursor' },
+            { id: 'composer-2.5', name: 'Composer 2.5', provider: 'cursor' },
+        ]);
+    });
+
+    it('falls back to auto when list empty', async () => {
+        vi.stubGlobal('fetch', mockFetch([{ status: 200, body: {} }]));
+        const result = await listCursorModels(API_KEY);
+        expect(result.ok).toBe(true);
+        expect(result.provider).toBe('cursor');
+        expect(result.models).toEqual([{ id: 'auto', name: 'auto', provider: 'cursor' }]);
     });
 });
 
