@@ -45,18 +45,7 @@ export const cursorAgentProvider: AgentProvider = {
         if (!apiKey) {
             return { ok: false, provider: 'cursor', error: 'CURSOR_API_KEY not configured' };
         }
-        const result = await listCursorModels(apiKey);
-        return {
-            ok: result.ok,
-            provider: 'cursor',
-            models: result.models?.map((m) => ({
-                id: m.id,
-                name: m.name,
-                provider: 'cursor',
-            })),
-            error: result.error,
-            status: result.status,
-        };
+        return listCursorModels(apiKey);
     },
 
     async createRun(

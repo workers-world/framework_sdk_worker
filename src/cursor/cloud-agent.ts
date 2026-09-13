@@ -4,25 +4,29 @@
  * 下游：api.cursor.com/v1。
  * 不变量：apiKey 为 SecretLike（resolveSecret 解析）；轮询至终态或超时；错误规范成可读字符串。
  */
+import type { AgentModelEntry, AgentModelsListResult } from '../agent/types.js';
 import { sleep } from '../async/sleep.js';
 import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 import { readSseStream } from './sse-parser.js';
 
 const CURSOR_API_BASE = 'https://api.cursor.com/v1';
 
-/** @deprecated Prefer {@link AgentModelEntry} from `framework_sdk_worker/agent` (includes `provider`). */
-export interface CursorModelEntry {
+/** Cursor `/v1/models` 原始条目（无 provider） */
+interface CursorApiModel {
     id: string;
     name?: string;
 }
 
+/** @deprecated Prefer {@link AgentModelEntry} from `framework_sdk_worker/agent` (includes `provider`). */
+export type CursorModelEntry = CursorApiModel;
+
 /** @deprecated Prefer {@link AgentModelsListResult} from `framework_sdk_worker/agent`. */
-export interface CursorModelsListResult {
+export type CursorModelsListResult = {
     ok: boolean;
-    models?: CursorModelEntry[];
+    models?: CursorApiModel[];
     error?: string;
     status?: number;
-}
+};
 
 export interface CursorAgentCreateInput {
     apiKey: SecretLike;
@@ -129,7 +133,7 @@ async function cursorFetch<T>(
     return { ok: resp.ok, status: resp.status, data, text };
 }
 
-function normalizeCursorModelEntry(raw: unknown): CursorModelEntry | null {
+function normalizeCursorModelEntry(raw: unknown): CursorApiModel | null {
     if (typeof raw === 'string' && raw.trim()) {
         return { id: raw.trim() };
     }
@@ -148,7 +152,7 @@ function normalizeCursorModelEntry(raw: unknown): CursorModelEntry | null {
     return { id, name };
 }
 
-function parseCursorModelsPayload(data: unknown): CursorModelEntry[] {
+function parseCursorModelsPayload(data: unknown): CursorApiModel[] {
     if (!data || typeof data !== 'object') {
         return [];
     }
@@ -162,7 +166,7 @@ function parseCursorModelsPayload(data: unknown): CursorModelEntry[] {
         if (!Array.isArray(list)) {
             continue;
         }
-        const out: CursorModelEntry[] = [];
+        const out: CursorApiModel[] = [];
         for (const item of list) {
             const entry = normalizeCursorModelEntry(item);
             if (entry) {
@@ -176,11 +180,19 @@ function parseCursorModelsPayload(data: unknown): CursorModelEntry[] {
     return [];
 }
 
-/** 列出 Cloud Agent 可用模型（GET /v1/models） */
-export async function listCursorModels(apiKey: SecretLike): Promise<CursorModelsListResult> {
+function toAgentModels(models: CursorApiModel[]): AgentModelEntry[] {
+    return models.map((m) => ({
+        id: m.id,
+        name: m.name,
+        provider: 'cursor' as const,
+    }));
+}
+
+/** 列出 Cloud Agent 可用模型（GET /v1/models）；返回带 `provider: 'cursor'` 的统一形态 */
+export async function listCursorModels(apiKey: SecretLike): Promise<AgentModelsListResult> {
     const resolved = await resolveSecret(apiKey);
     if (!resolved) {
-        return { ok: false, error: 'CURSOR_API_KEY not configured' };
+        return { ok: false, provider: 'cursor', error: 'CURSOR_API_KEY not configured' };
     }
     const resp = await cursorFetch<{ models?: unknown; data?: unknown; error?: unknown }>(
         resolved,
@@ -189,15 +201,20 @@ export async function listCursorModels(apiKey: SecretLike): Promise<CursorModels
     if (!resp.ok) {
         return {
             ok: false,
+            provider: 'cursor',
             error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
             status: resp.status,
         };
     }
     const models = parseCursorModelsPayload(resp.data);
     if (models.length === 0) {
-        return { ok: true, models: [{ id: 'auto', name: 'auto' }] };
+        return {
+            ok: true,
+            provider: 'cursor',
+            models: toAgentModels([{ id: 'auto', name: 'auto' }]),
+        };
     }
-    return { ok: true, models };
+    return { ok: true, provider: 'cursor', models: toAgentModels(models) };
 }
 
 /** 创建 Cloud Agent run（autoCreatePR 默认 true，供提 PR 类任务） */

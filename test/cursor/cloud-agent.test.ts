@@ -134,9 +134,10 @@ describe('listCursorModels', () => {
         );
         const result = await listCursorModels(API_KEY);
         expect(result.ok).toBe(true);
+        expect(result.provider).toBe('cursor');
         expect(result.models).toEqual([
-            { id: 'auto' },
-            { id: 'composer-2.5', name: 'Composer 2.5' },
+            { id: 'auto', provider: 'cursor' },
+            { id: 'composer-2.5', name: 'Composer 2.5', provider: 'cursor' },
         ]);
     });
 
@@ -144,7 +145,8 @@ describe('listCursorModels', () => {
         vi.stubGlobal('fetch', mockFetch([{ status: 200, body: {} }]));
         const result = await listCursorModels(API_KEY);
         expect(result.ok).toBe(true);
-        expect(result.models).toEqual([{ id: 'auto', name: 'auto' }]);
+        expect(result.provider).toBe('cursor');
+        expect(result.models).toEqual([{ id: 'auto', name: 'auto', provider: 'cursor' }]);
     });
 });
 
