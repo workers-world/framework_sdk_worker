@@ -10,11 +10,13 @@ import { readSseStream } from './sse-parser.js';
 
 const CURSOR_API_BASE = 'https://api.cursor.com/v1';
 
+/** @deprecated Prefer {@link AgentModelEntry} from `framework_sdk_worker/agent` (includes `provider`). */
 export interface CursorModelEntry {
     id: string;
     name?: string;
 }
 
+/** @deprecated Prefer {@link AgentModelsListResult} from `framework_sdk_worker/agent`. */
 export interface CursorModelsListResult {
     ok: boolean;
     models?: CursorModelEntry[];
