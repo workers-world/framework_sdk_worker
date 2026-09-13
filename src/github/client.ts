@@ -192,3 +192,177 @@ export async function createIssueComment(
     const data = (await resp.json()) as { id?: number };
     return data.id ?? null;
 }
+
+/** 更新 Issue 正文（PATCH）；失败返回 false */
+export async function updateIssueBody(
+    token: string,
+    repo: string,
+    issueNumber: number,
+    body: string,
+): Promise<boolean> {
+    const resp = await ghFetchWithRetry(
+        token,
+        `https://api.github.com/repos/${repo}/issues/${issueNumber}`,
+        {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body }),
+        },
+    );
+    return Boolean(resp?.ok);
+}
+
+export interface UploadIssueAttachmentInput {
+    filename: string;
+    contentType?: string;
+    bytes: Uint8Array;
+    /**
+     * Contents API 落盘路径前缀（默认 `.sch1/intake-evidence/issue-{n}`）。
+     * zip/csv 等非图片无法走 user-attachments bearer 时用此路径。
+     */
+    contentsPathPrefix?: string;
+    /** Contents API 目标分支；缺省取仓库 default_branch */
+    branch?: string;
+}
+
+export interface UploadedIssueAttachment {
+    name: string;
+    url: string;
+    /** user-attachments：原生附件；repo-contents：Contents API 落仓（App token + zip/csv 可靠路径） */
+    via: 'user-attachments' | 'repo-contents';
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+    const chunk = 0x8000;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += chunk) {
+        const slice = bytes.subarray(i, Math.min(i + chunk, bytes.length));
+        for (let j = 0; j < slice.length; j++) {
+            const code = slice[j];
+            if (code != null) {
+                binary += String.fromCharCode(code);
+            }
+        }
+    }
+    return btoa(binary);
+}
+
+function safeAttachmentFilename(filename: string): string {
+    const base = filename.replace(/\\/g, '/').split('/').pop() ?? 'attachment.bin';
+    return base.replace(/[^\w.\-()+@]/g, '_') || 'attachment.bin';
+}
+
+function encodeContentsPath(path: string): string {
+    return path
+        .split('/')
+        .filter(Boolean)
+        .map((seg) => encodeURIComponent(seg))
+        .join('/');
+}
+
+async function resolveRepoMeta(
+    token: string,
+    repo: string,
+): Promise<{ id: number; defaultBranch: string } | null> {
+    const resp = await ghFetchWithRetry(token, `https://api.github.com/repos/${repo}`);
+    if (!resp?.ok) {
+        return null;
+    }
+    const data = (await resp.json()) as { id?: number; default_branch?: string };
+    if (data.id == null || !data.default_branch) {
+        return null;
+    }
+    return { id: data.id, defaultBranch: data.default_branch };
+}
+
+/**
+ * 尝试 uploads.github.com user-attachments（图片/视频；App token 常 404）。
+ * 失败则 Contents API 写入仓库路径，Issue 正文可链 html_url / download_url。
+ */
+export async function uploadIssueAttachment(
+    token: string,
+    repo: string,
+    issueNumber: number,
+    input: UploadIssueAttachmentInput,
+): Promise<UploadedIssueAttachment | null> {
+    const filename = safeAttachmentFilename(input.filename);
+    const contentType = input.contentType?.trim() || 'application/octet-stream';
+    const meta = await resolveRepoMeta(token, repo);
+    if (!meta) {
+        return null;
+    }
+
+    const uploadUrl = new URL('https://uploads.github.com/user-attachments/assets');
+    uploadUrl.searchParams.set('name', filename);
+    uploadUrl.searchParams.set('content_type', contentType);
+    uploadUrl.searchParams.set('repository_id', String(meta.id));
+
+    const attachResp = await ghFetchWithRetry(token, uploadUrl.toString(), {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': contentType,
+        },
+        body: input.bytes,
+    });
+    if (attachResp?.ok) {
+        const data = (await attachResp.json()) as { url?: string; href?: string };
+        const url = data.url ?? data.href;
+        if (url) {
+            return { name: filename, url, via: 'user-attachments' };
+        }
+    }
+
+    const prefix =
+        input.contentsPathPrefix?.replace(/\/+$/, '') ||
+        `.sch1/intake-evidence/issue-${issueNumber}`;
+    const path = `${prefix}/${filename}`;
+    const branch = input.branch?.trim() || meta.defaultBranch;
+    const encodedPath = encodeContentsPath(path);
+
+    const getResp = await ghFetch(
+        token,
+        `https://api.github.com/repos/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
+    );
+    let existingSha: string | undefined;
+    if (getResp.ok) {
+        const existing = (await getResp.json()) as { sha?: string };
+        existingSha = existing.sha;
+    }
+
+    const putBody: Record<string, string> = {
+        message: `sch1: attach intake evidence for #${issueNumber} (${filename})`,
+        content: bytesToBase64(input.bytes),
+        branch,
+    };
+    if (existingSha) {
+        putBody.sha = existingSha;
+    }
+
+    const putResp = await ghFetchWithRetry(
+        token,
+        `https://api.github.com/repos/${repo}/contents/${encodedPath}`,
+        {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(putBody),
+        },
+    );
+    if (!putResp?.ok) {
+        return null;
+    }
+    const putData = (await putResp.json()) as {
+        content?: { html_url?: string; download_url?: string; name?: string };
+        commit?: { html_url?: string };
+    };
+    const url =
+        putData.content?.download_url ?? putData.content?.html_url ?? putData.commit?.html_url;
+    if (!url) {
+        return null;
+    }
+    return {
+        name: putData.content?.name ?? filename,
+        url,
+        via: 'repo-contents',
+    };
+}

@@ -67,6 +67,10 @@ export interface AttachmentRefItem {
     contentType?: string;
     sizeBytes?: number;
     note?: string;
+    /** orchestrator 写入 R2 的稳定 key；批准 Issue 时 sch1 据此拉取并上传 GitHub */
+    r2Key?: string;
+    /** 批准后回填的 GitHub 下载/浏览 URL（可选） */
+    githubUrl?: string;
 }
 
 export interface AttachmentRefBlockData {
@@ -198,19 +202,31 @@ export function buildAttachmentRefBlock(
 ): IntakeEvidenceBlock {
     const title = options?.title ?? 'Attachments';
     const lines = items.map((item) => {
+        if (item.githubUrl) {
+            return `- [${item.filename}](${item.githubUrl})`;
+        }
         const meta = [
             item.contentType,
             item.sizeBytes != null ? `${item.sizeBytes}B` : null,
+            item.r2Key ? 'R2 已暂存 · 批准 Issue 时上传 GitHub' : null,
             item.note,
         ]
             .filter(Boolean)
             .join(' · ');
         return meta ? `- \`${item.filename}\` (${meta})` : `- \`${item.filename}\``;
     });
+    const refs = items
+        .filter((item) => item.r2Key)
+        .map((item) => ({
+            rel: 'r2Key' as const,
+            value: item.r2Key as string,
+            label: item.filename,
+        }));
     return {
         id,
         type: INTAKE_BLOCK_ATTACHMENT_REF,
         title,
+        ...(refs.length > 0 ? { refs } : {}),
         data: { items } satisfies AttachmentRefBlockData,
         markdown: lines.length > 0 ? `### ${title}\n\n${lines.join('\n')}` : undefined,
     };
