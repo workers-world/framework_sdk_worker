@@ -4,7 +4,6 @@
  * 下游：api.cursor.com/v1。
  * 不变量：apiKey 为 SecretLike（resolveSecret 解析）；轮询至终态或超时；错误规范成可读字符串。
  */
-import type { AgentModelEntry, AgentModelsListResult } from '../agent/types.js';
 import { sleep } from '../async/sleep.js';
 import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 import { readSseStream } from './sse-parser.js';
@@ -15,6 +14,15 @@ const CURSOR_API_BASE = 'https://api.cursor.com/v1';
 interface CursorApiModel {
     id: string;
     name?: string;
+}
+
+/** listCursorModels 返回值；与 `AgentModelsListResult` 结构兼容（provider 固定 cursor） */
+export interface CursorAgentModelsListResult {
+    ok: boolean;
+    provider: 'cursor';
+    models?: Array<{ id: string; name?: string; provider: 'cursor' }>;
+    error?: string;
+    status?: number;
 }
 
 /** @deprecated Prefer {@link AgentModelEntry} from `framework_sdk_worker/agent` (includes `provider`). */
@@ -180,7 +188,9 @@ function parseCursorModelsPayload(data: unknown): CursorApiModel[] {
     return [];
 }
 
-function toAgentModels(models: CursorApiModel[]): AgentModelEntry[] {
+function toCursorAgentModels(
+    models: CursorApiModel[],
+): NonNullable<CursorAgentModelsListResult['models']> {
     return models.map((m) => ({
         id: m.id,
         name: m.name,
@@ -189,7 +199,7 @@ function toAgentModels(models: CursorApiModel[]): AgentModelEntry[] {
 }
 
 /** 列出 Cloud Agent 可用模型（GET /v1/models）；返回带 `provider: 'cursor'` 的统一形态 */
-export async function listCursorModels(apiKey: SecretLike): Promise<AgentModelsListResult> {
+export async function listCursorModels(apiKey: SecretLike): Promise<CursorAgentModelsListResult> {
     const resolved = await resolveSecret(apiKey);
     if (!resolved) {
         return { ok: false, provider: 'cursor', error: 'CURSOR_API_KEY not configured' };
@@ -211,10 +221,10 @@ export async function listCursorModels(apiKey: SecretLike): Promise<AgentModelsL
         return {
             ok: true,
             provider: 'cursor',
-            models: toAgentModels([{ id: 'auto', name: 'auto' }]),
+            models: toCursorAgentModels([{ id: 'auto', name: 'auto' }]),
         };
     }
-    return { ok: true, provider: 'cursor', models: toAgentModels(models) };
+    return { ok: true, provider: 'cursor', models: toCursorAgentModels(models) };
 }
 
 /** 创建 Cloud Agent run（autoCreatePR 默认 true，供提 PR 类任务） */
