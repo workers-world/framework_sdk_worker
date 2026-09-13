@@ -76,6 +76,41 @@ describe('createBearerAuthMiddleware', () => {
         expect(next).not.toHaveBeenCalled();
         expect(resp.status).toBe(503);
     });
+
+    it('skips auth when ENVIRONMENT=development and skipWhenEnvironmentDevelopment', async () => {
+        const mw = createBearerAuthMiddleware('AUTH_TOKEN', {
+            skipWhenEnvironmentDevelopment: true,
+        });
+        const next = vi.fn(async () => undefined);
+        const { c } = fakeContext(undefined, { ENVIRONMENT: 'development' });
+
+        await expect(mw(c, next)).resolves.toBeUndefined();
+        expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips auth when skipFlagEnvKey is truthy', async () => {
+        const mw = createBearerAuthMiddleware('AUTH_TOKEN', {
+            skipFlagEnvKey: 'FOO_SKIP_ADMIN_AUTH',
+        });
+        const next = vi.fn(async () => undefined);
+        const { c } = fakeContext(undefined, {
+            ENVIRONMENT: 'production',
+            FOO_SKIP_ADMIN_AUTH: '1',
+        });
+
+        await expect(mw(c, next)).resolves.toBeUndefined();
+        expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not auto-skip development without skip options', async () => {
+        const mw = createBearerAuthMiddleware('AUTH_TOKEN');
+        const next = vi.fn(async () => undefined);
+        const { c } = fakeContext(undefined, { ENVIRONMENT: 'development', AUTH_TOKEN: TOKEN });
+
+        const resp = await mw(c, next);
+        expect(next).not.toHaveBeenCalled();
+        expect((resp as Response).status).toBe(401);
+    });
 });
 
 describe('registerBearerAuthRoutes', () => {
