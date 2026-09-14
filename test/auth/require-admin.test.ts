@@ -27,4 +27,11 @@ describe('requireAdminAuth', () => {
             error: 'RULES_ADMIN_TOKEN not configured',
         });
     });
+
+    it('skips when environment=development', async () => {
+        const req = new Request('https://x/v1/rules');
+        await expect(
+            requireAdminAuth(req, undefined, { environment: 'development' }),
+        ).resolves.toBeNull();
+    });
 });
