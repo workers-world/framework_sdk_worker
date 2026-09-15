@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.13",
+  "version": "0.4.14",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -187,6 +187,10 @@
     "./intake": {
       "import": "./dist/intake/index.js",
       "types": "./dist/intake/index.d.ts"
+    },
+    "./digest": {
+      "import": "./dist/digest/index.js",
+      "types": "./dist/digest/index.d.ts"
     },
     "./fund/types": {
       "import": "./dist/fund/types.js",
