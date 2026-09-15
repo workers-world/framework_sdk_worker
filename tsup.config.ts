@@ -56,6 +56,7 @@ export default defineConfig({
         'env/validate': 'src/env/validate.ts',
         'ops-error/index': 'src/ops-error/index.ts',
         'intake/index': 'src/intake/index.ts',
+        'digest/index': 'src/digest/index.ts',
         'fund/types': 'src/fund/types.ts',
         'fund/normalize-code': 'src/fund/normalize-code.ts',
         'fund/parse-utils': 'src/fund/parse-utils.ts',
