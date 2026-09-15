@@ -1,7 +1,7 @@
 /**
  * Digest 周期抽象：daily / weekly / monthly。
  */
-import { shanghaiIsoWeekKey, shanghaiYmd, shanghaiYmdDash } from '../time/shanghai.js';
+import { shanghaiIsoWeekKey, shanghaiYmd, shanghaiYmdDash } from '../time.js';
 import type { DigestCadence } from './types.js';
 
 function shanghaiMonthKey(date: Date = new Date()): string {
