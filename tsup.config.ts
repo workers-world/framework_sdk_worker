@@ -62,6 +62,7 @@ export default defineConfig({
         'fund/parse-utils': 'src/fund/parse-utils.ts',
         'fund/tencent-nav': 'src/fund/tencent-nav.ts',
         'fund/eastmoney-estimate': 'src/fund/eastmoney-estimate.ts',
+        'fund/calendar': 'src/fund/calendar.ts',
         'fund/quote': 'src/fund/quote.ts',
         'monitor/threshold': 'src/monitor/threshold.ts',
         perf: 'src/perf.ts',

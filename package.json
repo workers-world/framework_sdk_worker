@@ -212,6 +212,10 @@
       "import": "./dist/fund/eastmoney-estimate.js",
       "types": "./dist/fund/eastmoney-estimate.d.ts"
     },
+    "./fund/calendar": {
+      "import": "./dist/fund/calendar.js",
+      "types": "./dist/fund/calendar.d.ts"
+    },
     "./fund/quote": {
       "import": "./dist/fund/quote.js",
       "types": "./dist/fund/quote.d.ts"
