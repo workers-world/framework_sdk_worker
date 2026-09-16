@@ -60,6 +60,35 @@ describe('ghFetchWithRetry', () => {
         expect(resp?.status).toBe(404);
         expect(spy).toHaveBeenCalledTimes(1);
     });
+
+    it('does not retry POST 5xx by default (non-idempotent write)', async () => {
+        const spy = vi.fn(async () => new Response('boom', { status: 502 }));
+        vi.stubGlobal('fetch', spy);
+
+        const resp = await ghFetchWithRetry(TOKEN, 'https://api.github.com/x', {
+            method: 'POST',
+        });
+        expect(resp?.status).toBe(502);
+        expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries write methods when retryWrite is opted in', async () => {
+        let calls = 0;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => {
+                calls += 1;
+                return new Response('bad gateway', { status: calls === 1 ? 502 : 200 });
+            }),
+        );
+
+        const resp = await ghFetchWithRetry(TOKEN, 'https://api.github.com/x', {
+            method: 'PUT',
+            retryWrite: true,
+        });
+        expect(resp?.status).toBe(200);
+        expect(calls).toBe(2);
+    });
 });
 
 describe('issue helpers', () => {
@@ -116,6 +145,38 @@ describe('issue helpers', () => {
         const init = spy.mock.calls[0][1] as RequestInit;
         expect(init.method).toBe('PATCH');
         expect(JSON.parse(String(init.body))).toEqual({ body: 'new body' });
+    });
+
+    it('uploadIssueAttachment aborts when Contents GET returns 5xx (no blind PUT)', async () => {
+        const spy = vi.fn(async (url: string, init?: RequestInit) => {
+            const u = String(url);
+            if (u === 'https://api.github.com/repos/o/r' && (!init?.method || init.method === 'GET')) {
+                return new Response(JSON.stringify({ id: 42, default_branch: 'master' }), {
+                    status: 200,
+                });
+            }
+            if (u.startsWith('https://uploads.github.com/user-attachments/assets')) {
+                return new Response('unsupported', { status: 422 });
+            }
+            if (u.includes('/contents/') && init?.method === 'PUT') {
+                return new Response('{}', { status: 201 });
+            }
+            if (u.includes('/contents/')) {
+                return new Response('bad gateway', { status: 502 });
+            }
+            return new Response('unexpected', { status: 500 });
+        });
+        vi.stubGlobal('fetch', spy);
+
+        const uploaded = await uploadIssueAttachment(TOKEN, 'o/r', 3, {
+            filename: 'a.csv',
+            contentType: 'text/csv',
+            bytes: new TextEncoder().encode('x,y\n1,2\n'),
+        });
+        expect(uploaded).toBeNull();
+        expect(
+            spy.mock.calls.some((c) => (c[1] as RequestInit)?.method === 'PUT'),
+        ).toBe(false);
     });
 
     it('uploadIssueAttachment falls back to Contents API when user-attachments fails', async () => {

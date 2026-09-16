@@ -23,6 +23,9 @@ export interface FundCalendarEnv {
 
 type ApiEnvelope<T> = { code: number; message: string; data: T | null };
 
+/** 上游 fund-info 容器挂起时避免拖死调用方 isolate（对齐 audit-log client） */
+const FUND_INFO_TIMEOUT_MS = 10_000;
+
 async function fundInfoGet<T>(
     env: FundCalendarEnv,
     pathWithQuery: string,
@@ -38,6 +41,7 @@ async function fundInfoGet<T>(
         const resp = await env.SVC_FUND_INFO.fetch(`https://fund-info${pathWithQuery}`, {
             method: 'GET',
             headers: { Authorization: `Bearer ${token}` },
+            signal: AbortSignal.timeout(FUND_INFO_TIMEOUT_MS),
         });
         const body = (await resp.json().catch(() => null)) as ApiEnvelope<T> | null;
         if (!resp.ok) {

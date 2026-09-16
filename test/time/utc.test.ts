@@ -61,5 +61,8 @@ describe('utc time', () => {
         });
         expect(() => utcMonthRangeIso('2026-7')).toThrow();
         expect(() => utcMonthRangeIso('july')).toThrow();
+        // 月份须 1-12（此前 2026-13 会静默滚动到 2027-02）
+        expect(() => utcMonthRangeIso('2026-13')).toThrow();
+        expect(() => utcMonthRangeIso('2026-00')).toThrow();
     });
 });

@@ -12,8 +12,9 @@ export function parseAgentModelRef(raw: string | null | undefined): AgentModelRe
     if (colon > 0) {
         const providerPart = trimmed.slice(0, colon).trim().toLowerCase();
         const modelId = trimmed.slice(colon + 1).trim();
-        if (isAgentProviderId(providerPart) && modelId) {
-            return { provider: providerPart, modelId };
+        if (isAgentProviderId(providerPart)) {
+            // provider 合法但 modelId 为空（如 'cursor:'）→ auto；勿把整串当裸 id 回退
+            return { provider: providerPart, modelId: modelId || 'auto' };
         }
     }
     return { provider: DEFAULT_PROVIDER, modelId: trimmed };

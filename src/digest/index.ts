@@ -5,7 +5,13 @@
  * 调度中枢：sch2；本模块提供 cadence、编排、邮件拼装与 capability 契约。
  */
 
-export { dailyCadence, getCadenceById, monthlyCadence, weeklyCadence } from './cadences.js';
+export {
+    cadenceDateFromPeriodKey,
+    dailyCadence,
+    getCadenceById,
+    monthlyCadence,
+    weeklyCadence,
+} from './cadences.js';
 export { composeDigestMail } from './compose-mail.js';
 export {
     type CreateDigestRunRouteOptions,
@@ -25,6 +31,7 @@ export type {
     DigestCadenceId,
     DigestCapabilityDescriptor,
     DigestDefinition,
+    DigestDeliverMeta,
     DigestRunRequestBody,
     DigestRunResponseBody,
     DigestSection,

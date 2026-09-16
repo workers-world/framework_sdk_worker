@@ -21,6 +21,11 @@ describe('parseAgentModelRef', () => {
         expect(parseAgentModelRef(null)).toEqual({ provider: 'cursor', modelId: 'auto' });
         expect(parseAgentModelRef('  ')).toEqual({ provider: 'cursor', modelId: 'auto' });
     });
+
+    it('maps valid provider with empty modelId to auto', () => {
+        expect(parseAgentModelRef('cursor:')).toEqual({ provider: 'cursor', modelId: 'auto' });
+        expect(parseAgentModelRef('cursor:  ')).toEqual({ provider: 'cursor', modelId: 'auto' });
+    });
 });
 
 describe('formatAgentModelRef', () => {

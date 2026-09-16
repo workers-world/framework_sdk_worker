@@ -2,10 +2,19 @@
  * GitHub API 客户端：统一请求头、429/5xx 指数退避重试、Issue 读写封装。
  * 上游：持有 GitHub token（PAT 或 App installation token）的 Worker。
  * 下游：api.github.com。
- * 不变量：429/5xx 自动退避（1s/2s）；写操作显式封装便于审计；错误带 HTTP 状态。
+ * 不变量：429/5xx 自动退避（1s/2s）仅幂等方法 GET/HEAD 默认启用，写方法需 retryWrite 显式
+ * opt-in（避免 5xx 歧义时重复创建资源）；写操作显式封装便于审计；错误带 HTTP 状态。
  */
 
 const RETRY_DELAYS_MS = [1000, 2000];
+
+const IDEMPOTENT_RETRY_METHODS = new Set(['GET', 'HEAD']);
+
+/** ghFetchWithRetry 的 init：RequestInit + retryWrite（写方法重试 opt-in） */
+export type GhFetchInit = RequestInit & {
+    /** POST/PUT/PATCH/DELETE 对 429/5xx 也重试（仅用于幂等写，如带 sha 的 upsert） */
+    retryWrite?: boolean;
+};
 
 export function githubHeaders(token: string, userAgent = 'framework-sdk-worker'): HeadersInit {
     return {
@@ -27,16 +36,23 @@ export async function ghFetch(token: string, url: string, init?: RequestInit): P
     });
 }
 
-/** GitHub API：对 429/5xx/网络错误做指数退避重试；仍失败返回最后一次 Response（网络错误返回 null）。 */
+/**
+ * GitHub API：对 429/5xx/网络错误做指数退避重试；默认仅幂等方法（GET/HEAD）重试，
+ * POST/PUT/PATCH/DELETE 需 init.retryWrite=true 显式 opt-in（失败即返回，防重复创建）；
+ * 仍失败返回最后一次 Response（网络错误返回 null）。
+ */
 export async function ghFetchWithRetry(
     token: string,
     url: string,
-    init?: RequestInit,
+    init?: GhFetchInit,
 ): Promise<Response | null> {
+    const { retryWrite, ...fetchInit } = init ?? {};
+    const method = (fetchInit.method ?? 'GET').toUpperCase();
+    const allowRetry = IDEMPOTENT_RETRY_METHODS.has(method) || retryWrite === true;
     for (let attempt = 0; ; attempt++) {
         try {
-            const resp = await ghFetch(token, url, init);
-            if (resp.ok || (resp.status < 500 && resp.status !== 429)) {
+            const resp = await ghFetch(token, url, fetchInit);
+            if (resp.ok || (resp.status < 500 && resp.status !== 429) || !allowRetry) {
                 return resp;
             }
             if (attempt < RETRY_DELAYS_MS.length) {
@@ -47,11 +63,11 @@ export async function ghFetchWithRetry(
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             console.log(`event=github_api msg=fetch error url=${url} error=${msg}`);
-            if (attempt < RETRY_DELAYS_MS.length) {
-                await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
-                continue;
+            if (!allowRetry || attempt >= RETRY_DELAYS_MS.length) {
+                return null;
             }
-            return null;
+            await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+            continue;
         }
     }
 }
@@ -109,7 +125,7 @@ export async function addIssueLabels(
     const resp = await ghFetchWithRetry(
         token,
         `https://api.github.com/repos/${repo}/issues/${issueNumber}/labels`,
-        { method: 'POST', body: JSON.stringify({ labels }) },
+        { method: 'POST', body: JSON.stringify({ labels }), retryWrite: true },
     );
     return Boolean(resp?.ok);
 }
@@ -124,7 +140,7 @@ export async function removeIssueLabel(
     const resp = await ghFetchWithRetry(
         token,
         `https://api.github.com/repos/${repo}/issues/${issueNumber}/labels/${encodeURIComponent(label)}`,
-        { method: 'DELETE' },
+        { method: 'DELETE', retryWrite: true },
     );
     return Boolean(resp?.ok || resp?.status === 404);
 }
@@ -207,6 +223,7 @@ export async function updateIssueBody(
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ body }),
+            retryWrite: true,
         },
     );
     return Boolean(resp?.ok);
@@ -304,6 +321,8 @@ export async function uploadIssueAttachment(
             'Content-Type': contentType,
         },
         body: input.bytes,
+        // 未引用资产（孤儿附件）无害，保持既有重试语义
+        retryWrite: true,
     });
     if (attachResp?.ok) {
         const data = (await attachResp.json()) as { url?: string; href?: string };
@@ -320,11 +339,15 @@ export async function uploadIssueAttachment(
     const branch = input.branch?.trim() || meta.defaultBranch;
     const encodedPath = encodeContentsPath(path);
 
-    const getResp = await ghFetch(
+    const getResp = await ghFetchWithRetry(
         token,
         `https://api.github.com/repos/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
     );
     let existingSha: string | undefined;
+    if (!getResp || (getResp.status !== 404 && !getResp.ok)) {
+        // GET 不可判定（网络错误 / 5xx 等非 404）：盲 PUT 会 422（已存在缺 sha）或误覆盖，中止
+        return null;
+    }
     if (getResp.ok) {
         const existing = (await getResp.json()) as { sha?: string };
         existingSha = existing.sha;
@@ -346,6 +369,8 @@ export async function uploadIssueAttachment(
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(putBody),
+            // 同路径同内容 + 带 sha 更新，重试收敛
+            retryWrite: true,
         },
     );
     if (!putResp?.ok) {

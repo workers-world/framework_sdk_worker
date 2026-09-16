@@ -601,8 +601,15 @@ export async function fetchCursorAgentUsage(
             error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
         };
     }
+    // 传 runId：优先 runs[] 中匹配 runId 的 usage（totalUsage 是整个 agent 的汇总），
+    // 找不到才回退 totalUsage；未传 runId 才直接用 totalUsage
     const fromTotal = resp.data.totalUsage ? normalizeUsage(resp.data.totalUsage) : null;
-    const fromRun = resp.data.runs?.[0]?.usage ? normalizeUsage(resp.data.runs[0].usage) : null;
-    const usage = fromTotal ?? fromRun ?? normalizeUsage(undefined);
+    const matchedRun = opts?.runId
+        ? resp.data.runs?.find((r) => r.runId != null && r.runId === opts.runId)
+        : undefined;
+    const fromMatchedRun = matchedRun?.usage ? normalizeUsage(matchedRun.usage) : null;
+    const firstRun = resp.data.runs?.[0]?.usage ? normalizeUsage(resp.data.runs[0].usage) : null;
+    const usage =
+        (opts?.runId ? fromMatchedRun : null) ?? fromTotal ?? firstRun ?? normalizeUsage(undefined);
     return { ok: true, totalTokens: usage.totalTokens, usage };
 }

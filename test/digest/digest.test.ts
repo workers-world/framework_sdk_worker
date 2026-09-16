@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
     buildDigestDedupKey,
+    cadenceDateFromPeriodKey,
     composeDigestMail,
     type DigestDefinition,
     type DigestSection,
@@ -179,6 +180,156 @@ describe('runScheduledDigest', () => {
         });
         expect(result.skippedReason).toBe('dedup');
         expect(deliver).not.toHaveBeenCalled();
+    });
+
+    it('releases dedup and returns deliver_failed when deliver fails', async () => {
+        const now = new Date('2026-09-14T16:00:00.000Z'); // Shanghai 2026-09-15 → 2026-W38
+        const claimDedup = vi.fn(async () => true);
+        const releaseDedup = vi.fn(async () => {});
+        const result = await runScheduledDigest({
+            definition: makeDef([
+                {
+                    id: 'a',
+                    title: 'A',
+                    order: 1,
+                    collect: async () => ({ status: 'ok', lines: ['x'], highlightCount: 1 }),
+                },
+            ]),
+            env: { n: 1 },
+            now,
+            claimDedup,
+            releaseDedup,
+            deliver: async () => ({ ok: false, error: 'smtp down' }),
+        });
+        expect(result.sent).toBe(false);
+        expect(result.skippedReason).toBe('deliver_failed');
+        expect(result.error).toBe('smtp down');
+        expect(releaseDedup).toHaveBeenCalledTimes(1);
+        expect(releaseDedup).toHaveBeenCalledWith({ n: 1 }, 'digest|weekly_governance|2026-W38');
+    });
+
+    it('releases dedup when deliver throws, without masking the original error', async () => {
+        const releaseDedup = vi.fn(async () => {
+            throw new Error('kv down');
+        });
+        const result = await runScheduledDigest({
+            definition: makeDef([
+                {
+                    id: 'a',
+                    title: 'A',
+                    order: 1,
+                    collect: async () => ({ status: 'ok', lines: ['x'], highlightCount: 1 }),
+                },
+            ]),
+            env: { n: 1 },
+            now: new Date('2026-09-14T16:00:00.000Z'),
+            claimDedup: async () => true,
+            releaseDedup,
+            deliver: async () => {
+                throw new Error('notify 500');
+            },
+        });
+        expect(result.skippedReason).toBe('deliver_failed');
+        expect(result.error).toBe('notify 500');
+        expect(releaseDedup).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not release dedup on success or without releaseDedup', async () => {
+        const releaseDedup = vi.fn(async () => {});
+        const okResult = await runScheduledDigest({
+            definition: makeDef([
+                {
+                    id: 'a',
+                    title: 'A',
+                    order: 1,
+                    collect: async () => ({ status: 'ok', lines: ['x'], highlightCount: 1 }),
+                },
+            ]),
+            env: { n: 1 },
+            claimDedup: async () => true,
+            releaseDedup,
+            deliver: async () => ({ ok: true }),
+        });
+        expect(okResult.sent).toBe(true);
+        expect(releaseDedup).not.toHaveBeenCalled();
+
+        const noRelease = await runScheduledDigest({
+            definition: makeDef([
+                {
+                    id: 'a',
+                    title: 'A',
+                    order: 1,
+                    collect: async () => ({ status: 'ok', lines: ['x'], highlightCount: 1 }),
+                },
+            ]),
+            env: { n: 1 },
+            claimDedup: async () => true,
+            deliver: async () => ({ ok: false }),
+        });
+        expect(noRelease.skippedReason).toBe('deliver_failed');
+    });
+
+    it('periodKeyOverride pins dedupKey and periodKey/label', async () => {
+        const claimDedup = vi.fn(async () => true);
+        let deliveredKey = '';
+        const result = await runScheduledDigest({
+            definition: makeDef([
+                {
+                    id: 'a',
+                    title: 'A',
+                    order: 1,
+                    collect: async () => ({ status: 'ok', lines: ['x'], highlightCount: 1 }),
+                },
+            ]),
+            env: { n: 1 },
+            now: new Date('2027-06-01T00:00:00Z'),
+            claimDedup,
+            periodKeyOverride: '2026-W37',
+            deliver: async (_env, _mail, dedupKey) => {
+                deliveredKey = dedupKey;
+                return { ok: true };
+            },
+        });
+        expect(claimDedup).toHaveBeenCalledWith({ n: 1 }, 'digest|weekly_governance|2026-W37');
+        expect(deliveredKey).toBe('digest|weekly_governance|2026-W37');
+        expect(result.periodKey).toBe('2026-W37');
+        expect(result.periodLabel).toContain('2026-W37');
+    });
+
+    it('throws on periodKeyOverride that does not match the cadence', async () => {
+        await expect(
+            runScheduledDigest({
+                definition: makeDef([]),
+                env: { n: 1 },
+                claimDedup: async () => true,
+                deliver: async () => ({ ok: true }),
+                periodKeyOverride: '2026-13',
+            }),
+        ).rejects.toThrow(/invalid periodKey/);
+    });
+});
+
+describe('cadenceDateFromPeriodKey', () => {
+    it('roundtrips daily / weekly / monthly keys', () => {
+        const d = cadenceDateFromPeriodKey(dailyCadence, '20260915');
+        expect(d).toBeInstanceOf(Date);
+        expect(dailyCadence.periodKey(d ?? undefined)).toBe('20260915');
+
+        const w = cadenceDateFromPeriodKey(weeklyCadence, '2026-W37');
+        expect(w).toBeInstanceOf(Date);
+        expect(weeklyCadence.periodKey(w ?? undefined)).toBe('2026-W37');
+
+        const m = cadenceDateFromPeriodKey(monthlyCadence, '2026-09');
+        expect(m).toBeInstanceOf(Date);
+        expect(monthlyCadence.periodKey(m ?? undefined)).toBe('2026-09');
+    });
+
+    it('rejects malformed or out-of-range keys', () => {
+        expect(cadenceDateFromPeriodKey(dailyCadence, '20260230')).toBeNull();
+        expect(cadenceDateFromPeriodKey(dailyCadence, '2026-09-15')).toBeNull();
+        expect(cadenceDateFromPeriodKey(monthlyCadence, '2026-13')).toBeNull();
+        expect(cadenceDateFromPeriodKey(weeklyCadence, '2026-W00')).toBeNull();
+        expect(cadenceDateFromPeriodKey(weeklyCadence, '2026-W99')).toBeNull();
     });
 });
 
