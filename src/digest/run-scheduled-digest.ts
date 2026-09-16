@@ -70,9 +70,7 @@ export async function runScheduledDigest<TEnv>(
     if (override) {
         const pinned = cadenceDateFromPeriodKey(definition.cadence, override);
         if (!pinned) {
-            throw new Error(
-                `invalid periodKey for cadence ${definition.cadence.id}: ${override}`,
-            );
+            throw new Error(`invalid periodKey for cadence ${definition.cadence.id}: ${override}`);
         }
         periodKey = definition.cadence.periodKey(pinned);
         periodLabel = definition.cadence.periodLabel(pinned);

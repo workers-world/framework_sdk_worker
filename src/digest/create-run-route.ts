@@ -54,7 +54,8 @@ export function createDigestRunHandler<TEnv>(options: CreateDigestRunRouteOption
             : options.deliver;
 
         const force = body.force === true;
-        const jobId = typeof body.jobId === 'string' && body.jobId.trim() ? body.jobId.trim() : undefined;
+        const jobId =
+            typeof body.jobId === 'string' && body.jobId.trim() ? body.jobId.trim() : undefined;
         let periodKeyOverride: string | undefined;
         if (typeof body.periodKey === 'string' && body.periodKey.trim()) {
             const key = body.periodKey.trim();
@@ -84,7 +85,12 @@ export function createDigestRunHandler<TEnv>(options: CreateDigestRunRouteOption
                 if (force) {
                     meta.force = true;
                 }
-                return deliver(env, mail, force ? `${dedupKey}|force|${Date.now()}` : dedupKey, meta);
+                return deliver(
+                    env,
+                    mail,
+                    force ? `${dedupKey}|force|${Date.now()}` : dedupKey,
+                    meta,
+                );
             },
         });
 

@@ -47,7 +47,7 @@ async function fundInfoGet<T>(
         if (!resp.ok) {
             return { ok: false, error: body?.message || resp.statusText || `HTTP ${resp.status}` };
         }
-        if (!body || body.code !== 0 || body.data == null) {
+        if (body?.code !== 0 || body.data == null) {
             return { ok: false, error: body?.message || 'fund-info empty response' };
         }
         return { ok: true, data: body.data };

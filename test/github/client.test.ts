@@ -150,7 +150,10 @@ describe('issue helpers', () => {
     it('uploadIssueAttachment aborts when Contents GET returns 5xx (no blind PUT)', async () => {
         const spy = vi.fn(async (url: string, init?: RequestInit) => {
             const u = String(url);
-            if (u === 'https://api.github.com/repos/o/r' && (!init?.method || init.method === 'GET')) {
+            if (
+                u === 'https://api.github.com/repos/o/r' &&
+                (!init?.method || init.method === 'GET')
+            ) {
                 return new Response(JSON.stringify({ id: 42, default_branch: 'master' }), {
                     status: 200,
                 });
@@ -174,9 +177,7 @@ describe('issue helpers', () => {
             bytes: new TextEncoder().encode('x,y\n1,2\n'),
         });
         expect(uploaded).toBeNull();
-        expect(
-            spy.mock.calls.some((c) => (c[1] as RequestInit)?.method === 'PUT'),
-        ).toBe(false);
+        expect(spy.mock.calls.some((c) => (c[1] as RequestInit)?.method === 'PUT')).toBe(false);
     });
 
     it('uploadIssueAttachment falls back to Contents API when user-attachments fails', async () => {
