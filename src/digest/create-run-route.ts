@@ -3,11 +3,13 @@
  * 鉴权由调用方在挂载前注册 Bearer middleware。
  */
 
+import { cadenceDateFromPeriodKey } from './cadences.js';
 import { getDigestDefinitionById } from './registry.js';
 import { runScheduledDigest, type ScheduledDigestRunOptions } from './run-scheduled-digest.js';
 import type {
     DigestCapabilityDescriptor,
     DigestDefinition,
+    DigestDeliverMeta,
     DigestRunRequestBody,
 } from './types.js';
 
@@ -21,6 +23,8 @@ export interface CreateDigestRunRouteOptions<TEnv> {
     definitions: DigestDefinition<TEnv>[];
     claimDedup: ScheduledDigestRunOptions<TEnv>['claimDedup'];
     deliver: ScheduledDigestRunOptions<TEnv>['deliver'];
+    /** deliver 失败时回滚 dedup claim（透传 runScheduledDigest；force 路径未 claim，不回滚） */
+    releaseDedup?: ScheduledDigestRunOptions<TEnv>['releaseDedup'];
     /** 覆盖 deliver 收件人（来自 sch2 job.alert_to）时注入 env 或闭包；默认忽略 alertTo */
     resolveDeliver?: (
         base: ScheduledDigestRunOptions<TEnv>['deliver'],
@@ -50,28 +54,60 @@ export function createDigestRunHandler<TEnv>(options: CreateDigestRunRouteOption
             : options.deliver;
 
         const force = body.force === true;
-        const claimDedup = force ? async () => true : options.claimDedup;
-        const deliverMaybeUnique = force
-            ? async (env: TEnv, mail: Parameters<typeof deliver>[1], dedupKey: string) =>
-                  deliver(env, mail, `${dedupKey}|force|${Date.now()}`)
-            : deliver;
+        const jobId =
+            typeof body.jobId === 'string' && body.jobId.trim() ? body.jobId.trim() : undefined;
+        let periodKeyOverride: string | undefined;
+        if (typeof body.periodKey === 'string' && body.periodKey.trim()) {
+            const key = body.periodKey.trim();
+            if (!cadenceDateFromPeriodKey(definition.cadence, key)) {
+                return c.json(
+                    {
+                        ok: false,
+                        error: `invalid periodKey for cadence ${definition.cadence.id}: ${key}`,
+                    },
+                    400,
+                );
+            }
+            periodKeyOverride = key;
+        }
 
         const result = await runScheduledDigest({
             definition,
             env: c.env as TEnv,
-            claimDedup,
-            deliver: deliverMaybeUnique,
+            claimDedup: force ? async () => true : options.claimDedup,
+            releaseDedup: force ? undefined : options.releaseDedup,
+            periodKeyOverride,
+            deliver: (env, mail, dedupKey, runMeta) => {
+                const meta: DigestDeliverMeta = { ...(runMeta ?? {}) };
+                if (jobId) {
+                    meta.jobId = jobId;
+                }
+                if (force) {
+                    meta.force = true;
+                }
+                return deliver(
+                    env,
+                    mail,
+                    force ? `${dedupKey}|force|${Date.now()}` : dedupKey,
+                    meta,
+                );
+            },
         });
 
-        return c.json({
-            ok: true,
-            sent: result.sent,
-            skippedReason: result.skippedReason,
-            periodKey: result.periodKey,
-            highlightCount: result.highlightCount,
-            sectionSummaries: result.sectionSummaries,
-            error: result.error,
-        });
+        // deliver_failed 对调度方是可重试故障：返回 502 + ok:false（保留 sent/skippedReason/error 细节）；其余 skipped 仍 200
+        const failed = result.skippedReason === 'deliver_failed';
+        return c.json(
+            {
+                ok: !failed,
+                sent: result.sent,
+                skippedReason: result.skippedReason,
+                periodKey: result.periodKey,
+                highlightCount: result.highlightCount,
+                sectionSummaries: result.sectionSummaries,
+                error: result.error,
+            },
+            failed ? 502 : 200,
+        );
     };
 }
 

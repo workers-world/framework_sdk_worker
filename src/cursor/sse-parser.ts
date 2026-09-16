@@ -85,6 +85,8 @@ export async function* readSseStream(body: ReadableStream<Uint8Array>): AsyncGen
             }
         }
     } finally {
+        // 消费方提前退出（break/异常）时先取消上游再释放锁，避免底层连接悬挂
+        await reader.cancel().catch(() => {});
         reader.releaseLock();
     }
 }

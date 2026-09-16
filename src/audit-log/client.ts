@@ -116,6 +116,33 @@ export async function writeMaintenanceLog(
     }
 }
 
+/**
+ * 热路径 fire-and-forget：有 ctx 时用 waitUntil，失败只打日志不抛出。
+ * 主流程禁止 await writeMaintenanceLog（最坏阻塞 ~10s）。
+ */
+export function writeMaintenanceLogAsync(
+    logger: Fetcher | undefined,
+    token: SecretLike | undefined,
+    entry: MaintenanceLogEntry,
+    ctx?: Pick<ExecutionContext, 'waitUntil'>,
+): void {
+    const promise = writeMaintenanceLog(logger, token, entry)
+        .then((result) => {
+            if (!result.ok) {
+                console.warn(`writeMaintenanceLogAsync failed: ${result.error}`);
+            }
+        })
+        .catch((e: unknown) => {
+            const msg = e instanceof Error ? e.message : String(e);
+            console.warn(`writeMaintenanceLogAsync threw: ${msg}`);
+        });
+    if (ctx?.waitUntil) {
+        ctx.waitUntil(promise);
+        return;
+    }
+    void promise;
+}
+
 /** 查询维护日志（单页）；order=asc + afterId 用于日报增量分页。 */
 export async function queryMaintenanceLogs(
     logger: Fetcher | undefined,

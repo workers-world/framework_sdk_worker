@@ -29,13 +29,16 @@ export function normalizeUtcIso(ts?: string | null): string {
     return utcIsoString();
 }
 
-/** month = YYYY-MM → UTC 自然月 [start, end) ISO 8601 */
+/** month = YYYY-MM → UTC 自然月 [start, end) ISO 8601；月份须 1-12（对齐 shanghaiDayStartUnix） */
 export function utcMonthRangeIso(month: string): { start: string; end: string } {
     if (!/^\d{4}-\d{2}$/.test(month)) {
         throw new Error(`invalid month (expected YYYY-MM): ${month}`);
     }
-    const start = `${month}-01T00:00:00Z`;
     const [y, m] = month.split('-').map(Number);
+    if (m < 1 || m > 12) {
+        throw new Error(`invalid month (expected YYYY-MM): ${month}`);
+    }
+    const start = `${month}-01T00:00:00Z`;
     const endDate = m === 12 ? new Date(Date.UTC(y + 1, 0, 1)) : new Date(Date.UTC(y, m, 1));
     return { start, end: utcIsoString(endDate) };
 }

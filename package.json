@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.14",
+  "version": "0.4.15",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -211,6 +211,10 @@
     "./fund/eastmoney-estimate": {
       "import": "./dist/fund/eastmoney-estimate.js",
       "types": "./dist/fund/eastmoney-estimate.d.ts"
+    },
+    "./fund/calendar": {
+      "import": "./dist/fund/calendar.js",
+      "types": "./dist/fund/calendar.d.ts"
     },
     "./fund/quote": {
       "import": "./dist/fund/quote.js",

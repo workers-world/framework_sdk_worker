@@ -155,7 +155,7 @@ describe('fetchCursorAgentUsage', () => {
         vi.unstubAllGlobals();
     });
 
-    it('reads totalTokens from totalUsage', async () => {
+    it('falls back to totalUsage when runId is absent from runs[]', async () => {
         vi.stubGlobal(
             'fetch',
             mockFetch([
@@ -171,10 +171,42 @@ describe('fetchCursorAgentUsage', () => {
                 },
             ]),
         );
-        const result = await fetchCursorAgentUsage(API_KEY, 'a1', { runId: 'r1' });
+        const result = await fetchCursorAgentUsage(API_KEY, 'a1', { runId: 'r-missing' });
         expect(result.ok).toBe(true);
         expect(result.totalTokens).toBe(30);
         expect(result.usage?.inputTokens).toBe(10);
+    });
+
+    it('prefers the matching run usage over totalUsage when runId is passed', async () => {
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: {
+                        totalUsage: {
+                            inputTokens: 100,
+                            outputTokens: 200,
+                            totalTokens: 300,
+                        },
+                        runs: [
+                            {
+                                runId: 'r-other',
+                                usage: { inputTokens: 999, outputTokens: 1, totalTokens: 1000 },
+                            },
+                            {
+                                runId: 'r1',
+                                usage: { inputTokens: 5, outputTokens: 6, totalTokens: 11 },
+                            },
+                        ],
+                    },
+                },
+            ]),
+        );
+        const result = await fetchCursorAgentUsage(API_KEY, 'a1', { runId: 'r1' });
+        expect(result.ok).toBe(true);
+        expect(result.totalTokens).toBe(11);
+        expect(result.usage?.inputTokens).toBe(5);
     });
 
     it('sums token fields when totalTokens missing', async () => {

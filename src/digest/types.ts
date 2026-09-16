@@ -77,10 +77,20 @@ export interface ScheduledDigestRunResult {
 
 export interface DigestRunRequestBody {
     definitionId: string;
+    /** 调度方钉扎周期（如补发上一周期）；非法值返回 400，绝不静默丢弃 */
     periodKey?: string;
+    /** 触发本次 run 的调度 job id，透传给 deliver meta 供审计 */
     jobId?: string;
     force?: boolean;
     alertTo?: string;
+}
+
+/** deliver 回调附加元数据（调度侧审计透传） */
+export interface DigestDeliverMeta {
+    /** 触发本次 run 的调度 job id（sch2） */
+    jobId?: string;
+    /** force 绕过 dedup 时为 true（dedupKey 带 `|force|` 随机后缀） */
+    force?: boolean;
 }
 
 export interface DigestRunResponseBody {

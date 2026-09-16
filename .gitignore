@@ -8,3 +8,7 @@ coverage
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 graft/
+
+
+# Cursor continual-learning 本地状态
+.cursor/hooks/state/
