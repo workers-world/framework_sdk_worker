@@ -67,7 +67,6 @@ export async function ghFetchWithRetry(
                 return null;
             }
             await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
-            continue;
         }
     }
 }
