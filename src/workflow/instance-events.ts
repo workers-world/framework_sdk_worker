@@ -7,7 +7,7 @@ import {
     STREAM_WORKFLOW_INSTANCE,
     type WorkerIoCategory,
     type WorkerIoEnvelope,
-} from '../io/envelope.js';
+} from '../io.js';
 
 /** CF Workflow instance event（subscribe 产出）的最小形状 */
 export type CfWorkflowInstanceEvent = {

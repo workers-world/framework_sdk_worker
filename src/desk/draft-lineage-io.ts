@@ -4,10 +4,10 @@
 import { type MaintenanceLogEntry, writeMaintenanceLogAsync } from '../audit-log/client.js';
 import {
     createWorkerIoEnvelope,
+    encodeWorkerIoEnvelope,
     type WorkerIoEnvelope,
     type WorkerIoError,
-} from '../io/envelope.js';
-import { encodeWorkerIoEnvelope } from '../io/serde.js';
+} from '../io.js';
 import type { SecretLike } from '../secrets/resolve.js';
 
 export const STREAM_DRAFT_LINEAGE = 'workers-world.draft_lineage' as const;
