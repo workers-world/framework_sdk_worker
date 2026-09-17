@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createBearerAuthMiddleware, registerBearerAuthRoutes } from '../../src/auth/middleware.js';
+import {
+    createBearerAuthMiddleware,
+    registerAdminConfigRoute,
+    registerBearerAuthRoutes,
+} from '../../src/auth/middleware.js';
 
 const TOKEN = 'mw-token';
 
@@ -136,5 +140,36 @@ describe('registerBearerAuthRoutes', () => {
 
         registerBearerAuthRoutes(app, ['/v1/admin/*', '/v1/open/'], 'AUTH_TOKEN');
         expect(registered).toEqual(['/v1/admin/*', '/v1/open/']);
+    });
+});
+
+describe('registerAdminConfigRoute', () => {
+    it('reports skipAdminAuth from env', async () => {
+        const handlers: Array<(c: unknown) => unknown> = [];
+        const app = {
+            get: (_path: string, handler: (c: unknown) => unknown) => {
+                handlers.push(handler);
+            },
+        };
+        registerAdminConfigRoute(app);
+        const json = vi.fn((body: unknown) => body);
+        const result = await handlers[0]?.({
+            env: { ENVIRONMENT: 'development' },
+            json,
+        });
+        expect(result).toEqual({ skipAdminAuth: true, environment: 'development' });
+
+        registerAdminConfigRoute(app, { path: '/cfg', skipFlagEnvKey: 'SKIP' });
+        const result2 = await handlers[1]?.({
+            env: { ENVIRONMENT: 'production', SKIP: '1' },
+            json,
+        });
+        expect(result2).toEqual({ skipAdminAuth: true, environment: 'production' });
+
+        const result3 = await handlers[0]?.({
+            env: { ENVIRONMENT: 1 },
+            json,
+        });
+        expect(result3).toEqual({ skipAdminAuth: false, environment: null });
     });
 });

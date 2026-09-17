@@ -104,4 +104,28 @@ describe('resolveLandingOrArticleFetch', () => {
         expect(result.path).toBe('article');
         expect(fetchImpl).not.toHaveBeenCalled();
     });
+
+    it('marks confident landing without meta as landing_failed', async () => {
+        const fetchImpl = createFetchImplWithDns(new Response('', { status: 500 }));
+        const result = await resolveLandingOrArticleFetch('https://example.com/pricing', {
+            fetchImpl,
+        });
+        expect(result.path).toBe('landing_failed');
+        expect(result.meta.source).toBe('none');
+    });
+
+    it('falls through unknown meta kind on ambiguous urls', async () => {
+        const html = `<!DOCTYPE html><html><head>
+  <meta property="og:title" content="Acme" />
+  <meta property="og:description" content="${'word '.repeat(80)}" />
+</head><body></body></html>`;
+        const fetchImpl = createFetchImplWithDns(
+            new Response(html, { status: 200, headers: { 'content-type': 'text/html' } }),
+        );
+        const result = await resolveLandingOrArticleFetch(
+            'https://example.com/start-your-free-trial-now',
+            { fetchImpl },
+        );
+        expect(['article', 'landing', 'landing_failed']).toContain(result.path);
+    });
 });

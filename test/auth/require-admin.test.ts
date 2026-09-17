@@ -34,4 +34,19 @@ describe('requireAdminAuth', () => {
             requireAdminAuth(req, undefined, { environment: 'development' }),
         ).resolves.toBeNull();
     });
+
+    it('skips when skip=true or skipFlag is set', async () => {
+        const req = new Request('https://x/v1/rules');
+        await expect(requireAdminAuth(req, undefined, { skip: true })).resolves.toBeNull();
+        await expect(requireAdminAuth(req, undefined, { skipFlag: 'yes' })).resolves.toBeNull();
+    });
+
+    it('uses custom missingConfigMessage', async () => {
+        const req = new Request('https://x/v1/rules');
+        const resp = await requireAdminAuth(req, undefined, {
+            missingConfigMessage: 'ADMIN_TOKEN missing',
+        });
+        expect(resp?.status).toBe(503);
+        await expect(resp?.json()).resolves.toEqual({ ok: false, error: 'ADMIN_TOKEN missing' });
+    });
 });

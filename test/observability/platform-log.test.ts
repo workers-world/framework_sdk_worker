@@ -101,4 +101,22 @@ describe('buildObservabilityCaptureBundle', () => {
             'quality-capture/logs/9YYFVE6K6SMI9OOW.json',
         );
     });
+
+    it('covers remaining extract envelopes and missing ids', () => {
+        expect(extractPlatformLogEventArray(null)).toEqual([]);
+        expect(extractPlatformLogEventArray('x')).toEqual([]);
+        expect(extractPlatformLogEventArray({ events: [{ message: 'e' }] })).toHaveLength(1);
+        expect(extractPlatformLogEventArray({ result: [{ message: 'r' }] })).toHaveLength(1);
+        expect(extractPlatformLogEventArray({ foo: 1 })).toEqual([]);
+        expect(parsePlatformLogEvent(null)).toBeNull();
+        expect(parsePlatformLogEvent([])).toBeNull();
+        expect(resolveInvocationIdFromLogEvent({})).toBeUndefined();
+        const bundle = buildObservabilityCaptureBundle({
+            invocationId: 'x',
+            events: [],
+        });
+        expect(bundle.schemaVersion).toBe(1);
+        expect(bundle.eventCount).toBe(0);
+        expect(typeof bundle.fetchedAt).toBe('string');
+    });
 });

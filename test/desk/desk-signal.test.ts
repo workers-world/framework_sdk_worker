@@ -52,6 +52,9 @@ describe('desk-signal', () => {
             createdAt: 1,
         };
         expect(isDeskSignal(investBase)).toBe(true);
+        expect(isDeskSignal(null)).toBe(false);
+        expect(isDeskSignal({ type: 'other' })).toBe(false);
+        expect(isDeskSignal({ ...investBase, tags: 'x' })).toBe(false);
         expect(
             isDeskSignal({
                 ...investBase,
@@ -79,6 +82,18 @@ describe('desk-signal', () => {
                 sourceId: 's',
             }),
         ).toBe(true);
+        expect(
+            isDeskSignal({
+                type: 'advice_lead',
+                adviceId: 1,
+                underlying: 'X',
+                confidence: 0.5,
+                action: 'watch',
+                rationale: 'r',
+                sourceId: 's',
+                traceId: '',
+            }),
+        ).toBe(false);
     });
 
     it('returns importance or confidence', () => {
