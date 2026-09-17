@@ -49,6 +49,10 @@ export const INTAKE_BLOCK_MARKDOWN = 'intake.markdown';
 export const INTAKE_BLOCK_ATTACHMENT_REF = 'intake.attachment_ref';
 export const INTAKE_BLOCK_KEY_VALUE = 'intake.key_value';
 export const INTAKE_BLOCK_DIAGNOSIS_LIST = 'intake.diagnosis_list';
+export const INTAKE_BLOCK_WORKER_IO_STREAM = 'intake.worker_io_stream';
+export const INTAKE_BLOCK_DRAFT_SNAPSHOT = 'intake.draft_snapshot';
+export const INTAKE_BLOCK_CF_AGENTS_REF = 'intake.cf_agents_ref';
+export const INTAKE_BLOCK_OBSERVABILITY_REF = 'intake.observability_ref';
 
 export interface AuditLogChainBlockData {
     logs: QualityClusterAuditLogRef[];
@@ -91,6 +95,30 @@ export interface DiagnosisListBlockData {
         suspectedFiles?: string[];
         fixUrl?: string;
     }>;
+}
+
+export interface WorkerIoStreamBlockData {
+    /** 内联 envelope 或 R2 指针二选一 */
+    envelopes?: unknown[];
+    r2Key?: string;
+}
+
+export interface DraftSnapshotBlockData {
+    draft: Record<string, unknown>;
+    evidenceSummary?: string;
+}
+
+export interface CfAgentsRefBlockData {
+    agentName: string;
+    agentId: string;
+    conversationId: string;
+    dashboardUrl?: string;
+}
+
+export interface ObservabilityRefBlockData {
+    cfRequestId?: string;
+    traceUrl?: string;
+    note?: string;
 }
 
 export function isIntakePayloadEnvelope(payload: unknown): payload is IntakePayloadEnvelope {

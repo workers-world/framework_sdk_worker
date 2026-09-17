@@ -31,6 +31,8 @@ export interface LlmChatResponse {
     content?: string;
     error?: string;
     raw?: unknown;
+    /** CF Workers Observability（cf-ray） */
+    cfRequestId?: string;
 }
 
 export interface NeuronQuotaSnapshot {
@@ -125,21 +127,30 @@ async function chatAt(
             detail?: string;
         };
 
+        const cfRequestId = resp.headers.get('cf-ray')?.trim() || undefined;
+
         if (!resp.ok) {
             return {
                 ok: false,
                 status: resp.status,
                 error: data.error || data.detail || resp.statusText || `HTTP ${resp.status}`,
                 raw: data,
+                cfRequestId,
             };
         }
 
         const content = data.choices?.[0]?.message?.content?.trim();
         if (!content) {
-            return { ok: false, status: resp.status, error: 'LLM 返回空内容', raw: data };
+            return {
+                ok: false,
+                status: resp.status,
+                error: 'LLM 返回空内容',
+                raw: data,
+                cfRequestId,
+            };
         }
 
-        return { ok: true, status: resp.status, content, raw: data };
+        return { ok: true, status: resp.status, content, raw: data, cfRequestId };
     } catch (e: unknown) {
         // 契约统一：超时/网络错误与 HTTP 错误一样返回 {ok:false}，不抛裸异常
         return {

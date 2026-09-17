@@ -1,6 +1,8 @@
 import { hashString, type LogFields, normalizeError, sanitizeForLog } from '../ops-error.js';
 import { shanghaiIsoString, shanghaiYmdDash } from '../time.js';
 import {
+    INTAKE_KIND_DESK_DRAFT_QUALITY,
+    INTAKE_KIND_DESK_OBS_DUMP,
     INTAKE_KIND_OPS_ERROR,
     INTAKE_KIND_QUALITY_CLUSTER,
     INTAKE_KIND_QUALITY_LOG_DIGEST,
@@ -266,6 +268,117 @@ export function buildQualityLogDigestIntake(input: {
         severity: input.severity ?? 'info',
         occurredAt: input.occurredAt ?? shanghaiIsoString(),
         payload: payload as unknown as Record<string, unknown>,
+        links: input.links,
+    };
+}
+
+export interface DeskDraftQualityIntakePayload {
+    lineageId: string;
+    draftId?: number;
+    underlying?: string;
+    reason: string;
+    primaryRepo?: string;
+}
+
+export interface DeskObsDumpIntakePayload {
+    lineageId: string;
+    draftId?: number;
+    underlying?: string;
+    purpose: 'full_dump' | 'lite';
+    primaryRepo?: string;
+}
+
+/** desk.draft_quality 轻量 Intake（Phase 4） */
+export function buildDeskDraftQualityDedupKey(lineageId: string, reason: string): string {
+    const day = shanghaiYmdDash();
+    return `${INTAKE_KIND_DESK_DRAFT_QUALITY}:${lineageId}:${reason}:${day}`;
+}
+
+export function buildDeskDraftQualityIntake(input: {
+    producer?: string;
+    lineageId: string;
+    draftId?: number;
+    underlying?: string;
+    reason: string;
+    primaryRepo?: string;
+    payloadEnvelope?: IntakePayloadEnvelope;
+    severity?: IntakeSeverity;
+    occurredAt?: string;
+    dedupKey?: string;
+    links?: IntakeLink[];
+}): IntakeEvent {
+    const payload: DeskDraftQualityIntakePayload | IntakePayloadEnvelope =
+        input.payloadEnvelope ?? {
+            lineageId: input.lineageId,
+            ...(input.draftId != null ? { draftId: input.draftId } : {}),
+            ...(input.underlying ? { underlying: input.underlying } : {}),
+            reason: input.reason,
+            ...(input.primaryRepo ? { primaryRepo: input.primaryRepo } : {}),
+        };
+    const title = truncate(
+        `desk 草稿质量 · ${input.underlying ?? input.lineageId.slice(0, 8)} · ${input.reason}`,
+        120,
+    );
+    const summary = truncate(
+        `lineageId=${input.lineageId}${input.draftId != null ? ` draftId=${input.draftId}` : ''}`,
+        500,
+    );
+    return {
+        schemaVersion: 1,
+        kind: INTAKE_KIND_DESK_DRAFT_QUALITY,
+        dedupKey:
+            input.dedupKey?.trim() || buildDeskDraftQualityDedupKey(input.lineageId, input.reason),
+        source: {
+            producer: input.producer ?? 'decision-desk-worker',
+            worker: 'decision-desk-worker',
+            repo: input.primaryRepo,
+        },
+        title,
+        summary,
+        severity: input.severity ?? 'warn',
+        occurredAt: input.occurredAt ?? shanghaiIsoString(),
+        payload: payload as unknown as Record<string, unknown>,
+        links: input.links,
+    };
+}
+
+/** desk.obs_dump 全量观测包（Phase 6） */
+export function buildDeskObsDumpDedupKey(lineageId: string, date?: string): string {
+    const day = date ?? shanghaiYmdDash();
+    return `${INTAKE_KIND_DESK_OBS_DUMP}:${lineageId}:dump:${day}`;
+}
+
+export function buildDeskObsDumpIntake(input: {
+    producer?: string;
+    lineageId: string;
+    draftId?: number;
+    underlying?: string;
+    primaryRepo?: string;
+    payloadEnvelope: IntakePayloadEnvelope;
+    severity?: IntakeSeverity;
+    occurredAt?: string;
+    dedupKey?: string;
+    links?: IntakeLink[];
+}): IntakeEvent {
+    const title = truncate(
+        `desk 观测导出 · ${input.underlying ?? input.lineageId.slice(0, 8)}`,
+        120,
+    );
+    const summary = truncate(`全量 lineage 观测包 · ${input.lineageId}`, 500);
+    return {
+        schemaVersion: 1,
+        kind: INTAKE_KIND_DESK_OBS_DUMP,
+        dedupKey: input.dedupKey?.trim() || buildDeskObsDumpDedupKey(input.lineageId),
+        source: {
+            producer: input.producer ?? 'decision-desk-worker',
+            worker: 'decision-desk-worker',
+            repo: input.primaryRepo,
+        },
+        title,
+        summary,
+        severity: input.severity ?? 'info',
+        occurredAt: input.occurredAt ?? shanghaiIsoString(),
+        payload: input.payloadEnvelope as unknown as Record<string, unknown>,
         links: input.links,
     };
 }

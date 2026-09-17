@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.16",
+  "version": "0.4.17",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -252,6 +252,18 @@
       "import": "./dist/desk/resolve-underlying.js",
       "types": "./dist/desk/resolve-underlying.d.ts"
     },
+    "./desk/draft-lineage-io": {
+      "import": "./dist/desk/draft-lineage-io.js",
+      "types": "./dist/desk/draft-lineage-io.d.ts"
+    },
+    "./desk/traceparent": {
+      "import": "./dist/desk/traceparent.js",
+      "types": "./dist/desk/traceparent.d.ts"
+    },
+    "./desk/sector-profiles": {
+      "import": "./dist/desk/sector-profiles.js",
+      "types": "./dist/desk/sector-profiles.d.ts"
+    },
     "./analysis/analysis-signal": {
       "import": "./dist/analysis/analysis-signal.js",
       "types": "./dist/analysis/analysis-signal.d.ts"
@@ -299,6 +311,10 @@
     "./observability/quality-sample": {
       "import": "./dist/observability/quality-sample.js",
       "types": "./dist/observability/quality-sample.d.ts"
+    },
+    "./observability/cf-agents": {
+      "import": "./dist/observability/cf-agents.js",
+      "types": "./dist/observability/cf-agents.d.ts"
     },
     "./mcp": {
       "import": "./dist/mcp/index.js",

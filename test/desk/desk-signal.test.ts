@@ -38,24 +38,30 @@ describe('desk-signal', () => {
     });
 
     it('validates DeskSignal shape', () => {
-        expect(
-            isDeskSignal({ type: 'invest_event', eventId: 'e', underlying: 'X', importance: 1 }),
-        ).toBe(true);
+        const investBase = {
+            type: 'invest_event' as const,
+            eventId: 'e',
+            underlying: 'X',
+            importance: 1,
+            title: 't',
+            link: 'l',
+            feedName: 'f',
+            category: 'event',
+            tags: [] as string[],
+            aiSummary: null,
+            createdAt: 1,
+        };
+        expect(isDeskSignal(investBase)).toBe(true);
         expect(
             isDeskSignal({
-                type: 'invest_event',
-                eventId: 'e',
-                underlying: 'X',
-                importance: 1,
+                ...investBase,
                 traceId: 't1',
+                traceparent: '00-abc-0123456789abcdef-01',
             }),
         ).toBe(true);
         expect(
             isDeskSignal({
-                type: 'invest_event',
-                eventId: 'e',
-                underlying: 'X',
-                importance: 1,
+                ...investBase,
                 traceId: '',
             }),
         ).toBe(false);

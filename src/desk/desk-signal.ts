@@ -17,6 +17,8 @@ export type DeskSignalInvestEvent = {
     marketRegion?: string | null;
     /** 旁路投递操作关联 ID，写入 signal_buffer.tech_trace_id */
     traceId?: string;
+    /** W3C traceparent（与 traceId 映射，Queue 传播 OTel） */
+    traceparent?: string;
 };
 
 export type DeskSignalAdviceLead = {
@@ -29,6 +31,7 @@ export type DeskSignalAdviceLead = {
     sourceId: string;
     name?: string;
     traceId?: string;
+    traceparent?: string;
 };
 
 export type DeskSignal = DeskSignalInvestEvent | DeskSignalAdviceLead;
@@ -52,6 +55,10 @@ function isOptionalTraceId(value: unknown): boolean {
     return value === undefined || (typeof value === 'string' && value.length > 0);
 }
 
+function isOptionalTraceparent(value: unknown): boolean {
+    return value === undefined || (typeof value === 'string' && value.length > 0);
+}
+
 export function isDeskSignal(value: unknown): value is DeskSignal {
     if (!value || typeof value !== 'object') {
         return false;
@@ -63,7 +70,13 @@ export function isDeskSignal(value: unknown): value is DeskSignal {
             typeof s.eventId === 'string' &&
             typeof s.underlying === 'string' &&
             typeof s.importance === 'number' &&
-            isOptionalTraceId(s.traceId)
+            typeof s.title === 'string' &&
+            typeof s.link === 'string' &&
+            typeof s.feedName === 'string' &&
+            typeof s.category === 'string' &&
+            Array.isArray(s.tags) &&
+            isOptionalTraceId(s.traceId) &&
+            isOptionalTraceparent(s.traceparent)
         );
     }
     if (t === 'advice_lead') {
@@ -75,7 +88,8 @@ export function isDeskSignal(value: unknown): value is DeskSignal {
             typeof s.action === 'string' &&
             typeof s.rationale === 'string' &&
             typeof s.sourceId === 'string' &&
-            isOptionalTraceId(s.traceId)
+            isOptionalTraceId(s.traceId) &&
+            isOptionalTraceparent(s.traceparent)
         );
     }
     return false;
