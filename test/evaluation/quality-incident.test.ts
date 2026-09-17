@@ -7,6 +7,7 @@ import {
     formatClusterAlertMarkdown,
     formatQualityCaptureDigestCsv,
     formatQualityCaptureDigestMarkdown,
+    formatQualityTicketMarkdown,
     normalizeQualityIncident,
     reconstructQualityChain,
     shouldCaptureQualityIncident,
@@ -240,6 +241,100 @@ describe('validateQualityDiagnosis', () => {
                 recommendation: 'y',
             }).ok,
         ).toBe(false);
+        expect(
+            validateQualityDiagnosis({
+                rootCause: 'r',
+                suspectedLayer: '',
+                isBug: true,
+                expectedLog: 'x',
+                recommendation: 'y',
+            }).reason,
+        ).toBe('缺少 suspectedLayer');
+        expect(
+            validateQualityDiagnosis({
+                rootCause: 'r',
+                suspectedLayer: 's',
+                isBug: true,
+                expectedLog: '  ',
+                recommendation: 'y',
+            }).reason,
+        ).toBe('缺少 expectedLog');
+        expect(
+            validateQualityDiagnosis({
+                rootCause: 'r',
+                suspectedLayer: 's',
+                isBug: true,
+                expectedLog: 'x',
+                recommendation: '',
+            }).reason,
+        ).toBe('缺少 recommendation');
+        expect(
+            validateQualityDiagnosis(
+                {
+                    rootCause: 'r',
+                    suspectedLayer: 's',
+                    isBug: true,
+                    expectedLog: 'x',
+                    recommendation: 'y',
+                },
+                { requireSuspectedFiles: true },
+            ).reason,
+        ).toBe('缺少 suspectedFiles');
+        expect(
+            validateQualityDiagnosis(
+                {
+                    rootCause: 'r',
+                    suspectedLayer: 's',
+                    isBug: true,
+                    expectedLog: 'x',
+                    recommendation: 'y',
+                    suspectedFiles: ['src/a.ts'],
+                },
+                { requireSuspectedFiles: true },
+            ),
+        ).toEqual({ ok: true });
+    });
+});
+
+describe('formatQualityTicketMarkdown', () => {
+    it('renders cluster chain and diagnosis including optional fields', () => {
+        const clusters = aggregateQualityClusters([usgsIncident]);
+        const cluster = clusters[0];
+        expect(cluster).toBeDefined();
+        if (!cluster) {
+            return;
+        }
+        const chain = reconstructQualityChain([usgsIncident]);
+        const withUrl = formatQualityTicketMarkdown(cluster, chain, {
+            rootCause: 'nav shell',
+            suspectedLayer: 'summarize',
+            isBug: true,
+            expectedLog: 'usable_body',
+            recommendation: 'soft keep',
+        });
+        expect(withUrl).toContain('# 质量监管工单');
+        expect(withUrl).toContain(cluster.clusterKey);
+        expect(withUrl).toContain('usgs.gov');
+        expect(withUrl).toContain('是否 bug：是');
+
+        const bare = formatQualityTicketMarkdown(
+            {
+                ...cluster,
+                sampleUrl: undefined,
+                sampleDedupKey: undefined,
+            },
+            chain,
+            {
+                rootCause: 'x',
+                suspectedLayer: 'y',
+                isBug: false,
+                expectedLog: 'z',
+                recommendation: 'n',
+            },
+        );
+        expect(bare).toContain('是否 bug：否');
+        expect(bare).not.toContain('- URL：');
+        expect(bare).not.toContain('- dedupKey：');
     });
 });
 
@@ -284,5 +379,19 @@ describe('formatQualityCaptureDigestMarkdown', () => {
         const csv = formatQualityCaptureDigestCsv(items);
         expect(csv).toContain('dedup-1');
         expect(csv).toContain('title_only');
+
+        const escaped = formatQualityCaptureDigestCsv([
+            {
+                dedupKey: 'k,"1"',
+                service: 'svc',
+                ts: 't',
+                because: 'a,b\nline',
+                logsCaptured: false,
+                logFileCount: 0,
+                eventCount: 0,
+            },
+        ]);
+        expect(escaped).toContain('"k,""1"""');
+        expect(escaped).toContain('"a,b\nline"');
     });
 });

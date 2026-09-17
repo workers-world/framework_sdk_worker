@@ -30,6 +30,14 @@ describe('cadences', () => {
     it('monthly periodKey is YYYY-MM', () => {
         const d = new Date('2026-09-14T16:00:00.000Z');
         expect(monthlyCadence.periodKey(d)).toBe('2026-09');
+        expect(monthlyCadence.periodLabel(d)).toContain('2026-09');
+    });
+
+    it('getCadenceById returns daily/weekly/monthly', async () => {
+        const { getCadenceById } = await import('../../src/digest/cadences.js');
+        expect(getCadenceById('daily').id).toBe('daily');
+        expect(getCadenceById('weekly').id).toBe('weekly');
+        expect(getCadenceById('monthly').id).toBe('monthly');
     });
 });
 
@@ -99,6 +107,32 @@ describe('composeDigestMail', () => {
             '周期：x',
         );
         expect(mail?.body).toContain('本节采集失败：boom');
+    });
+
+    it('linkifies dashboard and http lines in html', () => {
+        const mail = composeDigestMail(
+            { id: 'x', subjectPrefix: '[t]' },
+            [
+                {
+                    id: 'a',
+                    title: 'Links',
+                    order: 1,
+                    result: {
+                        status: 'ok',
+                        lines: [
+                            'Dashboard: https://dash.example/x',
+                            'https://x.example/a',
+                            'plain',
+                        ],
+                    },
+                },
+            ],
+            '周期：x',
+        );
+        expect(mail?.html).toContain('href="https://dash.example/x"');
+        expect(mail?.html).toContain('href="https://x.example/a"');
+        expect(mail?.html).toContain('plain');
+        expect(mail?.sectionSummaries[0]?.highlightCount).toBe(3);
     });
 });
 
@@ -267,6 +301,29 @@ describe('runScheduledDigest', () => {
             deliver: async () => ({ ok: false }),
         });
         expect(noRelease.skippedReason).toBe('deliver_failed');
+    });
+
+    it('returns deliver_skipped when deliver reports skipped', async () => {
+        const releaseDedup = vi.fn(async () => {});
+        const result = await runScheduledDigest({
+            definition: makeDef([
+                {
+                    id: 'a',
+                    title: 'A',
+                    order: 1,
+                    collect: async () => ({ status: 'ok', lines: ['x'], highlightCount: 1 }),
+                },
+            ]),
+            env: { n: 1 },
+            claimDedup: async () => true,
+            releaseDedup,
+            deliver: async () => ({ ok: true, skipped: true }),
+        });
+        expect(result).toMatchObject({
+            sent: false,
+            skippedReason: 'deliver_skipped',
+        });
+        expect(releaseDedup).not.toHaveBeenCalled();
     });
 
     it('periodKeyOverride pins dedupKey and periodKey/label', async () => {

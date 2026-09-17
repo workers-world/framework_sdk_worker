@@ -301,4 +301,134 @@ describe('validateContentFilterConfig', () => {
         };
         expect(() => validateContentFilterConfig(long)).toThrow(/回溯风险|过|long/);
     });
+
+    it('rejects empty keyword regex fields and invalid match type', () => {
+        expect(() =>
+            validateContentFilterConfig({
+                version: 1,
+                rules: [
+                    {
+                        id: 'no-fields',
+                        enabled: true,
+                        stage: 'before',
+                        match: { type: 'keyword', values: ['x'] } as never,
+                    },
+                ],
+            }),
+        ).toThrow(/须指定 match.fields/);
+
+        expect(() =>
+            validateContentFilterConfig({
+                version: 1,
+                rules: [
+                    {
+                        id: 'bad-field',
+                        enabled: true,
+                        stage: 'before',
+                        match: { type: 'keyword', fields: ['nope' as never], values: ['x'] },
+                    },
+                ],
+            }),
+        ).toThrow(/field 无效/);
+
+        expect(() =>
+            validateContentFilterConfig({
+                version: 1,
+                rules: [
+                    {
+                        id: 'empty-kw',
+                        enabled: true,
+                        stage: 'before',
+                        match: { type: 'keyword', fields: ['title'], values: ['  '] },
+                    },
+                ],
+            }),
+        ).toThrow(/keyword values 不能为空/);
+
+        expect(() =>
+            validateContentFilterConfig({
+                version: 1,
+                rules: [
+                    {
+                        id: 'rx-fields',
+                        enabled: true,
+                        stage: 'before',
+                        match: { type: 'regex', pattern: 'x' } as never,
+                    },
+                ],
+            }),
+        ).toThrow(/须指定 match.fields/);
+
+        expect(() =>
+            validateContentFilterConfig({
+                version: 1,
+                rules: [
+                    {
+                        id: 'rx-empty',
+                        enabled: true,
+                        stage: 'before',
+                        match: { type: 'regex', fields: ['title'], pattern: '  ' },
+                    },
+                ],
+            }),
+        ).toThrow(/regex pattern 不能为空/);
+
+        expect(() =>
+            validateContentFilterConfig({
+                version: 1,
+                rules: [
+                    {
+                        id: 'bad-type',
+                        enabled: true,
+                        stage: 'before',
+                        match: { type: 'glob' as never, fields: ['title'] },
+                    },
+                ],
+            }),
+        ).toThrow(/match.type 无效/);
+
+        expect(() =>
+            validateContentFilterConfig({
+                version: 1,
+                rules: [
+                    {
+                        id: 'bad-stage',
+                        enabled: true,
+                        stage: 'mid' as never,
+                        match: { type: 'keyword', fields: ['title'], values: ['x'] },
+                    },
+                ],
+            }),
+        ).toThrow(/stage 无效/);
+    });
+});
+
+describe('evaluateContentFilter extra fields', () => {
+    it('matches llmTags body and case-sensitive keyword', () => {
+        const config: ContentFilterConfig = {
+            version: 1,
+            rules: [
+                {
+                    id: 'tags',
+                    enabled: true,
+                    stage: 'before',
+                    action: 'block',
+                    match: {
+                        type: 'keyword',
+                        fields: ['llmTags', 'body'],
+                        values: ['SpamTag'],
+                        caseInsensitive: false,
+                    },
+                },
+            ],
+        };
+        expect(
+            evaluateContentFilter(config, { stage: 'before', llmTags: ['SpamTag'] }).hit?.ruleId,
+        ).toBe('tags');
+        expect(
+            evaluateContentFilter(config, { stage: 'before', body: 'contains SpamTag here' }).hit
+                ?.ruleId,
+        ).toBe('tags');
+        expect(evaluateContentFilter(config, { stage: 'before', body: 'spamtag' }).hit).toBeNull();
+    });
 });

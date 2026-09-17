@@ -28,6 +28,29 @@ describe('buildOpsErrorIntake', () => {
         const b = buildOpsErrorDedupKey('w', 'r', 'err id=2222222222222');
         expect(a).toBe(b);
     });
+
+    it('stringifies object context and honors optional fields', () => {
+        const event = buildOpsErrorIntake({
+            producer: 'p',
+            worker: 'w',
+            reason: 'r'.repeat(200),
+            error: `  ${'e'.repeat(900)}  `,
+            context: { token: 'secret-token-value', nested: { a: 1 }, skip: null },
+            requestId: 'req-1',
+            severity: 'warn',
+            occurredAt: 't',
+            dedupKey: 'custom-key',
+            links: [{ rel: 'self', href: 'https://x' }],
+        });
+        expect(event.dedupKey).toBe('custom-key');
+        expect(event.title.length).toBeLessThanOrEqual(121);
+        expect(event.summary.length).toBeLessThanOrEqual(501);
+        expect(event.payload).toMatchObject({ requestId: 'req-1' });
+        const ctx = (event.payload as { context: Record<string, unknown> }).context;
+        expect(JSON.stringify(ctx)).not.toContain('secret-token-value');
+        expect(ctx.nested).toBe(JSON.stringify({ a: 1 }));
+        expect(ctx.skip).toBeUndefined();
+    });
 });
 
 describe('buildQualityClusterIntake', () => {
@@ -117,6 +140,27 @@ describe('buildQualityLogDigestIntake', () => {
         });
         expect(event.dedupKey).toBe('quality.log_digest:2026-09-08:part-2');
         expect(validateIntakeEvent(event)).toBeNull();
+    });
+
+    it('uses envelope, empty repos dash, and optional digest fields', () => {
+        const event = buildQualityLogDigestIntake({
+            producer: 'p',
+            digestDate: '2026-09-08',
+            partIndex: 1,
+            partTotal: 1,
+            captureCount: 0,
+            repos: [],
+            analyzeMode: 'per_case',
+            attachmentNames: [],
+            bugCaseCount: 2,
+            baselineCeiling: 'c',
+            severity: 'warn',
+            occurredAt: 't',
+            dedupKey: 'd',
+        });
+        expect(event.summary).toContain('repos=—');
+        expect(event.dedupKey).toBe('d');
+        expect(event.payload).toMatchObject({ bugCaseCount: 2, baselineCeiling: 'c' });
     });
 });
 

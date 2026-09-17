@@ -18,6 +18,16 @@ describe('isFundCode', () => {
     it('detects fund code', () => {
         expect(isFundCode('005827')).toBe(true);
         expect(isFundCode('AU9999')).toBe(false);
+        expect(isFundCode(' 005827 ')).toBe(true);
+        expect(isFundCode('')).toBe(false);
+        expect(() => normalizeFundCode(' 110022 ')).not.toThrow();
+        expect(normalizeFundCode('110022')).toBe('110022');
+        expect(isFundCode(undefined as unknown as string)).toBe(false);
+        expect(isFundCode(null as unknown as string)).toBe(false);
+        expect(() => normalizeFundCode(undefined as unknown as string)).toThrow(
+            /invalid fund code/,
+        );
+        expect(() => normalizeFundCode(null as unknown as string)).toThrow(/invalid fund code/);
     });
 });
 

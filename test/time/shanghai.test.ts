@@ -4,11 +4,13 @@ import {
     isShanghaiWeekend,
     pad2,
     secondsUntilNextShanghaiDay,
+    shanghaiClock,
     shanghaiDateTimeLabel,
     shanghaiDayStartUnix,
     shanghaiIsoString,
     shanghaiIsoWeekKey,
     shanghaiMinuteBucket,
+    shanghaiStamp14,
     shanghaiTechTime,
     shanghaiWallClock,
     shanghaiYmd,
@@ -89,5 +91,24 @@ describe('shanghai time', () => {
         expect(formatCompactTime12('202607181530')).toBe('2026-07-18 15:30');
         expect(formatCompactTime12('short')).toBeUndefined();
         expect(formatCompactTime12(null)).toBeUndefined();
+    });
+
+    it('shanghaiClock and shanghaiStamp14 expose wall-clock parts', () => {
+        const clock = shanghaiClock(sample);
+        expect(clock).toEqual({
+            year: 2026,
+            month: 1,
+            day: 15,
+            hour: 18,
+            minute: 0,
+            second: 0,
+        });
+        expect(shanghaiStamp14(sample)).toBe('20260115180000');
+    });
+
+    it('shanghaiDayStartUnix rejects impossible calendar dates', () => {
+        expect(shanghaiDayStartUnix('2026-13-01')).toBeNull();
+        expect(shanghaiDayStartUnix('2026-02-31')).toBeNull();
+        expect(isShanghaiWeekend(new Date('2026-01-17T16:00:00Z'))).toBe(true);
     });
 });

@@ -336,4 +336,12 @@ describe('fetchProductLandingSnippet', () => {
         expect(result.snippet).toContain('页面可见文案：');
         expect(result.snippet).toContain('Read it for free');
     });
+
+    it('returns empty snippet when html fetch fails', async () => {
+        const fetchImpl = createFetchImplWithDns(new Response('', { status: 500 }));
+        const result = await fetchProductLandingSnippet('https://example.com/pricing', {
+            fetchImpl,
+        });
+        expect(result).toEqual({ meta: { source: 'none' }, snippet: '' });
+    });
 });

@@ -32,4 +32,24 @@ describe('mapWithConcurrency', () => {
         const out = await mapWithConcurrency(items, 2, async (value) => value * 2);
         expect(out).toEqual([2, 4, 6]);
     });
+
+    it('stops dispatching after the first rejection', async () => {
+        const seen: number[] = [];
+        await expect(
+            mapWithConcurrency([1, 2, 3, 4], 2, async (value) => {
+                seen.push(value);
+                if (value === 1) {
+                    throw new Error('boom');
+                }
+                await new Promise((resolve) => setTimeout(resolve, 20));
+                return value;
+            }),
+        ).rejects.toThrow('boom');
+        expect(seen).toContain(1);
+    });
+
+    it('treats concurrency below 1 as 1', async () => {
+        const out = await mapWithConcurrency([1, 2], 0, async (v) => v);
+        expect(out).toEqual([1, 2]);
+    });
 });

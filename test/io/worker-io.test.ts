@@ -9,6 +9,7 @@ import {
     assertWorkerIoEnvelope,
     decodeWorkerIoEnvelope,
     encodeWorkerIoEnvelope,
+    tryDecodeWorkerIoEnvelope,
     WorkerIoDecodeError,
 } from '../../src/io/serde.js';
 import { decodeWorkerIoQueueBody } from '../../src/io/transports/queue.js';
@@ -53,6 +54,38 @@ describe('WorkerIoEnvelope', () => {
             type: 'workers-world.io.stream.end',
         });
         expect(isWorkerIoTerminal(end)).toBe(true);
+    });
+
+    it('isWorkerIoEnvelope rejects non-objects and isWorkerIoTerminal checks type suffixes', () => {
+        expect(isWorkerIoEnvelope(null)).toBe(false);
+        expect(isWorkerIoEnvelope('x')).toBe(false);
+        expect(isWorkerIoEnvelope({ specversion: '1.0' })).toBe(false);
+        const completed = createWorkerIoEnvelope({
+            id: '1',
+            source: '/w',
+            type: 'workers-world.workflow.completed',
+        });
+        expect(isWorkerIoTerminal(completed)).toBe(true);
+        const errored = createWorkerIoEnvelope({
+            id: '1',
+            source: '/w',
+            type: 'foo.workflow.errored',
+        });
+        expect(isWorkerIoTerminal(errored)).toBe(true);
+        const terminated = createWorkerIoEnvelope({
+            id: '1',
+            source: '/w',
+            type: 'workers-world.workflow.terminated',
+        });
+        expect(isWorkerIoTerminal(terminated)).toBe(true);
+        const withError = createWorkerIoEnvelope({
+            id: '1',
+            source: '/w',
+            type: 'x',
+            wwerror: { code: 'E', message: 'm' },
+        });
+        expect(withError.wwerror?.code).toBe('E');
+        expect(tryDecodeWorkerIoEnvelope('{not json')).toBeNull();
     });
 });
 

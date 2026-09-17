@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     checkDuplicate,
     claimSendSlot,
@@ -64,5 +64,26 @@ describe('claimSendSlot', () => {
         await releaseClaim(kv, key);
         await expect(checkDuplicate(kv, key)).resolves.toBe(false);
         await expect(claimSendSlot(kv, key, 600)).resolves.toBe('claimed');
+    });
+
+    it('skips mark/check/release without kv or key', async () => {
+        const kv = createMockKv();
+        await expect(checkDuplicate(undefined, 'k')).resolves.toBe(false);
+        await confirmSent(undefined, 'k', 10);
+        await confirmSent(kv, undefined, 10);
+        await releaseClaim(undefined, 'k');
+        await releaseClaim(kv, undefined);
+    });
+
+    it('retries delete once then swallows', async () => {
+        const kv = {
+            get: async () => null,
+            put: async () => undefined,
+            delete: vi.fn().mockRejectedValueOnce(new Error('temp')).mockRejectedValueOnce('raw'),
+        } as unknown as KVNamespace;
+        const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        await releaseClaim(kv, 'k');
+        expect(kv.delete).toHaveBeenCalledTimes(2);
+        err.mockRestore();
     });
 });

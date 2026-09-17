@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mapCursorSseFrame, streamCursorAgentRun } from '../../src/cursor/cloud-agent.js';
-import { parseSseBuffer } from '../../src/cursor/sse-parser.js';
+import { parseSseBuffer, readSseStream } from '../../src/cursor/sse-parser.js';
 
 const EXAMPLE_STREAM = `event: status
 data: {"runId":"run-1","status":"RUNNING"}
@@ -37,6 +37,11 @@ describe('parseSseBuffer', () => {
         const { frames, remainder } = parseSseBuffer(partial);
         expect(frames).toHaveLength(0);
         expect(remainder).toBe('data: {"te');
+    });
+
+    it('skips comments and fields without values then flushes', () => {
+        const { frames } = parseSseBuffer(': keep-alive\nretry\nid:\ndata: hi\n\n');
+        expect(frames).toEqual([{ id: undefined, event: 'message', data: 'hi' }]);
     });
 });
 
@@ -79,5 +84,21 @@ describe('streamCursorAgentRun', () => {
         }
         expect(events).toEqual(['status', 'assistant', 'tool_call', 'result', 'done']);
         vi.unstubAllGlobals();
+    });
+
+    it('flushes trailing buffer without final newline', async () => {
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(encoder.encode('event: assistant\ndata: {"text":"tail"}'));
+                controller.close();
+            },
+        });
+        const frames = [];
+        for await (const frame of readSseStream(stream)) {
+            frames.push(frame);
+        }
+        expect(frames.length).toBeGreaterThan(0);
+        expect(frames.some((f) => f.data.includes('tail'))).toBe(true);
     });
 });
