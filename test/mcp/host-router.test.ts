@@ -142,4 +142,66 @@ describe('createHostRouter', () => {
         )) as { error: string };
         expect(result.error).toBe('fetch_failed');
     });
+
+    it('covers POST body transform query skip and methodDenied function', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const { fetcher, calls } = fakeFetcher();
+        const counterEntry = ENTRIES[0];
+        if (!counterEntry) {
+            throw new Error('missing entry');
+        }
+        const router = createHostRouter(
+            [
+                {
+                    ...counterEntry,
+                    transformResponse: (_path, parsed) => ({ wrapped: parsed }),
+                    timeoutMs: 1_000,
+                },
+            ],
+            {
+                methodDeniedMessage: (method) => `no ${method}`,
+            },
+        );
+
+        const denied = (await router(
+            { ...ENV, SVC_COUNTER: fetcher },
+            { method: 'TRACE', path: '/v1/id' },
+        )) as { error: string; message: string };
+        expect(denied).toEqual({ error: 'method_not_allowed', message: 'no TRACE' });
+
+        const posted = await router(
+            { ...ENV, SVC_COUNTER: fetcher },
+            {
+                method: 'POST',
+                path: '/v1/id/./generate',
+                body: { n: 1 },
+                query: { a: '1', b: undefined },
+            },
+        );
+        expect(posted).toEqual({ wrapped: { ok: true, data: 'payload' } });
+        expect(calls[0].url).toBe('https://counter/v1/id/generate?a=1');
+        expect(calls[0].init?.body).toBe(JSON.stringify({ n: 1 }));
+
+        await router(
+            { ...ENV, SVC_COUNTER: fetcher },
+            { method: 'PUT', path: '/v1/id', body: 'raw' },
+        );
+        expect(calls[1].init?.body).toBe('raw');
+
+        await router({ ...ENV, SVC_COUNTER: fetcher }, { method: 'PATCH', path: '/v1/id' });
+        expect(calls[2].init?.body).toBeUndefined();
+
+        const boom = {
+            fetch: vi.fn(async () => {
+                throw 'raw';
+            }),
+        } as unknown as Fetcher;
+        const failed = (await router(
+            { ...ENV, SVC_COUNTER: boom },
+            { method: 'GET', path: '/v1/id' },
+        )) as { error: string };
+        expect(failed.error).toBe('fetch_failed');
+        expect(warn).toHaveBeenCalled();
+        warn.mockRestore();
+    });
 });

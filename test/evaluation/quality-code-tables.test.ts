@@ -34,6 +34,7 @@ describe('summary / fetch / quality code tables', () => {
         expect(describeArticleFetchReason(ArticleFetchReason.quality_soft_reject.code)).toContain(
             '软保留',
         );
+        expect(describeArticleFetchReason('not-a-reason')).toBe('not-a-reason');
     });
 
     it('describes QualityRejectDetail and soft-keep whitelist', () => {
@@ -44,5 +45,6 @@ describe('summary / fetch / quality code tables', () => {
         expect(isQualitySoftKeepDetail(QualityRejectDetail.nav_shell.code)).toBe(false);
         expect(isQualitySoftKeepDetail(QualityRejectDetail.cookie.code)).toBe(false);
         expect(isQualitySoftKeepDetail(QualityRejectDetail.junk.code)).toBe(false);
+        expect(describeQualityRejectDetail('not-a-detail')).toBe('not-a-detail');
     });
 });

@@ -13,6 +13,17 @@ describe('withCpuBudget', () => {
         expect(warn).not.toHaveBeenCalled();
     });
 
+    it('uses default 5ms threshold when options omitted', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        let calls = 0;
+        vi.spyOn(performance, 'now').mockImplementation(() => {
+            calls += 1;
+            return calls === 1 ? 0 : 0.1;
+        });
+        expect(withCpuBudget('tiny', () => 1)).toBe(1);
+        expect(warn).not.toHaveBeenCalled();
+    });
+
     it('warns with structured event when over threshold', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         let calls = 0;

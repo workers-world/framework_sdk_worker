@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildTechInsert, buildTechUpdate, shanghaiTechTime } from '../../src/d1/tech-meta.js';
+import {
+    buildTechInsert,
+    buildTechUpdate,
+    newTraceId,
+    shanghaiTechTime,
+} from '../../src/d1/tech-meta.js';
 
 describe('tech-meta', () => {
     it('buildTechInsert sets version 1 and matching timestamps', () => {
@@ -23,5 +28,10 @@ describe('tech-meta', () => {
 
     it('shanghaiTechTime returns 14-digit timestamp', () => {
         expect(shanghaiTechTime(new Date('2026-07-18T15:04:05Z'))).toBe('20260718230405');
+    });
+
+    it('newTraceId returns uuid', () => {
+        expect(newTraceId()).toMatch(/^[0-9a-f-]{36}$/i);
+        expect(newTraceId()).not.toBe(newTraceId());
     });
 });

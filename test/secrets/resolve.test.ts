@@ -26,4 +26,22 @@ describe('resolveSecret', () => {
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
     });
+
+    it('covers null empty store and unknown shapes', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        expect(await resolveSecret(null)).toBeUndefined();
+        expect(await resolveSecret(undefined)).toBeUndefined();
+        expect(await resolveSecret('   ')).toBeUndefined();
+        expect(await resolveSecret({ get: async () => 12 as unknown as string })).toBeUndefined();
+        expect(
+            await resolveSecret({
+                get: async () => {
+                    throw 'store-down';
+                },
+            }),
+        ).toBeUndefined();
+        expect(await resolveSecret({} as { get(): Promise<string> })).toBeUndefined();
+        expect(warn).toHaveBeenCalled();
+        warn.mockRestore();
+    });
 });

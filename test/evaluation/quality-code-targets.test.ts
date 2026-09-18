@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    githubBlobUrl,
     inferSuspectedLayerFromIncident,
     type QualityCodeAnchorsRegistry,
     resolveCodeAnchorPaths,
@@ -40,5 +41,22 @@ describe('quality-code-targets', () => {
             inferSuspectedLayerFromIncident({ path: 'title_only', chain: 'fetch→browser:ok' }),
         ).toBe('summarize');
         expect(inferSuspectedLayerFromIncident({ chain: 'llm-gateway:timeout' })).toBe('llm');
+        expect(inferSuspectedLayerFromIncident({ chain: 'notify:send' })).toBe('notify');
+        expect(inferSuspectedLayerFromIncident({ chain: 'product_landing' })).toBe('url_heuristic');
+        expect(inferSuspectedLayerFromIncident({ path: 'fetch-article' })).toBe('fetch');
+        expect(inferSuspectedLayerFromIncident({ chain: 'summarize:done' })).toBe('summarize');
+        expect(inferSuspectedLayerFromIncident({})).toBe('unknown');
+    });
+
+    it('resolveWorkerRepoUrl / resolveCodeAnchorPaths handle missing service and unknown layer', () => {
+        expect(resolveWorkerRepoUrl('missing', REGISTRY)).toBeUndefined();
+        expect(resolveCodeAnchorPaths('missing', 'fetch', REGISTRY)).toEqual([]);
+        expect(resolveCodeAnchorPaths('email-rule-worker', 'unknown', REGISTRY)).toEqual([]);
+        expect(githubBlobUrl('https://github.com/o/r/', '/src/a.ts')).toBe(
+            'https://github.com/o/r/blob/master/src/a.ts',
+        );
+        expect(githubBlobUrl('https://github.com/o/r', 'src/a.ts', 'dev')).toBe(
+            'https://github.com/o/r/blob/dev/src/a.ts',
+        );
     });
 });

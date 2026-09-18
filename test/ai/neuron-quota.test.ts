@@ -115,4 +115,55 @@ describe('neuron-quota', () => {
             globalThis.fetch = originalFetch;
         }
     });
+
+    it('fetchTodayNeuronsUsed covers network HTTP and non-JSON failures', async () => {
+        const originalFetch = globalThis.fetch;
+        try {
+            globalThis.fetch = async () => {
+                throw 'offline';
+            };
+            await expect(fetchTodayNeuronsUsed('acct', 'token')).resolves.toEqual({
+                ok: false,
+                used: 0,
+                error: 'offline',
+            });
+
+            globalThis.fetch = async () => new Response('nope', { status: 503 });
+            await expect(fetchTodayNeuronsUsed('acct', 'token')).resolves.toMatchObject({
+                ok: false,
+                error: 'graphql neurons query failed: HTTP 503',
+            });
+
+            globalThis.fetch = async () => new Response('not-json', { status: 200 });
+            await expect(fetchTodayNeuronsUsed('acct', 'token')).resolves.toMatchObject({
+                ok: false,
+                error: expect.stringContaining('非 JSON'),
+            });
+
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify({ data: { viewer: { accounts: [{}] } } }), {
+                    status: 200,
+                });
+            await expect(fetchTodayNeuronsUsed('acct', 'token')).resolves.toEqual({
+                ok: true,
+                used: 0,
+            });
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
+    it('extractAiErrorMessage remaining shapes and quota phrasing', () => {
+        expect(extractAiErrorMessage(new Error('boom'))).toBe('boom');
+        expect(extractAiErrorMessage(12)).toBe('12');
+        expect(extractAiErrorMessage({ description: 'from-desc' })).toBe('from-desc');
+        expect(extractAiErrorMessage({ internalCode: 4006, foo: 1 })).toBe(
+            '{"internalCode":4006,"foo":1}',
+        );
+        const circular: Record<string, unknown> = {};
+        circular.self = circular;
+        expect(extractAiErrorMessage(circular)).toBe(String(circular));
+        expect(isNeuronQuotaError('please upgrade neurons plan')).toBe(true);
+        expect(isWorkersAiMetric({ x_BillableMetricId: 'workers-ai-units' })).toBe(true);
+    });
 });

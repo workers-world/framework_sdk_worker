@@ -48,6 +48,14 @@ describe('resolve-underlying', () => {
 
     it('returns null when no candidate', () => {
         expect(resolveInvestEventUnderlying({ tags: ['宏观', '政策'] })).toBeNull();
+        expect(normalizeUnderlyingKey('   ')).toBe('');
+        expect(normalizeUnderlyingKey('茅台')).toBe('茅台');
+        expect(resolveInvestEventUnderlying({ explicit: '  ' })).toBeNull();
+        expect(resolveInvestEventUnderlying({ symbols: ['  ', 'nvda'] })).toBe('NVDA');
+        expect(resolveInvestEventUnderlying({ tags: ['  ', '600519'] })).toBe('600519');
+        expect(resolveInvestEventUnderlying({ tags: [] })).toBeNull();
+        expect(resolveInvestEventUnderlying({})).toBeNull();
+        expect(resolveInvestEventUnderlying({ symbols: ['$$$'] })).toBe('$$$');
     });
 
     it('generates uuid trace ids', () => {

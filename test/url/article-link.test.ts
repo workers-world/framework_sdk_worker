@@ -34,4 +34,18 @@ describe('isLikelyArticleUrl', () => {
             ),
         ).toBe(true);
     });
+
+    it('covers empty ftp excluded hosts long slug and decode failures', () => {
+        expect(isLikelyArticleUrl('')).toBe(false);
+        expect(isLikelyArticleUrl('   ')).toBe(false);
+        expect(isLikelyArticleUrl('ftp://example.com/blog/post')).toBe(false);
+        expect(isLikelyArticleUrl('not a url')).toBe(false);
+        expect(isLikelyArticleUrl('https://news.yahoo.com/article/x')).toBe(false);
+        expect(isLikelyArticleUrl('https://www.barrons.com/articles/x')).toBe(false);
+        expect(isLikelyArticleUrl('https://www.wired.com/story/hello')).toBe(true);
+        expect(
+            isLikelyArticleUrl('https://example.com/topic/this-is-a-very-long-slug-over-twenty'),
+        ).toBe(true);
+        expect(isLikelyArticleUrl('https://example.com/%E0/blog')).toBe(true);
+    });
 });
