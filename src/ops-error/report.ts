@@ -1,5 +1,6 @@
 import { linkifyPlainTextEmail } from '../email/linkify-plain-text.js';
 import { getEnvMode } from '../env/validate.js';
+import type { IntakeEnv } from '../intake/submit.js';
 import { type NotifyResult, sendNotify } from '../notify/client.js';
 import type { SecretLike } from '../secrets/resolve.js';
 import { shanghaiIsoString } from '../time.js';
@@ -14,9 +15,16 @@ export interface OpsErrorPayload {
     dedupKey?: string;
     /** 覆盖 env.OPS_ALERT_TO */
     to?: string;
+    /**
+     * true 时旁路 submitIntakeEvent(kind=ops.error) 至 sch1。
+     * 与邮件并存；缺 SVC_SCH1 / SCH_INTAKE_TOKEN 时 intake 静默 warn。
+     */
+    intake?: boolean;
+    /** 可选：写入 intake payload.requestId */
+    requestId?: string;
 }
 
-export interface OpsErrorEnv {
+export interface OpsErrorEnv extends IntakeEnv {
     SVC_NOTIFY?: Fetcher;
     NOTIFY_AUTH_TOKEN?: SecretLike;
     OPS_ALERT_TO?: string;
@@ -58,11 +66,50 @@ function buildOpsEmailBody(payload: OpsErrorPayload, context: LogFields): string
     return lines.join('\n');
 }
 
-/** 运维 error 即时邮件告警（不进 digest 窗口） */
+/**
+ * 动态 import intake，避免 builders ↔ report 经 ops-error.js 桶循环初始化。
+ * fail-open：intake 失败不抛、不影响邮件结果。
+ */
+function submitOpsErrorIntake(
+    env: OpsErrorEnv,
+    payload: OpsErrorPayload,
+    ctx?: Pick<ExecutionContext, 'waitUntil'>,
+): void {
+    if (payload.intake !== true) {
+        return;
+    }
+    const promise = import('../intake.js')
+        .then(({ buildOpsErrorIntake, submitIntakeEventAsync }) => {
+            const { intake: _intake, to: _to, dedupKey, ...rest } = payload;
+            const event = buildOpsErrorIntake({
+                producer: payload.worker,
+                worker: payload.worker,
+                reason: payload.reason,
+                error: payload.error,
+                context: rest.context,
+                requestId: payload.requestId,
+                ...(dedupKey?.trim() ? { dedupKey: dedupKey.trim() } : {}),
+            });
+            submitIntakeEventAsync(env, event, ctx);
+        })
+        .catch((e: unknown) => {
+            const msg = e instanceof Error ? e.message : String(e);
+            console.warn(`[ops-error] intake submit failed worker=${payload.worker}: ${msg}`);
+        });
+    if (ctx?.waitUntil) {
+        ctx.waitUntil(promise);
+        return;
+    }
+    void promise;
+}
+
+/** 运维 error 即时邮件告警（不进 digest 窗口）；可选双写 sch1 Intake */
 export async function reportOpsError(
     env: OpsErrorEnv,
     payload: OpsErrorPayload,
 ): Promise<NotifyResult> {
+    submitOpsErrorIntake(env, payload);
+
     const to = resolveAlertTo(env, payload.to);
     if (!to) {
         if (getEnvMode(env as Record<string, unknown>) === 'dev') {
@@ -98,13 +145,16 @@ export async function reportOpsError(
     }
 }
 
-/** 热路径 fire-and-forget：有 ctx 时用 waitUntil */
+/** 热路径 fire-and-forget：有 ctx 时用 waitUntil；payload.intake=true 时旁路 sch1 */
 export function reportOpsErrorAsync(
     env: OpsErrorEnv,
     payload: OpsErrorPayload,
     ctx?: Pick<ExecutionContext, 'waitUntil'>,
 ): void {
-    const promise = reportOpsError(env, payload);
+    // intake 先挂 waitUntil，再挂邮件 promise（reportOpsError 内也会触 intake，故此处只走邮件路径时需传 ctx）
+    submitOpsErrorIntake(env, payload, ctx);
+    const mailPayload: OpsErrorPayload = { ...payload, intake: false };
+    const promise = reportOpsError(env, mailPayload);
     if (ctx?.waitUntil) {
         ctx.waitUntil(promise);
         return;
