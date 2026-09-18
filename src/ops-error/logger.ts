@@ -1,4 +1,3 @@
-import { buildOpsErrorIntake, type IntakeEnv, submitIntakeEventAsync } from '../intake.js';
 import type { OpsErrorEnv } from './report.js';
 import { reportOpsErrorAsync } from './report.js';
 import { type LogFields, sanitizeForLog } from './sanitize.js';
@@ -6,7 +5,7 @@ import { type LogFields, sanitizeForLog } from './sanitize.js';
 export type OpsLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface OpsLoggerOptions {
-    env?: OpsErrorEnv & IntakeEnv;
+    env?: OpsErrorEnv;
     ctx?: Pick<ExecutionContext, 'waitUntil'>;
 }
 
@@ -54,7 +53,7 @@ function extractErrorMessage(fields: LogFields, event: string): string {
     return event;
 }
 
-/** 结构化 JSON 日志；error 级可选即时运维邮件 */
+/** 结构化 JSON 日志；error 级可选即时运维邮件；fields.intake=true 时旁路 sch1 */
 export function createOpsLogger(workerName: string, options: OpsLoggerOptions = {}): OpsLogger {
     const { env, ctx } = options;
 
@@ -63,7 +62,7 @@ export function createOpsLogger(workerName: string, options: OpsLoggerOptions = 
         if (level !== 'error' || !env) {
             return;
         }
-        const { error: _errorField, message: _messageField, ...context } = fields;
+        const { error: _errorField, message: _messageField, intake, ...context } = fields;
         reportOpsErrorAsync(
             env,
             {
@@ -71,19 +70,10 @@ export function createOpsLogger(workerName: string, options: OpsLoggerOptions = 
                 reason: event,
                 error: extractErrorMessage(fields, event),
                 context,
+                intake: intake === true,
             },
             ctx,
         );
-        if (fields.intake === true) {
-            const intakeEvent = buildOpsErrorIntake({
-                producer: workerName,
-                worker: workerName,
-                reason: event,
-                error: extractErrorMessage(fields, event),
-                context,
-            });
-            submitIntakeEventAsync(env, intakeEvent, ctx);
-        }
     };
 
     return {

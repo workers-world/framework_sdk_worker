@@ -167,4 +167,43 @@ describe('reportOpsErrorAsync', () => {
             { worker: 'w', reason: 'r', error: 'e' },
         );
     });
+
+    it('intake:true posts to sch1 when SVC_SCH1 configured', async () => {
+        const waitUntil = vi.fn();
+        let intakeBody = '';
+        const sch1 = makeFakeFetcher((_url, init) => {
+            intakeBody = String(init?.body);
+            return new Response(JSON.stringify({ ok: true, id: 42 }), { status: 200 });
+        });
+        const notify = makeFakeFetcher(
+            () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
+        reportOpsErrorAsync(
+            {
+                SVC_NOTIFY: notify,
+                NOTIFY_AUTH_TOKEN: 'tok',
+                OPS_ALERT_TO: 'a@x.com',
+                SVC_SCH1: sch1,
+                SCH_INTAKE_TOKEN: 'intake-tok',
+            },
+            {
+                worker: 'decision-desk-worker',
+                reason: 'desk_signal_give_up',
+                error: 'UNIQUE constraint failed',
+                intake: true,
+                context: { attempts: 5 },
+            },
+            { waitUntil },
+        );
+        expect(waitUntil.mock.calls.length).toBeGreaterThanOrEqual(1);
+        await Promise.all(waitUntil.mock.calls.map((c) => c[0]));
+        const event = JSON.parse(intakeBody) as {
+            kind: string;
+            source: { worker: string };
+            payload: { reason: string };
+        };
+        expect(event.kind).toBe('ops.error');
+        expect(event.source.worker).toBe('decision-desk-worker');
+        expect(event.payload.reason).toBe('desk_signal_give_up');
+    });
 });
