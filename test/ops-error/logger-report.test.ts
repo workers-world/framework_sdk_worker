@@ -157,8 +157,8 @@ describe('reportOpsErrorAsync', () => {
                 waitUntil,
             },
         );
-        expect(waitUntil).toHaveBeenCalledTimes(1);
-        await waitUntil.mock.calls[0]?.[0];
+        expect(waitUntil).toHaveBeenCalledTimes(2);
+        await Promise.all(waitUntil.mock.calls.map((call) => call[0]));
     });
 
     it('fire-and-forgets without ctx', () => {
@@ -200,10 +200,61 @@ describe('reportOpsErrorAsync', () => {
         const event = JSON.parse(intakeBody) as {
             kind: string;
             source: { worker: string };
-            payload: { reason: string };
+            payload: { index: { reason: string }; payloadVersion: number };
         };
         expect(event.kind).toBe('ops.error');
         expect(event.source.worker).toBe('decision-desk-worker');
-        expect(event.payload.reason).toBe('desk_signal_give_up');
+        expect(event.payload.index.reason).toBe('desk_signal_give_up');
+        expect(event.payload.payloadVersion).toBe(2);
+    });
+
+    it('posts intake by default when intake flag omitted', async () => {
+        const waitUntil = vi.fn();
+        let posted = 0;
+        const sch1 = makeFakeFetcher(() => {
+            posted += 1;
+            return new Response(JSON.stringify({ ok: true, id: 7 }), { status: 200 });
+        });
+        const notify = makeFakeFetcher(
+            () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
+        reportOpsErrorAsync(
+            {
+                SVC_NOTIFY: notify,
+                NOTIFY_AUTH_TOKEN: 'tok',
+                OPS_ALERT_TO: 'a@x.com',
+                SVC_SCH1: sch1,
+                SCH_INTAKE_TOKEN: 'intake-tok',
+            },
+            { worker: 'notify-worker', reason: 'boom', error: 'e' },
+            { waitUntil },
+        );
+        await Promise.all(waitUntil.mock.calls.map((c) => c[0]));
+        expect(posted).toBe(1);
+    });
+
+    it('skips intake when intake is false', async () => {
+        const waitUntil = vi.fn();
+        let posted = 0;
+        const sch1 = makeFakeFetcher(() => {
+            posted += 1;
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        });
+        const notify = makeFakeFetcher(
+            () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
+        reportOpsErrorAsync(
+            {
+                SVC_NOTIFY: notify,
+                NOTIFY_AUTH_TOKEN: 'tok',
+                OPS_ALERT_TO: 'a@x.com',
+                SVC_SCH1: sch1,
+                SCH_INTAKE_TOKEN: 'intake-tok',
+            },
+            { worker: 'notify-worker', reason: 'boom', error: 'e', intake: false },
+            { waitUntil },
+        );
+        await Promise.all(waitUntil.mock.calls.map((c) => c[0]));
+        expect(posted).toBe(0);
     });
 });
