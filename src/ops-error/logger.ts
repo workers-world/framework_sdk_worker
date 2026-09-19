@@ -53,7 +53,7 @@ function extractErrorMessage(fields: LogFields, event: string): string {
     return event;
 }
 
-/** 结构化 JSON 日志；error 级可选即时运维邮件；fields.intake=true 时旁路 sch1 */
+/** 结构化 JSON 日志；error 级即时运维邮件并默认旁路 sch1；fields.intake=false 关闭 intake */
 export function createOpsLogger(workerName: string, options: OpsLoggerOptions = {}): OpsLogger {
     const { env, ctx } = options;
 
@@ -70,7 +70,7 @@ export function createOpsLogger(workerName: string, options: OpsLoggerOptions = 
                 reason: event,
                 error: extractErrorMessage(fields, event),
                 context,
-                intake: intake === true,
+                intake: intake !== false,
             },
             ctx,
         );

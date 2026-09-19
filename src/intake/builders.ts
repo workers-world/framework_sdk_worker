@@ -4,6 +4,7 @@ import {
     INTAKE_KIND_DESK_DRAFT_QUALITY,
     INTAKE_KIND_DESK_OBS_DUMP,
     INTAKE_KIND_OPS_ERROR,
+    INTAKE_KIND_OPT_LATENCY_DIGEST,
     INTAKE_KIND_QUALITY_CLUSTER,
     INTAKE_KIND_QUALITY_LOG_DIGEST,
 } from './kinds.js';
@@ -137,11 +138,32 @@ export function buildOpsErrorIntake(input: {
         }
     }
     const error = truncate(String(input.error).trim(), 800);
-    const payload: OpsErrorIntakePayload = {
-        reason: input.reason,
-        error,
-        ...(Object.keys(safeContext).length > 0 ? { context: safeContext } : {}),
-        ...(input.requestId ? { requestId: input.requestId } : {}),
+    const items: Array<{ key: string; value: string }> = [
+        { key: 'reason', value: input.reason },
+        { key: 'worker', value: input.worker },
+        { key: 'error', value: error },
+    ];
+    for (const [key, value] of Object.entries(safeContext)) {
+        items.push({ key, value: String(value) });
+    }
+    if (input.requestId) {
+        items.push({ key: 'requestId', value: input.requestId });
+    }
+    const payload = {
+        payloadVersion: 2 as const,
+        index: {
+            reason: input.reason,
+            worker: input.worker,
+            ...(input.requestId ? { requestId: input.requestId } : {}),
+        },
+        blocks: [
+            {
+                id: 'kv-ops',
+                type: 'intake.key_value',
+                title: 'ops.error',
+                data: { items },
+            },
+        ],
     };
     const title = truncate(`[${input.worker}] ${input.reason}`, 120);
     const summary = truncate(error, 500);
@@ -376,6 +398,41 @@ export function buildDeskObsDumpIntake(input: {
         },
         title,
         summary,
+        severity: input.severity ?? 'info',
+        occurredAt: input.occurredAt ?? shanghaiIsoString(),
+        payload: input.payloadEnvelope as unknown as Record<string, unknown>,
+        links: input.links,
+    };
+}
+
+/** opt.latency_digest：一日一行，payload 必须是 v2 envelope */
+export function buildOptLatencyDigestDedupKey(date: string): string {
+    return `${INTAKE_KIND_OPT_LATENCY_DIGEST}:${date}`;
+}
+
+export function buildOptLatencyDigestIntake(input: {
+    date: string;
+    payloadEnvelope: IntakePayloadEnvelope;
+    producer?: string;
+    severity?: IntakeSeverity;
+    occurredAt?: string;
+    summary?: string;
+    links?: IntakeLink[];
+}): IntakeEvent {
+    const cellCount = input.payloadEnvelope.index.cellCount;
+    return {
+        schemaVersion: 1,
+        kind: INTAKE_KIND_OPT_LATENCY_DIGEST,
+        dedupKey: buildOptLatencyDigestDedupKey(input.date),
+        source: {
+            producer: input.producer ?? 'orchestrator-worker',
+            worker: 'orchestrator-worker',
+        },
+        title: truncate(`优化延迟日报 ${input.date}`, 120),
+        summary: truncate(
+            input.summary ?? `Observability calculations Top-N · cells=${cellCount ?? 0}`,
+            500,
+        ),
         severity: input.severity ?? 'info',
         occurredAt: input.occurredAt ?? shanghaiIsoString(),
         payload: input.payloadEnvelope as unknown as Record<string, unknown>,

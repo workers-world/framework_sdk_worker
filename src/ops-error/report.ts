@@ -16,8 +16,8 @@ export interface OpsErrorPayload {
     /** 覆盖 env.OPS_ALERT_TO */
     to?: string;
     /**
-     * true 时旁路 submitIntakeEvent(kind=ops.error) 至 sch1。
-     * 与邮件并存；缺 SVC_SCH1 / SCH_INTAKE_TOKEN 时 intake 静默 warn。
+     * 默认旁路 submitIntakeEvent(kind=ops.error)。显式 false 关闭。
+     * 缺 SVC_SCH1 / SCH_INTAKE_TOKEN 时 intake 静默 warn，邮件仍发。
      */
     intake?: boolean;
     /** 可选：写入 intake payload.requestId */
@@ -75,7 +75,7 @@ function submitOpsErrorIntake(
     payload: OpsErrorPayload,
     ctx?: Pick<ExecutionContext, 'waitUntil'>,
 ): void {
-    if (payload.intake !== true) {
+    if (payload.intake === false) {
         return;
     }
     const promise = import('../intake.js')
@@ -145,7 +145,7 @@ export async function reportOpsError(
     }
 }
 
-/** 热路径 fire-and-forget：有 ctx 时用 waitUntil；payload.intake=true 时旁路 sch1 */
+/** 热路径 fire-and-forget：有 ctx 时用 waitUntil；intake 默认开，仅 false 关闭 */
 export function reportOpsErrorAsync(
     env: OpsErrorEnv,
     payload: OpsErrorPayload,

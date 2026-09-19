@@ -87,6 +87,7 @@ export default defineConfig({
         'observability/platform-log': 'src/observability/platform-log.ts',
         'observability/slim-platform-logs': 'src/observability/slim-platform-logs.ts',
         'observability/quality-sample': 'src/observability/quality-sample.ts',
+        'observability/metric-cell': 'src/observability/metric-cell.ts',
         'observability/cf-agents': 'src/observability/cf-agents.ts',
         'mcp/index': 'src/mcp/index.ts',
         'mcp/types': 'src/mcp/types.ts',

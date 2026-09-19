@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.18",
+  "version": "0.4.19",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -311,6 +311,10 @@
     "./observability/quality-sample": {
       "import": "./dist/observability/quality-sample.js",
       "types": "./dist/observability/quality-sample.d.ts"
+    },
+    "./observability/metric-cell": {
+      "import": "./dist/observability/metric-cell.js",
+      "types": "./dist/observability/metric-cell.d.ts"
     },
     "./observability/cf-agents": {
       "import": "./dist/observability/cf-agents.js",
