@@ -1,15 +1,15 @@
 /**
  * W3C traceparent 传播 helper（Queue / Service Binding 子请求）。
+ * 身份由 trace-id 模块铸造：32 hex trace + 16 hex span，不另造前缀语法。
  */
+import { formatTraceparent, mintSpanId, mintTraceId } from '../trace-id.js';
 
 const TRACEPARENT_HEADER = 'traceparent';
 const TRACESTATE_HEADER = 'tracestate';
 
-/** 生成 W3C traceparent（version 00） */
+/** 生成 W3C traceparent（version 00，已采样） */
 export function createTraceparent(): string {
-    const traceId = crypto.randomUUID().replace(/-/g, '');
-    const spanId = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
-    return `00-${traceId}-${spanId}-01`;
+    return formatTraceparent(mintTraceId(), mintSpanId());
 }
 
 export function injectTraceparent(headers: HeadersInit | Headers, traceparent: string): Headers {
@@ -28,14 +28,12 @@ export function readCfRequestId(response: Response): string | undefined {
     return v || undefined;
 }
 
-/** Q_DESK_SIGNAL：lineageId（traceId）+ W3C traceparent 同捆生成 */
+/** Q_DESK_SIGNAL：lineageId 与 traceparent 共用同一个 W3C trace-id */
 export function createDeskSignalTraceBundle(): { traceId: string; traceparent: string } {
-    const traceId = crypto.randomUUID();
-    const hexTrace = traceId.replace(/-/g, '');
-    const spanId = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+    const traceId = mintTraceId();
     return {
         traceId,
-        traceparent: `00-${hexTrace}-${spanId}-01`,
+        traceparent: formatTraceparent(traceId, mintSpanId()),
     };
 }
 

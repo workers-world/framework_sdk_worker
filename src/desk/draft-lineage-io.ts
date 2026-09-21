@@ -9,6 +9,13 @@ import {
     type WorkerIoError,
 } from '../io.js';
 import type { SecretLike } from '../secrets/resolve.js';
+import {
+    formatTraceparent,
+    formatTracestate,
+    isSpanId,
+    isTraceId,
+    mintSpanId,
+} from '../trace-id.js';
 
 export const STREAM_DRAFT_LINEAGE = 'workers-world.draft_lineage' as const;
 
@@ -62,9 +69,25 @@ export type CreateDraftLineageEnvelopeInput = {
     error?: WorkerIoError;
 };
 
-/** 步骤 envelope id 后缀（全局唯一：lineageId:eventId） */
+/** 步骤 span-id（W3C 16 hex）。从属于调用方持有的 lineage/trace，不把父 id 编进字符串。 */
 export function newLineageEventId(): string {
-    return crypto.randomUUID();
+    return mintSpanId();
+}
+
+function storyTraceparent(
+    lineageId: string,
+    eventId: string,
+): {
+    traceparent?: string;
+    tracestate?: string;
+} {
+    if (!isTraceId(lineageId) || !isSpanId(eventId)) {
+        return {};
+    }
+    return {
+        traceparent: formatTraceparent(lineageId, eventId),
+        tracestate: formatTracestate('desk'),
+    };
 }
 
 export function createDraftLineageEnvelope(
@@ -79,6 +102,7 @@ export function createDraftLineageEnvelope(
         wwsummary: input.wwsummary,
         wwterminal: input.terminal ? true : undefined,
         wwerror: input.error,
+        ...storyTraceparent(input.lineageId, input.eventId),
         data: { ...input.data, lineageId: input.lineageId },
     });
 }
@@ -150,9 +174,11 @@ export async function appendDraftLineage(
 
 /** 多 signal 合并 context 时取主 lineage（最早 traceId） */
 export function resolvePrimaryLineageId(traceIds: string[], fallback: string): string {
-    const trimmed = traceIds.map((t) => t.trim()).filter(Boolean);
-    if (trimmed.length === 0) {
-        return fallback;
+    for (const id of traceIds) {
+        const trimmed = id.trim();
+        if (trimmed) {
+            return trimmed;
+        }
     }
-    return trimmed[0]!;
+    return fallback;
 }

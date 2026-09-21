@@ -2,6 +2,7 @@
  * decision-desk 标的（underlying）统一解析与 trace 发号。
  */
 import { isFundCode } from '../fund/normalize-code.js';
+import { mintTraceId } from '../trace-id.js';
 
 const TICKER_RE = /^[A-Z]{1,5}(\.[A-Z]+)?$/;
 
@@ -65,7 +66,7 @@ export function resolveInvestEventUnderlying(input: {
     return fromTags ? normalizeUnderlyingKey(fromTags) : null;
 }
 
-/** signal / 批处理操作关联 ID（非业务发号）。 */
+/** signal / 批处理故事键（W3C 32 hex trace-id；与 desk lineageId 同形）。 */
 export function newSignalTraceId(): string {
-    return crypto.randomUUID();
+    return mintTraceId();
 }
