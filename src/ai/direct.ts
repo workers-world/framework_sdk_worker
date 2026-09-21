@@ -2,15 +2,14 @@
  * env.AI 直连统一封装：给保留 Workers AI binding 的 Agent / tool-loop 场景
  * （orchestrator / market-qa / config-agent）提供与 ai/client 相同的
  * 超时与 {ok:false} 错误契约，并默认注入 AI Gateway 观测配置。
- * 说明：超时为放弃等待（abandon），ai.run 本身不可 abort，上游调用与计费可能继续；
+ * 说明：超时走平台 `AiOptions.signal` + `GatewayOptions.requestTimeoutMs`；
  * Neuron 配额预检请按需配合 checkNeuronQuota（需 SVC_LLM_GATEWAY）。
  */
-import { withTimeout } from '../async/with-timeout.js';
 import { type AiGatewayConfig, callAiModel } from './gateway.js';
 
 export type { AiGatewayConfig } from './gateway.js';
 
-/** Workers AI chat/text 直连默认超时（ai.run 不可 abort，超时仅放弃等待） */
+/** Workers AI chat/text 直连默认超时（平台 signal + requestTimeoutMs） */
 const DEFAULT_AI_DIRECT_TIMEOUT_MS = 60_000;
 
 export interface AiDirectChatMessage {
@@ -100,11 +99,11 @@ export async function runChatDirect(
     }
 
     try {
-        const raw = await withTimeout(
-            Promise.resolve(callAiModel(ai, params.model, inputs, options?.gateway)),
-            options?.timeoutMs ?? DEFAULT_AI_DIRECT_TIMEOUT_MS,
-            'ai.direct chat',
-        );
+        const timeoutMs = options?.timeoutMs ?? DEFAULT_AI_DIRECT_TIMEOUT_MS;
+        const raw = await callAiModel(ai, params.model, inputs, options?.gateway, {
+            requestTimeoutMs: timeoutMs,
+            signal: AbortSignal.timeout(timeoutMs),
+        });
         const content = extractDirectChatContent(raw);
         if (!content) {
             return { ok: false, error: 'AI 返回空内容', raw };
