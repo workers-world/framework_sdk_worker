@@ -174,9 +174,11 @@ export async function appendDraftLineage(
 
 /** 多 signal 合并 context 时取主 lineage（最早 traceId） */
 export function resolvePrimaryLineageId(traceIds: string[], fallback: string): string {
-    const trimmed = traceIds.map((t) => t.trim()).filter(Boolean);
-    if (trimmed.length === 0) {
-        return fallback;
+    for (const id of traceIds) {
+        const trimmed = id.trim();
+        if (trimmed) {
+            return trimmed;
+        }
     }
-    return trimmed[0]!;
+    return fallback;
 }
