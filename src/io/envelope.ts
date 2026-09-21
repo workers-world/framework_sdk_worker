@@ -2,6 +2,7 @@
  * Org 级 I/O 信封：CloudEvents v1.0 对齐 + Workers-World 扩展（ww*）。
  * 传输无关；HTTP / SSE / Queue / Service Binding 共用此形状。
  */
+import { InvalidTraceIdError, parseTraceparent } from '../trace-id.js';
 
 export const WORKER_IO_SPECVERSION = '1.0' as const;
 
@@ -43,9 +44,31 @@ export interface WorkerIoEnvelope<TData = unknown> {
     /** SSE 终态：触发客户端 refresh */
     wwterminal?: true;
     wwerror?: WorkerIoError;
+    /**
+     * CloudEvents distributed-tracing：故事起点的 W3C traceparent。
+     * 多跳不变；HTTP 头上的 traceparent 仍可每跳更新。
+     */
+    traceparent?: string;
+    /** 配套 tracestate，如 `ww=desk`。无 PII。 */
+    tracestate?: string;
 }
 
 export const STREAM_WORKFLOW_INSTANCE = 'workers-world.workflow_instance' as const;
+
+const TRACESTATE_MAX = 512;
+
+function formatStoredTraceparent(raw: string): string {
+    const parsed = parseTraceparent(raw);
+    return `${parsed.version}-${parsed.traceId}-${parsed.spanId}-${parsed.flags}`;
+}
+
+function formatStoredTracestate(raw: string): string {
+    const value = raw.trim();
+    if (!value || value.length > TRACESTATE_MAX) {
+        throw new InvalidTraceIdError('tracestate 非法');
+    }
+    return value;
+}
 
 export type CreateWorkerIoInput<TData = unknown> = {
     id: string;
@@ -58,6 +81,8 @@ export type CreateWorkerIoInput<TData = unknown> = {
     wwsummary?: string;
     wwterminal?: true;
     wwerror?: WorkerIoError;
+    traceparent?: string;
+    tracestate?: string;
 };
 
 export function createWorkerIoEnvelope<TData = unknown>(
@@ -88,6 +113,12 @@ export function createWorkerIoEnvelope<TData = unknown>(
     }
     if (input.wwerror !== undefined) {
         env.wwerror = input.wwerror;
+    }
+    if (input.traceparent !== undefined) {
+        env.traceparent = formatStoredTraceparent(input.traceparent);
+    }
+    if (input.tracestate !== undefined) {
+        env.tracestate = formatStoredTracestate(input.tracestate);
     }
     return env;
 }

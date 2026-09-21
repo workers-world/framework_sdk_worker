@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.20",
+  "version": "0.4.21",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -147,6 +147,10 @@
     "./id-generator": {
       "import": "./dist/id-generator/index.js",
       "types": "./dist/id-generator/index.d.ts"
+    },
+    "./trace-id": {
+      "import": "./dist/trace-id/index.js",
+      "types": "./dist/trace-id/index.d.ts"
     },
     "./audit-log": {
       "import": "./dist/audit-log/client.js",

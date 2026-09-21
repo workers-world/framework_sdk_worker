@@ -58,14 +58,14 @@ describe('readTraceparent / readCfRequestId', () => {
 });
 
 describe('createDeskSignalTraceBundle', () => {
-    it('pairs UUID lineage with matching hex traceId in traceparent', () => {
+    it('pairs a 32-hex lineage with the same trace-id inside traceparent', () => {
         const bundle = createDeskSignalTraceBundle();
-        expect(bundle.traceId).toMatch(
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-        );
+        expect(bundle.traceId).toMatch(/^[0-9a-f]{32}$/);
         expect(bundle.traceparent).toMatch(TRACEPARENT_RE);
-        const hexTrace = bundle.traceId.replace(/-/g, '');
-        expect(bundle.traceparent).toContain(`-${hexTrace}-`);
+        expect(bundle.traceparent).toContain(`-${bundle.traceId}-`);
+        const spanId = bundle.traceparent.split('-')[2] ?? '';
+        expect(spanId).toMatch(/^[0-9a-f]{16}$/);
+        expect(spanId).not.toBe(bundle.traceId);
         expect(TRACESTATE_HEADER).toBe('tracestate');
     });
 });

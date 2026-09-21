@@ -46,6 +46,7 @@ export default defineConfig({
         'logger/index': 'src/logger/index.ts',
         'types/env': 'src/types/env.ts',
         'id-generator/index': 'src/id-generator/index.ts',
+        'trace-id/index': 'src/trace-id/index.ts',
         'audit-log/client': 'src/audit-log/client.ts',
         'email/decode-mime-header': 'src/email/decode-mime-header.ts',
         'email/regex-pattern': 'src/email/regex-pattern.ts',
