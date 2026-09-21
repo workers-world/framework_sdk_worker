@@ -58,10 +58,11 @@ describe('resolve-underlying', () => {
         expect(resolveInvestEventUnderlying({ symbols: ['$$$'] })).toBe('$$$');
     });
 
-    it('generates uuid trace ids', () => {
+    it('generates W3C trace ids (32 hex)', () => {
         const a = newSignalTraceId();
         const b = newSignalTraceId();
-        expect(a).toMatch(/^[0-9a-f-]{36}$/i);
+        expect(a).toMatch(/^[0-9a-f]{32}$/);
+        expect(b).toMatch(/^[0-9a-f]{32}$/);
         expect(a).not.toBe(b);
     });
 });
