@@ -11,6 +11,13 @@ describe('resolve-underlying', () => {
         expect(normalizeUnderlyingKey('600519')).toBe('600519');
     });
 
+    it('strips A-share and HK exchange suffixes', () => {
+        expect(normalizeUnderlyingKey('601091.SH')).toBe('601091');
+        expect(normalizeUnderlyingKey('600238.sz')).toBe('600238');
+        expect(normalizeUnderlyingKey('01815.HK')).toBe('01815');
+        expect(normalizeUnderlyingKey('1815.hk')).toBe('01815');
+    });
+
     it('prefers explicit over symbols and tags', () => {
         expect(
             resolveInvestEventUnderlying({
