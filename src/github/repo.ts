@@ -139,6 +139,74 @@ export async function createPullRequest(
     return { ok: false, error: `创建 PR 失败: ${resp?.status ?? 'network'} ${text.slice(0, 200)}` };
 }
 
+export interface GitHubPullRef {
+    repo: string;
+    number: number;
+}
+
+/**
+ * 解析 GitHub PR URL（html_url）。
+ * `fallbackRepo` 仅在 path 缺 owner/repo 时使用（罕见）。
+ */
+export function parseGitHubPullRef(prUrl: string, fallbackRepo?: string): GitHubPullRef | null {
+    const raw = prUrl.trim();
+    if (!raw) {
+        return null;
+    }
+    let pathname: string;
+    try {
+        pathname = new URL(raw).pathname;
+    } catch {
+        return null;
+    }
+    const m = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/|$)/i.exec(pathname);
+    if (m) {
+        return { repo: `${m[1]}/${m[2]}`, number: Number(m[3]) };
+    }
+    const numOnly = /^\/pull\/(\d+)(?:\/|$)/i.exec(pathname);
+    if (numOnly && fallbackRepo?.trim()) {
+        const repo = fallbackRepo.trim();
+        if (/^[^/]+\/[^/]+$/.test(repo)) {
+            return { repo, number: Number(numOnly[1]) };
+        }
+    }
+    return null;
+}
+
+/**
+ * 将 draft PR 标为 Ready for review。
+ * 已是非 draft（常见 422）视为幂等成功（alreadyReady）。
+ */
+export async function markPullRequestReadyForReview(
+    token: string,
+    repo: string,
+    pullNumber: number,
+): Promise<{ ok: boolean; alreadyReady?: boolean; error?: string }> {
+    const resp = await ghFetch(
+        token,
+        `https://api.github.com/repos/${repo}/pulls/${pullNumber}/ready_for_review`,
+        { method: 'POST' },
+    );
+    if (resp.ok) {
+        return { ok: true };
+    }
+    const text = await resp.text();
+    if (resp.status === 422) {
+        const lower = text.toLowerCase();
+        if (
+            lower.includes('not a draft') ||
+            lower.includes('already') ||
+            lower.includes('ready for review')
+        ) {
+            return { ok: true, alreadyReady: true };
+        }
+    }
+    return {
+        ok: false,
+        error: `ready_for_review 失败: ${resp.status} ${text.slice(0, 200)}`,
+    };
+}
+
 export interface SearchedIssue {
     repo: string;
     number: number;
