@@ -36,23 +36,42 @@ describe('markPullRequestReadyForReview', () => {
         vi.unstubAllGlobals();
     });
 
-    it('returns ok on success', async () => {
+    it('graphql marks draft PR ready', async () => {
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () => new Response('{}', { status: 200 })),
+            vi.fn(async (url: string, init?: RequestInit) => {
+                if (String(url).includes('/pulls/3') && !init?.method) {
+                    return new Response(JSON.stringify({ draft: true, node_id: 'PR_kwDO123' }), {
+                        status: 200,
+                    });
+                }
+                if (String(url).includes('/graphql')) {
+                    return new Response(
+                        JSON.stringify({
+                            data: {
+                                markPullRequestReadyForReview: {
+                                    pullRequest: { isDraft: false },
+                                },
+                            },
+                        }),
+                        { status: 200 },
+                    );
+                }
+                return new Response('not found', { status: 404 });
+            }),
         );
         await expect(markPullRequestReadyForReview('tok', 'org/app', 3)).resolves.toEqual({
             ok: true,
         });
     });
 
-    it('treats 422 already-ready as ok', async () => {
+    it('treats non-draft pull as alreadyReady', async () => {
         vi.stubGlobal(
             'fetch',
             vi.fn(
                 async () =>
-                    new Response(JSON.stringify({ message: 'Pull request is not a draft' }), {
-                        status: 422,
+                    new Response(JSON.stringify({ draft: false, node_id: 'PR_kwDO123' }), {
+                        status: 200,
                     }),
             ),
         );
@@ -62,13 +81,14 @@ describe('markPullRequestReadyForReview', () => {
         });
     });
 
-    it('maps other failures', async () => {
+    it('maps pulls.get failure', async () => {
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () => new Response('forbidden', { status: 403 })),
+            vi.fn(async () => new Response('forbidden', { status: 404 })),
         );
         const result = await markPullRequestReadyForReview('tok', 'org/app', 3);
         expect(result.ok).toBe(false);
-        expect(result.error).toContain('403');
+        expect(result.error).toContain('pulls.get 失败');
+        expect(result.error).toContain('404');
     });
 });
