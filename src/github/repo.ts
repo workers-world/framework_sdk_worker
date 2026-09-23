@@ -173,38 +173,74 @@ export function parseGitHubPullRef(prUrl: string, fallbackRepo?: string): GitHub
     return null;
 }
 
+const MARK_PR_READY_GQL = `mutation MarkPullRequestReadyForReview($pullRequestId: ID!) {
+  markPullRequestReadyForReview(input: { pullRequestId: $pullRequestId }) {
+    pullRequest { isDraft }
+  }
+}`;
+
 /**
- * 将 draft PR 标为 Ready for review。
- * 已是非 draft（常见 422）视为幂等成功（alreadyReady）。
+ * 将 draft PR 标为 Ready for review（GraphQL；REST ready_for_review 对部分 App/权限会 404）。
+ * 已是非 draft 视为幂等成功（alreadyReady）。
  */
 export async function markPullRequestReadyForReview(
     token: string,
     repo: string,
     pullNumber: number,
 ): Promise<{ ok: boolean; alreadyReady?: boolean; error?: string }> {
-    const resp = await ghFetch(
+    const getResp = await ghFetch(
         token,
-        `https://api.github.com/repos/${repo}/pulls/${pullNumber}/ready_for_review`,
-        { method: 'POST' },
+        `https://api.github.com/repos/${repo}/pulls/${pullNumber}`,
     );
-    if (resp.ok) {
-        return { ok: true };
+    if (!getResp.ok) {
+        const text = await getResp.text();
+        return {
+            ok: false,
+            error: `pulls.get 失败: ${getResp.status} ${text.slice(0, 200)}`,
+        };
     }
-    const text = await resp.text();
-    if (resp.status === 422) {
-        const lower = text.toLowerCase();
-        if (
-            lower.includes('not a draft') ||
-            lower.includes('already') ||
-            lower.includes('ready for review')
-        ) {
+    const pull = (await getResp.json()) as { draft?: boolean; node_id?: string };
+    if (!pull.draft) {
+        return { ok: true, alreadyReady: true };
+    }
+    const nodeId = pull.node_id?.trim();
+    if (!nodeId) {
+        return { ok: false, error: 'pull 缺少 node_id，无法 GraphQL 转正' };
+    }
+
+    const gqlResp = await ghFetch(token, 'https://api.github.com/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            query: MARK_PR_READY_GQL,
+            variables: { pullRequestId: nodeId },
+        }),
+    });
+    if (!gqlResp.ok) {
+        const text = await gqlResp.text();
+        return {
+            ok: false,
+            error: `graphql 失败: ${gqlResp.status} ${text.slice(0, 200)}`,
+        };
+    }
+    const gqlBody = (await gqlResp.json()) as {
+        data?: { markPullRequestReadyForReview?: { pullRequest?: { isDraft?: boolean } } };
+        errors?: Array<{ message?: string }>;
+    };
+    const gqlErrors = gqlBody.errors?.map((e) => e.message).filter(Boolean);
+    if (gqlErrors && gqlErrors.length > 0) {
+        const msg = gqlErrors.join('; ');
+        const lower = msg.toLowerCase();
+        if (lower.includes('not a draft') || lower.includes('already')) {
             return { ok: true, alreadyReady: true };
         }
+        return { ok: false, error: `graphql: ${msg.slice(0, 200)}` };
     }
-    return {
-        ok: false,
-        error: `ready_for_review 失败: ${resp.status} ${text.slice(0, 200)}`,
-    };
+    const stillDraft = gqlBody.data?.markPullRequestReadyForReview?.pullRequest?.isDraft;
+    if (stillDraft === true) {
+        return { ok: false, error: 'graphql 成功但 PR 仍为 draft' };
+    }
+    return { ok: true };
 }
 
 export interface SearchedIssue {
