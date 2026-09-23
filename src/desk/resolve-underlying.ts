@@ -6,11 +6,22 @@ import { mintTraceId } from '../trace-id.js';
 
 const TICKER_RE = /^[A-Z]{1,5}(\.[A-Z]+)?$/;
 
-/** 规范化标的键：trim；纯字母 ticker 大写；6 位数字保持原样。 */
+const A_SHARE_SUFFIX_RE = /^(\d{6})\.(SH|SZ|BJ)$/i;
+const HK_SUFFIX_RE = /^(\d{4,5})\.HK$/i;
+
+/** 规范化标的键：trim；交易所后缀 → 代码；纯字母 ticker 大写；6 位数字保持原样。 */
 export function normalizeUnderlyingKey(raw: string): string {
     const trimmed = String(raw ?? '').trim();
     if (!trimmed) {
         return '';
+    }
+    const ashare = trimmed.match(A_SHARE_SUFFIX_RE);
+    if (ashare) {
+        return ashare[1];
+    }
+    const hk = trimmed.match(HK_SUFFIX_RE);
+    if (hk) {
+        return hk[1].padStart(5, '0');
     }
     if (isFundCode(trimmed)) {
         return trimmed;
