@@ -1,6 +1,6 @@
 /**
- * GitHub 仓库操作：建分支、upsert 文件、建 PR、搜索 Issue（provider B 自托管执行用）。
- * 上游：sch1（selfhosted provider）、deploy-tracker 同模式实现（后续迁移方）。
+ * GitHub 仓库操作：建分支、upsert 文件、建/合 PR、搜索 Issue（provider B 自托管执行用）。
+ * 上游：sch1（selfhosted provider / 可配置自动合入）、deploy-tracker 同模式实现（后续迁移方）。
  * 下游：api.github.com（ghFetchWithRetry 退避）。
  * 不变量：token 由调用方传入（PAT 或 App installation token）；建分支/建 PR 幂等
  * （422 已存在视为成功并回查既有资源）；文件内容 base64 UTF-8。
@@ -104,6 +104,92 @@ export interface NewPullRequest {
     head: string;
     base: string;
     body: string;
+}
+
+export type PullMergeMethod = 'merge' | 'squash' | 'rebase';
+
+export interface MergePullRequestInput {
+    mergeMethod?: PullMergeMethod;
+    commitTitle?: string;
+    commitMessage?: string;
+}
+
+export interface MergePullRequestResult {
+    ok: boolean;
+    merged?: boolean;
+    sha?: string;
+    error?: string;
+    /** 临时不可合（如 required checks）可稍后重试；冲突等永久失败为 false */
+    retryable?: boolean;
+}
+
+/** 合入 PR（PUT .../pulls/{n}/merge）；已合入视为幂等成功 */
+export async function mergePullRequest(
+    token: string,
+    repo: string,
+    pullNumber: number,
+    input: MergePullRequestInput = {},
+): Promise<MergePullRequestResult> {
+    const method = input.mergeMethod ?? 'squash';
+    const body: Record<string, string> = { merge_method: method };
+    if (input.commitTitle?.trim()) {
+        body.commit_title = input.commitTitle.trim();
+    }
+    if (input.commitMessage?.trim()) {
+        body.commit_message = input.commitMessage.trim();
+    }
+    const resp = await ghFetchWithRetry(
+        token,
+        `https://api.github.com/repos/${repo}/pulls/${pullNumber}/merge`,
+        {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        },
+    );
+    if (resp?.ok) {
+        const data = (await resp.json()) as { merged?: boolean; sha?: string; message?: string };
+        if (data.merged === false) {
+            return {
+                ok: false,
+                merged: false,
+                error: data.message?.trim() || 'merge returned merged=false',
+                retryable: true,
+            };
+        }
+        return { ok: true, merged: true, sha: data.sha };
+    }
+    const status = resp?.status;
+    const text = resp ? await resp.text() : 'network error';
+    const snippet = text.slice(0, 300);
+    if (status === 405 || status === 409) {
+        const lower = snippet.toLowerCase();
+        const conflict =
+            lower.includes('conflict') ||
+            lower.includes('dirty') ||
+            lower.includes('not mergeable');
+        return {
+            ok: false,
+            error: `合入失败: ${status} ${snippet}`,
+            retryable: !conflict,
+        };
+    }
+    if (status === 422) {
+        const lower = snippet.toLowerCase();
+        if (lower.includes('already merged') || lower.includes('pull request is not open')) {
+            return { ok: true, merged: true };
+        }
+        return {
+            ok: false,
+            error: `合入失败: ${status} ${snippet}`,
+            retryable: lower.includes('required') || lower.includes('status'),
+        };
+    }
+    return {
+        ok: false,
+        error: `合入失败: ${status ?? 'network'} ${snippet}`,
+        retryable: status == null || status >= 500,
+    };
 }
 
 /** 建 PR；已存在（422）回查同 head 的开放 PR 返回其 url */

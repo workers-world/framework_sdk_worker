@@ -4,6 +4,7 @@ import {
     createPullRequest,
     getBranchHeadSha,
     getDefaultBranch,
+    mergePullRequest,
     searchIssues,
     upsertRepoFile,
 } from '../../src/github/repo.js';
@@ -180,6 +181,42 @@ describe('github/repo', () => {
         expect(result.ok).toBe(false);
         expect(result.error).toContain('创建 PR 失败');
         expect(result.error).toContain('500');
+    });
+
+    it('mergePullRequest succeeds on 200', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => json({ merged: true, sha: 'deadbeef' })),
+        );
+        await expect(mergePullRequest(TOKEN, REPO, 7, { mergeMethod: 'squash' })).resolves.toEqual({
+            ok: true,
+            merged: true,
+            sha: 'deadbeef',
+        });
+    });
+
+    it('mergePullRequest treats already-merged 422 as success', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                async () => new Response('{"message":"Pull Request is not open"}', { status: 422 }),
+            ),
+        );
+        await expect(mergePullRequest(TOKEN, REPO, 7)).resolves.toEqual({
+            ok: true,
+            merged: true,
+        });
+    });
+
+    it('mergePullRequest marks conflict as non-retryable', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response('{"message":"Merge conflict"}', { status: 409 })),
+        );
+        const result = await mergePullRequest(TOKEN, REPO, 7);
+        expect(result.ok).toBe(false);
+        expect(result.retryable).toBe(false);
+        expect(result.error).toContain('409');
     });
 
     it('searchIssues maps items and empty on error', async () => {
