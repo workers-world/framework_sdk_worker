@@ -311,6 +311,27 @@ export class CursorStreamExpiredError extends Error {
     }
 }
 
+/**
+ * SSE 流尚未就绪或暂不可用（HTTP 409 stream_unavailable，常见于 Cloud Agent VM 冷启动）。
+ * 调用方应退避重连；可先 GET run 若已终态则无需再连。
+ */
+export class CursorStreamUnavailableError extends Error {
+    constructor(message = 'stream_unavailable') {
+        super(message);
+        this.name = 'CursorStreamUnavailableError';
+    }
+}
+
+/** 识别 Cursor SSE / HTTP 错误是否为「流未就绪」瞬态（409 或 body code stream_unavailable） */
+export function isCursorStreamUnavailable(code: string, message?: string): boolean {
+    const c = code.trim().toLowerCase();
+    if (c === 'http_409' || c === 'stream_unavailable') {
+        return true;
+    }
+    const m = (message ?? '').toLowerCase();
+    return m.includes('stream_unavailable') || m.includes('stream is no longer available');
+}
+
 function parseJsonData(data: string): Record<string, unknown> {
     if (!data.trim()) {
         return {};
@@ -399,7 +420,7 @@ export function mapCursorSseFrame(frame: {
     }
 }
 
-/** 消费 Cursor run SSE 直至 `done` 或连接结束；410 抛 CursorStreamExpiredError */
+/** 消费 Cursor run SSE 直至 `done` 或连接结束；410 抛 CursorStreamExpiredError；409 抛 CursorStreamUnavailableError */
 export async function* streamCursorAgentRun(
     apiKey: SecretLike,
     ref: CursorAgentRunRef,
@@ -426,6 +447,18 @@ export async function* streamCursorAgentRun(
 
     if (resp.status === 410) {
         throw new CursorStreamExpiredError();
+    }
+    if (resp.status === 409) {
+        const text = await resp.text();
+        let errBody: unknown;
+        try {
+            errBody = JSON.parse(text) as unknown;
+        } catch {
+            errBody = text;
+        }
+        throw new CursorStreamUnavailableError(
+            formatCursorApiError(errBody, text.slice(0, 300), resp.status),
+        );
     }
     if (!resp.ok) {
         const text = await resp.text();
