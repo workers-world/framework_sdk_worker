@@ -2,7 +2,7 @@
  * 业务产物一键质量入库：lite（失败）/ dump（人手导出观测包）。
  * 组装 v2 envelope + R2 溢出 + audit-log / envelopes enrich；不抛。
  */
-import { queryMaintenanceLogsSince } from '../audit-log/client.js';
+import { queryMaintenanceLogsSince } from '../audit-log.js';
 import type { WorkerIoEnvelope } from '../io/envelope.js';
 import { buildCfAgentsDashboardUrl } from '../observability/cf-agents.js';
 import type { SecretLike } from '../secrets/resolve.js';
