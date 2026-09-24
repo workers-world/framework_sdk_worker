@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     CursorStreamExpiredError,
+    CursorStreamUnavailableError,
     fetchCursorAgentRun,
     fetchCursorAgentUsage,
     mapCursorSseFrame,
@@ -123,6 +124,27 @@ describe('streamCursorAgentRun remaining', () => {
 
         vi.stubGlobal(
             'fetch',
+            vi.fn(
+                async () =>
+                    new Response(
+                        JSON.stringify({
+                            error: {
+                                code: 'stream_unavailable',
+                                message: 'Run stream is no longer available',
+                            },
+                        }),
+                        { status: 409 },
+                    ),
+            ),
+        );
+        await expect(async () => {
+            for await (const _ev of streamCursorAgentRun(API_KEY, REF)) {
+                void _ev;
+            }
+        }).rejects.toBeInstanceOf(CursorStreamUnavailableError);
+
+        vi.stubGlobal(
+            'fetch',
             vi.fn(async () => new Response('plain-error', { status: 500 })),
         );
         const httpEvents = [];
@@ -140,5 +162,17 @@ describe('streamCursorAgentRun remaining', () => {
             noBody.push(ev);
         }
         expect(noBody[0]).toMatchObject({ type: 'error', code: 'no_body' });
+    });
+});
+
+describe('isCursorStreamUnavailable', () => {
+    it('matches http_409 and stream_unavailable message', async () => {
+        const { isCursorStreamUnavailable } = await import('../../src/cursor/cloud-agent.js');
+        expect(isCursorStreamUnavailable('http_409')).toBe(true);
+        expect(isCursorStreamUnavailable('stream_unavailable')).toBe(true);
+        expect(isCursorStreamUnavailable('http_409', 'Run stream is no longer available')).toBe(
+            true,
+        );
+        expect(isCursorStreamUnavailable('http_500', 'server error')).toBe(false);
     });
 });
