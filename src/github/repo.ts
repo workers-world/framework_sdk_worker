@@ -171,7 +171,7 @@ export async function mergePullRequest(
             ...(input.commitTitle?.trim() ? { commit_title: input.commitTitle.trim() } : {}),
             ...(input.commitMessage?.trim() ? { commit_message: input.commitMessage.trim() } : {}),
         });
-        if (data.merged === false) {
+        if (!data.merged) {
             return {
                 ok: false,
                 merged: false,
