@@ -19,7 +19,11 @@ describe('ghFetch', () => {
 
     it('sends auth + api version headers', async () => {
         const spy = vi.fn(
-            async (_url: string, _init?: RequestInit) => new Response('{}', { status: 200 }),
+            async (_url: string, _init?: RequestInit) =>
+                new Response('{}', {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                }),
         );
         vi.stubGlobal('fetch', spy);
 
@@ -43,7 +47,10 @@ describe('ghFetchWithRetry', () => {
             'fetch',
             vi.fn(async () => {
                 calls += 1;
-                return new Response('bad gateway', { status: calls === 1 ? 502 : 200 });
+                return new Response('bad gateway', {
+                    status: calls === 1 ? 502 : 200,
+                    headers: { 'content-type': 'application/json' },
+                });
             }),
         );
 
@@ -53,7 +60,13 @@ describe('ghFetchWithRetry', () => {
     });
 
     it('does not retry 404', async () => {
-        const spy = vi.fn(async () => new Response('nf', { status: 404 }));
+        const spy = vi.fn(
+            async () =>
+                new Response('nf', {
+                    status: 404,
+                    headers: { 'content-type': 'application/json' },
+                }),
+        );
         vi.stubGlobal('fetch', spy);
 
         const resp = await ghFetchWithRetry(TOKEN, 'https://api.github.com/x');
@@ -62,7 +75,13 @@ describe('ghFetchWithRetry', () => {
     });
 
     it('does not retry POST 5xx by default (non-idempotent write)', async () => {
-        const spy = vi.fn(async () => new Response('boom', { status: 502 }));
+        const spy = vi.fn(
+            async () =>
+                new Response('boom', {
+                    status: 502,
+                    headers: { 'content-type': 'application/json' },
+                }),
+        );
         vi.stubGlobal('fetch', spy);
 
         const resp = await ghFetchWithRetry(TOKEN, 'https://api.github.com/x', {
@@ -78,7 +97,10 @@ describe('ghFetchWithRetry', () => {
             'fetch',
             vi.fn(async () => {
                 calls += 1;
-                return new Response('bad gateway', { status: calls === 1 ? 502 : 200 });
+                return new Response('bad gateway', {
+                    status: calls === 1 ? 502 : 200,
+                    headers: { 'content-type': 'application/json' },
+                });
             }),
         );
 
@@ -109,19 +131,30 @@ describe('issue helpers', () => {
                             body: 'B',
                             labels: [{ name: 'a' }, { name: 'b' }],
                             updated_at: '2026-09-06T00:00:00Z',
+                            html_url: 'https://github.com/o/r/issues/7',
                         }),
-                        { status: 200 },
+                        { status: 200, headers: { 'content-type': 'application/json' } },
                     ),
             ),
         );
 
         const snap = await getIssue(TOKEN, 'o/r', 7);
-        expect(snap).toMatchObject({ number: 7, state: 'open', title: 'T', labels: ['a', 'b'] });
+        expect(snap).toMatchObject({
+            number: 7,
+            state: 'open',
+            title: 'T',
+            labels: ['a', 'b'],
+            htmlUrl: 'https://github.com/o/r/issues/7',
+        });
     });
 
     it('addIssueLabels / removeIssueLabel / createIssueComment hit right paths', async () => {
         const spy = vi.fn(
-            async (_url: string) => new Response(JSON.stringify({ id: 1 }), { status: 201 }),
+            async (_url: string) =>
+                new Response(JSON.stringify({ id: 1 }), {
+                    status: 201,
+                    headers: { 'content-type': 'application/json' },
+                }),
         );
         vi.stubGlobal('fetch', spy);
 
@@ -136,7 +169,13 @@ describe('issue helpers', () => {
     });
 
     it('updateIssueBody PATCHes issue body', async () => {
-        const spy = vi.fn(async () => new Response('{}', { status: 200 }));
+        const spy = vi.fn(
+            async () =>
+                new Response('{}', {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                }),
+        );
         vi.stubGlobal('fetch', spy);
 
         const ok = await updateIssueBody(TOKEN, 'o/r', 9, 'new body');
@@ -154,20 +193,37 @@ describe('issue helpers', () => {
                 u === 'https://api.github.com/repos/o/r' &&
                 (!init?.method || init.method === 'GET')
             ) {
-                return new Response(JSON.stringify({ id: 42, default_branch: 'master' }), {
-                    status: 200,
-                });
+                return new Response(
+                    JSON.stringify({
+                        id: 42,
+                        default_branch: 'master',
+                        html_url: 'https://github.com/o/r',
+                    }),
+                    { status: 200, headers: { 'content-type': 'application/json' } },
+                );
             }
             if (u.startsWith('https://uploads.github.com/user-attachments/assets')) {
-                return new Response('unsupported', { status: 422 });
+                return new Response('unsupported', {
+                    status: 422,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
             if (u.includes('/contents/') && init?.method === 'PUT') {
-                return new Response('{}', { status: 201 });
+                return new Response('{}', {
+                    status: 201,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
             if (u.includes('/contents/')) {
-                return new Response('bad gateway', { status: 502 });
+                return new Response('bad gateway', {
+                    status: 502,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
-            return new Response('unexpected', { status: 500 });
+            return new Response('unexpected', {
+                status: 500,
+                headers: { 'content-type': 'application/json' },
+            });
         });
         vi.stubGlobal('fetch', spy);
 
@@ -187,12 +243,20 @@ describe('issue helpers', () => {
                 u === 'https://api.github.com/repos/o/r' &&
                 (!init?.method || init.method === 'GET')
             ) {
-                return new Response(JSON.stringify({ id: 42, default_branch: 'master' }), {
-                    status: 200,
-                });
+                return new Response(
+                    JSON.stringify({
+                        id: 42,
+                        default_branch: 'master',
+                        html_url: 'https://github.com/o/r',
+                    }),
+                    { status: 200, headers: { 'content-type': 'application/json' } },
+                );
             }
             if (u.startsWith('https://uploads.github.com/user-attachments/assets')) {
-                return new Response('unsupported', { status: 422 });
+                return new Response('unsupported', {
+                    status: 422,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
             if (u.includes('/contents/') && init?.method === 'PUT') {
                 return new Response(
@@ -205,13 +269,19 @@ describe('issue helpers', () => {
                                 'https://raw.githubusercontent.com/o/r/master/.sch1/intake-evidence/issue-3/a.csv',
                         },
                     }),
-                    { status: 201 },
+                    { status: 201, headers: { 'content-type': 'application/json' } },
                 );
             }
             if (u.includes('/contents/')) {
-                return new Response('nf', { status: 404 });
+                return new Response('nf', {
+                    status: 404,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
-            return new Response('unexpected', { status: 500 });
+            return new Response('unexpected', {
+                status: 500,
+                headers: { 'content-type': 'application/json' },
+            });
         });
         vi.stubGlobal('fetch', spy);
 
@@ -242,19 +312,27 @@ describe('issue helpers', () => {
         const spy = vi.fn(async (url: string) => {
             const u = String(url);
             if (u === 'https://api.github.com/repos/o/r') {
-                return new Response(JSON.stringify({ id: 7, default_branch: 'master' }), {
-                    status: 200,
-                });
+                return new Response(
+                    JSON.stringify({
+                        id: 7,
+                        default_branch: 'master',
+                        html_url: 'https://github.com/o/r',
+                    }),
+                    { status: 200, headers: { 'content-type': 'application/json' } },
+                );
             }
             if (u.startsWith('https://uploads.github.com/user-attachments/assets')) {
                 return new Response(
                     JSON.stringify({
                         url: 'https://github.com/user-attachments/assets/abcd',
                     }),
-                    { status: 201 },
+                    { status: 201, headers: { 'content-type': 'application/json' } },
                 );
             }
-            return new Response('nf', { status: 404 });
+            return new Response('nf', {
+                status: 404,
+                headers: { 'content-type': 'application/json' },
+            });
         });
         vi.stubGlobal('fetch', spy);
 

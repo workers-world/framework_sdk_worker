@@ -1,7 +1,7 @@
 /**
  * Draft lineage：WorkerIoEnvelope（wwcategory=lifecycle）+ audit-log 双写 helper。
  */
-import { type MaintenanceLogEntry, writeMaintenanceLogAsync } from '../audit-log.js';
+import { type MaintenanceLogEntry, writeMaintenanceLogAsync } from '../audit-log';
 import {
     createWorkerIoEnvelope,
     encodeWorkerIoEnvelope,

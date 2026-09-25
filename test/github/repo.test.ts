@@ -4,6 +4,7 @@ import {
     createPullRequest,
     getBranchHeadSha,
     getDefaultBranch,
+    mergePullRequest,
     searchIssues,
     upsertRepoFile,
 } from '../../src/github/repo.js';
@@ -12,7 +13,10 @@ const TOKEN = 'tok';
 const REPO = 'org/app';
 
 function json(body: unknown, status = 200): Response {
-    return new Response(JSON.stringify(body), { status });
+    return new Response(JSON.stringify(body), {
+        status,
+        headers: { 'content-type': 'application/json' },
+    });
 }
 
 describe('github/repo', () => {
@@ -86,7 +90,8 @@ describe('github/repo', () => {
             'fetch',
             vi.fn(async (url: string, init?: RequestInit) => {
                 calls.push({ url, init });
-                if (!init?.method) {
+                const method = (init?.method ?? 'GET').toUpperCase();
+                if (method === 'GET') {
                     return json({}, 404);
                 }
                 return json({}, 200);
@@ -107,7 +112,8 @@ describe('github/repo', () => {
             'fetch',
             vi.fn(async (url: string, init?: RequestInit) => {
                 calls.push({ url, init });
-                if (!init?.method) {
+                const method = (init?.method ?? 'GET').toUpperCase();
+                if (method === 'GET') {
                     return json({ sha: 'old' });
                 }
                 return json({}, 200);
@@ -140,7 +146,7 @@ describe('github/repo', () => {
                 if (init?.method === 'POST') {
                     return json({}, 422);
                 }
-                if (String(url).includes('/pulls?')) {
+                if (String(url).includes('/pulls')) {
                     return json([{ html_url: 'https://github.com/o/r/pull/9' }]);
                 }
                 return json({}, 500);
@@ -169,7 +175,13 @@ describe('github/repo', () => {
     it('createPullRequest maps other failures', async () => {
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () => new Response('boom', { status: 500 })),
+            vi.fn(
+                async () =>
+                    new Response('boom', {
+                        status: 500,
+                        headers: { 'content-type': 'text/plain' },
+                    }),
+            ),
         );
         const result = await createPullRequest(TOKEN, REPO, {
             title: 't',
@@ -180,6 +192,46 @@ describe('github/repo', () => {
         expect(result.ok).toBe(false);
         expect(result.error).toContain('创建 PR 失败');
         expect(result.error).toContain('500');
+    });
+
+    it('mergePullRequest succeeds on 200', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => json({ merged: true, sha: 'deadbeef' })),
+        );
+        await expect(mergePullRequest(TOKEN, REPO, 7, { mergeMethod: 'squash' })).resolves.toEqual({
+            ok: true,
+            merged: true,
+            sha: 'deadbeef',
+        });
+    });
+
+    it('mergePullRequest treats already-merged 422 as success', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                async () =>
+                    new Response('{"message":"Pull Request is not open"}', {
+                        status: 422,
+                        headers: { 'content-type': 'application/json' },
+                    }),
+            ),
+        );
+        await expect(mergePullRequest(TOKEN, REPO, 7)).resolves.toEqual({
+            ok: true,
+            merged: true,
+        });
+    });
+
+    it('mergePullRequest marks conflict as non-retryable', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response('{"message":"Merge conflict"}', { status: 409 })),
+        );
+        const result = await mergePullRequest(TOKEN, REPO, 7);
+        expect(result.ok).toBe(false);
+        expect(result.retryable).toBe(false);
+        expect(result.error).toContain('409');
     });
 
     it('searchIssues maps items and empty on error', async () => {
@@ -199,9 +251,10 @@ describe('github/repo', () => {
                 }),
             ),
         );
-        await expect(searchIssues(TOKEN, 'is:issue', 5)).resolves.toEqual([
-            { repo: 'org/app', number: 1, title: 'a', state: 'open' },
-            { repo: '', number: 2, title: 'b', state: 'closed' },
+        const found = await searchIssues(TOKEN, 'is:issue', 5);
+        expect(found).toEqual([
+            { repo: 'org/app', number: 1, title: 'a', state: 'open', htmlUrl: undefined },
+            { repo: '', number: 2, title: 'b', state: 'closed', htmlUrl: undefined },
         ]);
 
         vi.stubGlobal(
