@@ -1,10 +1,12 @@
 /**
  * GitHub API 客户端：统一请求头、429/5xx 指数退避重试、Issue 读写封装。
  * 上游：持有 GitHub token（PAT 或 App installation token）的 Worker。
- * 下游：api.github.com。
+ * 下游：Octokit REST（api.github.com）；uploads.github.com 仍走 fetch（Octokit 不覆盖）。
  * 不变量：429/5xx 自动退避（1s/2s）仅幂等方法 GET/HEAD 默认启用，写方法需 retryWrite 显式
  * opt-in（避免 5xx 歧义时重复创建资源）；写操作显式封装便于审计；错误带 HTTP 状态。
  */
+
+import { createOctokit, splitRepoFullName } from './octokit.js';
 
 const RETRY_DELAYS_MS = [1000, 2000];
 
@@ -40,6 +42,8 @@ export async function ghFetch(token: string, url: string, init?: RequestInit): P
  * GitHub API：对 429/5xx/网络错误做指数退避重试；默认仅幂等方法（GET/HEAD）重试，
  * POST/PUT/PATCH/DELETE 需 init.retryWrite=true 显式 opt-in（失败即返回，防重复创建）；
  * 仍失败返回最后一次 Response（网络错误返回 null）。
+ *
+ * 低层 fetch 门面（uploads.github.com、GraphQL、deploy-tracker 过渡）；新 REST 优先 createOctokit。
  */
 export async function ghFetchWithRetry(
     token: string,
@@ -78,37 +82,46 @@ export interface IssueSnapshot {
     body: string | null;
     labels: string[];
     updatedAt: string;
+    /** REST `html_url`；展示链接用，勿拼 github.com */
+    htmlUrl: string;
 }
 
-/** 读取 Issue 快照（state/title/body/labels/updated_at） */
+function httpStatus(error: unknown): number | undefined {
+    if (error && typeof error === 'object' && 'status' in error) {
+        const s = (error as { status?: unknown }).status;
+        return typeof s === 'number' ? s : undefined;
+    }
+    return undefined;
+}
+
+/** 读取 Issue 快照（state/title/body/labels/updated_at/html_url） */
 export async function getIssue(
     token: string,
     repo: string,
     issueNumber: number,
 ): Promise<IssueSnapshot | null> {
-    const resp = await ghFetchWithRetry(
-        token,
-        `https://api.github.com/repos/${repo}/issues/${issueNumber}`,
-    );
-    if (!resp?.ok) {
+    try {
+        const { owner, repo: name } = splitRepoFullName(repo);
+        const octokit = createOctokit(token);
+        const { data } = await octokit.rest.issues.get({
+            owner,
+            repo: name,
+            issue_number: issueNumber,
+        });
+        return {
+            number: data.number,
+            state: data.state === 'closed' ? 'closed' : 'open',
+            title: data.title,
+            body: data.body ?? null,
+            labels: (data.labels ?? [])
+                .map((l) => (typeof l === 'string' ? l : (l.name ?? '')))
+                .filter(Boolean),
+            updatedAt: data.updated_at,
+            htmlUrl: data.html_url,
+        };
+    } catch {
         return null;
     }
-    const data = (await resp.json()) as {
-        number: number;
-        state: string;
-        title: string;
-        body: string | null;
-        labels?: Array<{ name?: string }>;
-        updated_at: string;
-    };
-    return {
-        number: data.number,
-        state: data.state === 'closed' ? 'closed' : 'open',
-        title: data.title,
-        body: data.body,
-        labels: (data.labels ?? []).map((l) => l.name ?? '').filter(Boolean),
-        updatedAt: data.updated_at,
-    };
 }
 
 /** 给 Issue 添加标签（已存在不报错） */
@@ -121,12 +134,19 @@ export async function addIssueLabels(
     if (labels.length === 0) {
         return true;
     }
-    const resp = await ghFetchWithRetry(
-        token,
-        `https://api.github.com/repos/${repo}/issues/${issueNumber}/labels`,
-        { method: 'POST', body: JSON.stringify({ labels }), retryWrite: true },
-    );
-    return Boolean(resp?.ok);
+    try {
+        const { owner, repo: name } = splitRepoFullName(repo);
+        const octokit = createOctokit(token, { retryWrite: true });
+        await octokit.rest.issues.addLabels({
+            owner,
+            repo: name,
+            issue_number: issueNumber,
+            labels,
+        });
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 /** 移除 Issue 标签；标签本不存在视为成功 */
@@ -136,12 +156,19 @@ export async function removeIssueLabel(
     issueNumber: number,
     label: string,
 ): Promise<boolean> {
-    const resp = await ghFetchWithRetry(
-        token,
-        `https://api.github.com/repos/${repo}/issues/${issueNumber}/labels/${encodeURIComponent(label)}`,
-        { method: 'DELETE', retryWrite: true },
-    );
-    return Boolean(resp?.ok || resp?.status === 404);
+    try {
+        const { owner, repo: name } = splitRepoFullName(repo);
+        const octokit = createOctokit(token, { retryWrite: true });
+        await octokit.rest.issues.removeLabel({
+            owner,
+            repo: name,
+            issue_number: issueNumber,
+            name: label,
+        });
+        return true;
+    } catch (error) {
+        return httpStatus(error) === 404;
+    }
 }
 
 export interface CreateIssueInput {
@@ -162,31 +189,27 @@ export async function createIssue(
     repo: string,
     input: CreateIssueInput,
 ): Promise<CreatedIssue | null> {
-    const resp = await ghFetchWithRetry(token, `https://api.github.com/repos/${repo}/issues`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    try {
+        const { owner, repo: name } = splitRepoFullName(repo);
+        const octokit = createOctokit(token);
+        const { data } = await octokit.rest.issues.create({
+            owner,
+            repo: name,
             title: input.title,
             body: input.body,
             labels: input.labels ?? [],
-        }),
-    });
-    if (!resp?.ok) {
+        });
+        if (data.number == null || !data.html_url) {
+            return null;
+        }
+        return {
+            number: data.number,
+            htmlUrl: data.html_url,
+            state: data.state === 'closed' ? 'closed' : 'open',
+        };
+    } catch {
         return null;
     }
-    const data = (await resp.json()) as {
-        number?: number;
-        html_url?: string;
-        state?: string;
-    };
-    if (data.number == null || !data.html_url) {
-        return null;
-    }
-    return {
-        number: data.number,
-        htmlUrl: data.html_url,
-        state: data.state === 'closed' ? 'closed' : 'open',
-    };
 }
 
 /** 创建 Issue 评论；返回评论 id（失败返回 null） */
@@ -196,16 +219,19 @@ export async function createIssueComment(
     issueNumber: number,
     body: string,
 ): Promise<number | null> {
-    const resp = await ghFetchWithRetry(
-        token,
-        `https://api.github.com/repos/${repo}/issues/${issueNumber}/comments`,
-        { method: 'POST', body: JSON.stringify({ body }) },
-    );
-    if (!resp?.ok) {
+    try {
+        const { owner, repo: name } = splitRepoFullName(repo);
+        const octokit = createOctokit(token);
+        const { data } = await octokit.rest.issues.createComment({
+            owner,
+            repo: name,
+            issue_number: issueNumber,
+            body,
+        });
+        return data.id != null ? Number(data.id) : null;
+    } catch {
         return null;
     }
-    const data = (await resp.json()) as { id?: number };
-    return data.id ?? null;
 }
 
 /** 更新 Issue 正文（PATCH）；失败返回 false */
@@ -215,17 +241,19 @@ export async function updateIssueBody(
     issueNumber: number,
     body: string,
 ): Promise<boolean> {
-    const resp = await ghFetchWithRetry(
-        token,
-        `https://api.github.com/repos/${repo}/issues/${issueNumber}`,
-        {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ body }),
-            retryWrite: true,
-        },
-    );
-    return Boolean(resp?.ok);
+    try {
+        const { owner, repo: name } = splitRepoFullName(repo);
+        const octokit = createOctokit(token, { retryWrite: true });
+        await octokit.rest.issues.update({
+            owner,
+            repo: name,
+            issue_number: issueNumber,
+            body,
+        });
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 export interface UploadIssueAttachmentInput {
@@ -268,32 +296,32 @@ function safeAttachmentFilename(filename: string): string {
     return base.replace(/[^\w.\-()+@]/g, '_') || 'attachment.bin';
 }
 
-function encodeContentsPath(path: string): string {
-    return path
-        .split('/')
-        .filter(Boolean)
-        .map((seg) => encodeURIComponent(seg))
-        .join('/');
-}
-
 async function resolveRepoMeta(
     token: string,
     repo: string,
-): Promise<{ id: number; defaultBranch: string } | null> {
-    const resp = await ghFetchWithRetry(token, `https://api.github.com/repos/${repo}`);
-    if (!resp?.ok) {
+): Promise<{ id: number; defaultBranch: string; htmlUrl: string } | null> {
+    try {
+        const { owner, repo: name } = splitRepoFullName(repo);
+        const octokit = createOctokit(token);
+        const { data } = await octokit.rest.repos.get({ owner, repo: name });
+        if (data.id == null || !data.default_branch) {
+            return null;
+        }
+        const id = typeof data.id === 'bigint' ? Number(data.id) : Number(data.id);
+        return {
+            id,
+            defaultBranch: data.default_branch,
+            htmlUrl: data.html_url ?? '',
+        };
+    } catch {
         return null;
     }
-    const data = (await resp.json()) as { id?: number; default_branch?: string };
-    if (data.id == null || !data.default_branch) {
-        return null;
-    }
-    return { id: data.id, defaultBranch: data.default_branch };
 }
 
 /**
  * 尝试 uploads.github.com user-attachments（图片/视频；App token 常 404）。
  * 失败则 Contents API 写入仓库路径，Issue 正文可链 html_url / download_url。
+ * 注意：uploads.github.com 非 Octokit REST 覆盖范围，保留 ghFetch。
  */
 export async function uploadIssueAttachment(
     token: string,
@@ -336,57 +364,56 @@ export async function uploadIssueAttachment(
         `.sch1/intake-evidence/issue-${issueNumber}`;
     const path = `${prefix}/${filename}`;
     const branch = input.branch?.trim() || meta.defaultBranch;
-    const encodedPath = encodeContentsPath(path);
 
-    const getResp = await ghFetchWithRetry(
-        token,
-        `https://api.github.com/repos/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
-    );
-    let existingSha: string | undefined;
-    if (!getResp || (getResp.status !== 404 && !getResp.ok)) {
-        // GET 不可判定（网络错误 / 5xx 等非 404）：盲 PUT 会 422（已存在缺 sha）或误覆盖，中止
+    try {
+        const { owner, repo: name } = splitRepoFullName(repo);
+        const octokit = createOctokit(token, { retryWrite: true });
+        let existingSha: string | undefined;
+        try {
+            const existing = await octokit.rest.repos.getContent({
+                owner,
+                repo: name,
+                path,
+                ref: branch,
+            });
+            if (!Array.isArray(existing.data) && 'sha' in existing.data) {
+                existingSha = existing.data.sha;
+            }
+        } catch (error) {
+            // GET 不可判定（网络错误 / 5xx 等非 404）：盲 PUT 会 422（已存在缺 sha）或误覆盖，中止
+            if (httpStatus(error) !== 404) {
+                return null;
+            }
+        }
+
+        const { data: putData } = await octokit.rest.repos.createOrUpdateFileContents({
+            owner,
+            repo: name,
+            path,
+            message: `sch1: attach intake evidence for #${issueNumber} (${filename})`,
+            content: bytesToBase64(input.bytes),
+            branch,
+            ...(existingSha ? { sha: existingSha } : {}),
+        });
+        const url =
+            putData.content?.download_url ?? putData.content?.html_url ?? putData.commit?.html_url;
+        if (!url) {
+            return null;
+        }
+        return {
+            name: putData.content?.name ?? filename,
+            url,
+            via: 'repo-contents',
+        };
+    } catch {
         return null;
     }
-    if (getResp.ok) {
-        const existing = (await getResp.json()) as { sha?: string };
-        existingSha = existing.sha;
-    }
-
-    const putBody: Record<string, string> = {
-        message: `sch1: attach intake evidence for #${issueNumber} (${filename})`,
-        content: bytesToBase64(input.bytes),
-        branch,
-    };
-    if (existingSha) {
-        putBody.sha = existingSha;
-    }
-
-    const putResp = await ghFetchWithRetry(
-        token,
-        `https://api.github.com/repos/${repo}/contents/${encodedPath}`,
-        {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(putBody),
-            // 同路径同内容 + 带 sha 更新，重试收敛
-            retryWrite: true,
-        },
-    );
-    if (!putResp?.ok) {
-        return null;
-    }
-    const putData = (await putResp.json()) as {
-        content?: { html_url?: string; download_url?: string; name?: string };
-        commit?: { html_url?: string };
-    };
-    const url =
-        putData.content?.download_url ?? putData.content?.html_url ?? putData.commit?.html_url;
-    if (!url) {
-        return null;
-    }
-    return {
-        name: putData.content?.name ?? filename,
-        url,
-        via: 'repo-contents',
-    };
 }
+
+/** 仓库 html_url（展示用）；失败返回 null */
+export async function getRepoHtmlUrl(token: string, repo: string): Promise<string | null> {
+    const meta = await resolveRepoMeta(token, repo);
+    return meta?.htmlUrl ?? null;
+}
+
+export { createOctokit, splitRepoFullName } from './octokit.js';

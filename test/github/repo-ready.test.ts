@@ -40,9 +40,10 @@ describe('markPullRequestReadyForReview', () => {
         vi.stubGlobal(
             'fetch',
             vi.fn(async (url: string, init?: RequestInit) => {
-                if (String(url).includes('/pulls/3') && !init?.method) {
+                if (String(url).includes('/pulls/3') && (!init?.method || init.method === 'GET')) {
                     return new Response(JSON.stringify({ draft: true, node_id: 'PR_kwDO123' }), {
                         status: 200,
+                        headers: { 'content-type': 'application/json' },
                     });
                 }
                 if (String(url).includes('/graphql')) {
@@ -54,10 +55,13 @@ describe('markPullRequestReadyForReview', () => {
                                 },
                             },
                         }),
-                        { status: 200 },
+                        { status: 200, headers: { 'content-type': 'application/json' } },
                     );
                 }
-                return new Response('not found', { status: 404 });
+                return new Response('not found', {
+                    status: 404,
+                    headers: { 'content-type': 'application/json' },
+                });
             }),
         );
         await expect(markPullRequestReadyForReview('tok', 'org/app', 3)).resolves.toEqual({
@@ -72,6 +76,7 @@ describe('markPullRequestReadyForReview', () => {
                 async () =>
                     new Response(JSON.stringify({ draft: false, node_id: 'PR_kwDO123' }), {
                         status: 200,
+                        headers: { 'content-type': 'application/json' },
                     }),
             ),
         );
@@ -84,7 +89,13 @@ describe('markPullRequestReadyForReview', () => {
     it('maps pulls.get failure', async () => {
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () => new Response('forbidden', { status: 404 })),
+            vi.fn(
+                async () =>
+                    new Response('forbidden', {
+                        status: 404,
+                        headers: { 'content-type': 'application/json' },
+                    }),
+            ),
         );
         const result = await markPullRequestReadyForReview('tok', 'org/app', 3);
         expect(result.ok).toBe(false);

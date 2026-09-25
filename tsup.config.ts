@@ -37,6 +37,7 @@ export default defineConfig({
         'ai/client': 'src/ai/client.ts',
         'ai/direct': 'src/ai/direct.ts',
         'github/app-auth': 'src/github/app-auth.ts',
+        'github/octokit': 'src/github/octokit.ts',
         'github/client': 'src/github/client.ts',
         'github/repo': 'src/github/repo.ts',
         'cursor/cloud-agent': 'src/cursor/cloud-agent.ts',
