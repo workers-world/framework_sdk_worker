@@ -40,6 +40,10 @@
       "import": "./dist/d1/tech-meta.js",
       "types": "./dist/d1/tech-meta.d.ts"
     },
+    "./d1/resource-lock": {
+      "import": "./dist/d1/resource-lock.js",
+      "types": "./dist/d1/resource-lock.d.ts"
+    },
     "./notify": {
       "import": "./dist/notify/client.js",
       "types": "./dist/notify/client.d.ts"
@@ -107,6 +111,10 @@
     "./github/app-auth": {
       "import": "./dist/github/app-auth.js",
       "types": "./dist/github/app-auth.d.ts"
+    },
+    "./github/octokit": {
+      "import": "./dist/github/octokit.js",
+      "types": "./dist/github/octokit.d.ts"
     },
     "./github/client": {
       "import": "./dist/github/client.js",
@@ -363,6 +371,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250617.0",
+    "@octokit/types": "^18.0.0",
     "@vitest/coverage-v8": "^4.1.11",
     "hono": "^4.13.7",
     "tsup": "^8.5.0",
@@ -383,5 +392,9 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "restricted"
+  },
+  "dependencies": {
+    "@octokit/core": "^7.0.8",
+    "@octokit/plugin-rest-endpoint-methods": "^18.0.0"
   }
 }
