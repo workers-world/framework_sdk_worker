@@ -63,7 +63,7 @@ describe('createGithubAppAuth', () => {
         const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         const headers = init.headers as Record<string, string>;
         expect(headers['User-Agent']).toBe('framework-sdk-worker');
-        expect(headers['X-GitHub-Api-Version']).toBe('2022-11-28');
+        expect(headers['X-GitHub-Api-Version']).toBe('2026-03-10');
     });
 
     it('invalidates cache on demand', async () => {
