@@ -7,8 +7,9 @@
 
 import { Octokit } from '@octokit/core';
 import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
+import { githubRetryDelayMs, isGithubRequestRetryable } from '../resilience/provider-error.js';
 
-const RETRY_DELAYS_MS = [1000, 2000];
+const MAX_GITHUB_RETRIES = 3;
 const IDEMPOTENT_RETRY_METHODS = new Set(['GET', 'HEAD']);
 
 const GithubOctokit = Octokit.plugin(restEndpointMethods);
@@ -30,18 +31,6 @@ export function splitRepoFullName(fullName: string): { owner: string; repo: stri
         throw new Error(`invalid repo full name: ${fullName}`);
     }
     return { owner: trimmed.slice(0, slash), repo: trimmed.slice(slash + 1) };
-}
-
-function statusOf(error: unknown): number | undefined {
-    if (error && typeof error === 'object' && 'status' in error) {
-        const s = (error as { status?: unknown }).status;
-        return typeof s === 'number' ? s : undefined;
-    }
-    return undefined;
-}
-
-function isRetryableStatus(status: number | undefined): boolean {
-    return status === 429 || (status != null && status >= 500);
 }
 
 /**
@@ -70,12 +59,14 @@ export function createOctokit(token: string, options?: CreateOctokitOptions): Gi
             try {
                 return await request(opts);
             } catch (error) {
-                const status = statusOf(error);
-                const retryable = status == null || isRetryableStatus(status);
-                if (!allowRetry || !retryable || attempt >= RETRY_DELAYS_MS.length) {
+                const canRetry =
+                    allowRetry &&
+                    isGithubRequestRetryable(error, method) &&
+                    attempt < MAX_GITHUB_RETRIES;
+                if (!canRetry) {
                     throw error;
                 }
-                await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+                await new Promise((r) => setTimeout(r, githubRetryDelayMs(error, attempt)));
             }
         }
     });

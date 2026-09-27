@@ -55,6 +55,8 @@ export default defineConfig({
         'email/sender-allowlist': 'src/email/sender-allowlist.ts',
         'email/probe': 'src/email/probe.ts',
         'resilience/circuit-breaker': 'src/resilience/circuit-breaker.ts',
+        'resilience/provider-error': 'src/resilience/provider-error/index.ts',
+
         'email/escape-html': 'src/email/escape-html.ts',
         'email/linkify-plain-text': 'src/email/linkify-plain-text.ts',
         'email/message-size': 'src/email/message-size.ts',
