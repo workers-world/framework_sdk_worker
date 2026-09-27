@@ -1,12 +1,13 @@
 /**
  * GitHub REST 错误分类（429、403 secondary rate limit、5xx）。
  */
-import { GIVE_UP, headerRetryAfterSec } from '../resilience/provider-error/internal.js';
-import type {
-    ClassifiableError,
-    ProviderErrorClassifier,
-    RetryDecision,
-} from '../resilience/provider-error/types.js';
+import {
+    type ClassifiableError,
+    GIVE_UP,
+    headerRetryAfterSec,
+    type ProviderErrorClassifier,
+    type RetryDecision,
+} from '../resilience/provider-error.js';
 
 function isGithubSecondaryRateLimit(status: number | undefined, message: string): boolean {
     if (status !== 403) {

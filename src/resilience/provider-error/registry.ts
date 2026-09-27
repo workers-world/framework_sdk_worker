@@ -1,13 +1,9 @@
-import {
-    BUILTIN_PROVIDER_ERROR_CLASSIFIERS,
-    genericProviderErrorClassifier,
-} from './classifiers/builtin.js';
+import { genericProviderErrorClassifier } from './generic-classifier.js';
 import { GIVE_UP } from './internal.js';
 import type { ClassifiableError, ProviderErrorClassifier, RetryDecision } from './types.js';
 
-const REGISTRY = new Map<string, ProviderErrorClassifier>(
-    BUILTIN_PROVIDER_ERROR_CLASSIFIERS.map((c) => [c.provider, c]),
-);
+/** 内置 catalog 由 install-builtins 写入，避免 registry↔classifier 循环初始化 */
+const REGISTRY = new Map<string, ProviderErrorClassifier>();
 
 export function registerProviderErrorClassifier(classifier: ProviderErrorClassifier): void {
     REGISTRY.set(classifier.provider, classifier);

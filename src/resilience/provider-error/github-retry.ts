@@ -1,3 +1,4 @@
+import './install-builtins.js';
 import { classifiableFromUnknown } from './normalize.js';
 import { classifyProviderError } from './registry.js';
 

@@ -6,7 +6,7 @@ import type {
     ClassifiableError,
     ProviderErrorClassifier,
     RetryDecision,
-} from '../resilience/provider-error/types.js';
+} from '../resilience/provider-error.js';
 import { isRetryableR2Error } from './retry.js';
 
 export const r2ProviderErrorClassifier: ProviderErrorClassifier = {

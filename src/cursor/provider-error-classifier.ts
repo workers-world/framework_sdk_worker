@@ -1,13 +1,13 @@
 /**
  * Cursor Cloud Agent 错误分类（409 stream_unavailable 等）。
- * 契约：resilience/provider-error/types；由内置 catalog 注册。
+ * 契约：resilience/provider-error 短路径；由内置 catalog 注册。
  */
 
 import type {
     ClassifiableError,
     ProviderErrorClassifier,
     RetryDecision,
-} from '../resilience/provider-error/types.js';
+} from '../resilience/provider-error.js';
 import { isCursorStreamUnavailable } from './cloud-agent.js';
 
 export const cursorProviderErrorClassifier: ProviderErrorClassifier = {

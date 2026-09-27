@@ -4,7 +4,7 @@ import {
     classifyProviderError,
     isGithubRequestRetryable,
     isWholesaleRateLimitError,
-} from '../../src/resilience/provider-error.js';
+} from '../../src/resilience/provider-error/index.js';
 
 describe('provider-error', () => {
     it('cursor stream_unavailable → reconnect', () => {

@@ -1,13 +1,13 @@
 /**
  * llm-gateway / AI Gateway 错误分类（Neurons 4006、wholesale 2018）。
  */
-import { headerRetryAfterSec } from '../resilience/provider-error/internal.js';
-import { isWholesaleRateLimitMessage } from '../resilience/provider-error/normalize.js';
-import type {
-    ClassifiableError,
-    ProviderErrorClassifier,
-    RetryDecision,
-} from '../resilience/provider-error/types.js';
+import {
+    type ClassifiableError,
+    headerRetryAfterSec,
+    isWholesaleRateLimitMessage,
+    type ProviderErrorClassifier,
+    type RetryDecision,
+} from '../resilience/provider-error.js';
 
 function isNeuronQuotaMessage(message: string): boolean {
     const m = message.toLowerCase();
