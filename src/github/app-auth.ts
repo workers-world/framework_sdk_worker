@@ -5,6 +5,8 @@
  * 不变量：私钥须为 PKCS#8 PEM；token 缓存提前 60s 刷新；配置缺失抛错。
  */
 
+import { GITHUB_API_VERSION } from './octokit.js';
+
 const TOKEN_CACHE = new Map<string, { token: string; expiresAtMs: number }>();
 
 export interface GithubAppConfig {
@@ -105,7 +107,7 @@ export function createGithubAppAuth(
                         Authorization: `Bearer ${jwt}`,
                         Accept: 'application/vnd.github+json',
                         'User-Agent': 'framework-sdk-worker',
-                        'X-GitHub-Api-Version': '2022-11-28',
+                        'X-GitHub-Api-Version': GITHUB_API_VERSION,
                     },
                 },
             );

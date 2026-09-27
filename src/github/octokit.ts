@@ -12,6 +12,13 @@ import { githubRetryDelayMs, isGithubRequestRetryable } from '../resilience/prov
 const MAX_GITHUB_RETRIES = 3;
 const IDEMPOTENT_RETRY_METHODS = new Set(['GET', 'HEAD']);
 
+/**
+ * GitHub REST calendar version（`X-GitHub-Api-Version`）。
+ * `2022-11-28` 已标 deprecated，Sunset 2028-03-10；新建请求用当前稳定版。
+ * @see https://docs.github.com/en/rest/about-the-rest-api/api-versions
+ */
+export const GITHUB_API_VERSION = '2026-03-10';
+
 const GithubOctokit = Octokit.plugin(restEndpointMethods);
 
 export type GithubOctokit = InstanceType<typeof GithubOctokit>;
@@ -46,9 +53,9 @@ export function createOctokit(token: string, options?: CreateOctokitOptions): Gi
         userAgent,
         request: {
             fetch: fetchImpl,
-        },
-        headers: {
-            'X-GitHub-Api-Version': '2022-11-28',
+            headers: {
+                'X-GitHub-Api-Version': GITHUB_API_VERSION,
+            },
         },
     });
 

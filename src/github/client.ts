@@ -6,7 +6,7 @@
  * opt-in（避免 5xx 歧义时重复创建资源）；写操作显式封装便于审计；错误带 HTTP 状态。
  */
 
-import { createOctokit, splitRepoFullName } from './octokit.js';
+import { createOctokit, GITHUB_API_VERSION, splitRepoFullName } from './octokit.js';
 
 const RETRY_DELAYS_MS = [1000, 2000];
 
@@ -23,7 +23,7 @@ export function githubHeaders(token: string, userAgent = 'framework-sdk-worker')
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',
         'User-Agent': userAgent,
-        'X-GitHub-Api-Version': '2022-11-28',
+        'X-GitHub-Api-Version': GITHUB_API_VERSION,
     };
 }
 
@@ -416,4 +416,4 @@ export async function getRepoHtmlUrl(token: string, repo: string): Promise<strin
     return meta?.htmlUrl ?? null;
 }
 
-export { createOctokit, splitRepoFullName } from './octokit.js';
+export { createOctokit, GITHUB_API_VERSION, splitRepoFullName } from './octokit.js';
