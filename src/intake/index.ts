@@ -1,4 +1,26 @@
 export {
+    AGENT_DIAGNOSTICS_INLINE_MAX_BYTES,
+    AGENT_DIAGNOSTICS_RECENT_INLINE,
+    type AgentDiagnosticsChannelEvent,
+    type AgentDiagnosticsStoryState,
+    type AgentDiagnosticsTailItem,
+    assembleAgentDiagnosticsIntake,
+    buildAgentDiagnosticsDedupKey,
+    buildAgentDiagnosticsIntakeEvent,
+    buildAgentDiagnosticsStreamBlocks,
+    extractTraceIdFromTraceparent,
+    groupTailItemDiagnostics,
+    isLifecycleCompleteEvent,
+    isW3cTraceId,
+    mergeAgentDiagnosticEvents,
+    type NormalizedAgentDiagnosticEvent,
+    normalizeAgentDiagnosticEvent,
+    readAgentDiagnosticsCompleteFromPayload,
+    readAgentDiagnosticsEventsFromPayload,
+    resolveAgentDiagnosticsTraceId,
+    sanitizeAgentDiagnosticMessage,
+} from './agent-diagnostics.js';
+export {
     buildDeskDraftQualityDedupKey,
     buildDeskDraftQualityIntake,
     buildDeskObsDumpDedupKey,
@@ -24,6 +46,7 @@ export {
     type QualityLogDigestIntakePayload,
 } from './builders.js';
 export {
+    INTAKE_KIND_AGENT_DIAGNOSTICS,
     INTAKE_KIND_DESK_DRAFT_QUALITY,
     INTAKE_KIND_DESK_OBS_DUMP,
     INTAKE_KIND_OPS_ERROR,
