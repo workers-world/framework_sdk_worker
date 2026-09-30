@@ -30,6 +30,7 @@ Cloudflare Worker 公共基座 SDK（npm 包 `@workers-world/framework_sdk_worke
 - `framework_sdk_worker/auth` — Bearer 鉴权（常数时间比较）
 - `framework_sdk_worker/hono` — Hono 应用骨架
 - `framework_sdk_worker/meta` — `GET /v1/meta` 运行时自述（SDK 版本构建时注入 + BUILD_* + 可选 Version Metadata）
+- **CLI（≥ 0.4.30）** — `workers-deploy-worker` / `workers-preview-worker`：仓内 `deploy:upload` / `preview:upload`，自动 wrangler ↔ `cf`（见 `cloudflare.config.ts`）；`WORKERS_DEPLOY_RUNTIME=wrangler|cf` 可覆盖
 - `framework_sdk_worker/http` — JSON 解析、错误响应、页面 meta 抓取（DoH 预检 + 每跳私网校验）
 - `framework_sdk_worker/r2` — R2 写入封装
 - `framework_sdk_worker/r2/gold-price` — 金价 R2 读取

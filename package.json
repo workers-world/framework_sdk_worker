@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.29",
+  "version": "0.4.30",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -15,6 +15,10 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "workers-deploy-worker": "./scripts/workers-deploy-worker.mjs",
+    "workers-preview-worker": "./scripts/workers-preview-worker.mjs"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -387,6 +391,7 @@
   },
   "files": [
     "dist",
+    "scripts",
     "biome-shared.json"
   ],
   "repository": {
