@@ -1,15 +1,18 @@
+import type { AttachmentContent, DigestAttachmentReference } from '../attachment/types.js';
 import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+
+export type {
+    Attachment,
+    AttachmentContent,
+    AttachmentReference,
+    DigestAttachmentReference,
+} from '../attachment/types.js';
 
 /** notify Service Binding 调用超时，避免热路径无限挂起 */
 const NOTIFY_FETCH_TIMEOUT_MS = 15_000;
 
-// 附件
-export interface NotifyAttachment {
-    filename: string;
-    /** base64 编码的二进制内容 */
-    contentBase64: string;
-    contentType?: string;
-}
+/** 现有 NotifyPayload.attachments：AttachmentContent 别名（字段形状不变，JSON 兼容） */
+export type NotifyAttachment = AttachmentContent;
 
 export interface NotifyPayload {
     subject: string;
@@ -46,6 +49,11 @@ export interface DigestItemBase {
     to: string;
     itemDedupKey?: string;
     source?: string;
+    /**
+     * digest 合窗附件引用（只含 r2Key，禁止带 contentBase64）。
+     * notify flush 时从 R2 水合为 NotifyAttachment。
+     */
+    attachmentReferences?: DigestAttachmentReference[];
 }
 
 /** HN 等：LLM 摘要片段，由 notify-worker 窗口内合并为 digest */

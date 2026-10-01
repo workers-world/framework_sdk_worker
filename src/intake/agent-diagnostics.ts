@@ -4,7 +4,7 @@
  * 下游：sch1 upsertIntakeEvent / submitIntakeEvent。
  */
 
-import { buildCfAgentsDashboardUrl } from '../observability/cf-agents.js';
+import { buildCfAgentsDashboardUrl } from '../cf-agents.js';
 import { sanitizeForLog } from '../ops-error/sanitize.js';
 import { shanghaiIsoString } from '../time.js';
 import { INTAKE_KIND_AGENT_DIAGNOSTICS } from './kinds.js';

@@ -8,10 +8,11 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 /** @typedef {'auto' | 'wrangler' | 'cf'} DeployRuntime */
+/** @typedef {Record<string, string | undefined>} ProcessEnv */
 
 /**
  * @param {string} cwd
- * @param {NodeJS.ProcessEnv} env
+ * @param {ProcessEnv} env
  * @returns {Exclude<DeployRuntime, 'auto'>}
  */
 export function resolveDeployRuntime(cwd, env = process.env) {
@@ -26,7 +27,7 @@ export function resolveDeployRuntime(cwd, env = process.env) {
 }
 
 /**
- * @param {NodeJS.ProcessEnv} env
+ * @param {ProcessEnv} env
  * @returns {string[]}
  */
 export function buildBuildMetaWranglerArgs(env = process.env) {
@@ -70,7 +71,7 @@ export function parseDeployCliArgs(argv) {
  * @param {'deploy' | 'preview'} mode
  * @param {string} cwd
  * @param {string[]} argv
- * @param {NodeJS.ProcessEnv} env
+ * @param {ProcessEnv} env
  */
 export function runWorkersDeployCli(mode, cwd, argv, env = process.env) {
 	const { buildMeta, passthrough } = parseDeployCliArgs(argv);
