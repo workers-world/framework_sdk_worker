@@ -2,6 +2,7 @@
  * Intake payload 通用信封 v2：index（routing/摘要）+ blocks（可扩展证据）。
  * 新 enrich / 新 kind 只追加 block，不修改既有 block type 的 data 形状。
  */
+import type { Attachment } from '../attachment/types.js';
 import type { QualityClusterAuditLogRef, QualityClusterCaseRef } from './builders.js';
 
 export const INTAKE_PAYLOAD_VERSION = 2 as const;
@@ -68,9 +69,8 @@ export interface MarkdownBlockData {
     text: string;
 }
 
-export interface AttachmentRefItem {
-    filename: string;
-    contentType?: string;
+/** Intake 证据附件：对齐 Attachment 祖先；r2Key 可选（批准后上传 GitHub） */
+export interface AttachmentRefItem extends Attachment {
     sizeBytes?: number;
     note?: string;
     /** orchestrator 写入 R2 的稳定 key；批准 Issue 时 sch1 据此拉取并上传 GitHub */
