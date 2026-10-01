@@ -3,8 +3,8 @@
  * 组装 v2 envelope + R2 溢出 + audit-log / envelopes enrich；不抛。
  */
 import { queryMaintenanceLogsSince } from '../audit-log';
+import { buildCfAgentsDashboardUrl } from '../cf-agents.js';
 import type { WorkerIoEnvelope } from '../io.js';
-import { buildCfAgentsDashboardUrl } from '../observability/cf-agents.js';
 import type { SecretLike } from '../secrets/resolve.js';
 import { shanghaiIsoString } from '../time.js';
 import { buildQualityArtifactIntake } from './builders.js';
