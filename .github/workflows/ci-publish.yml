@@ -108,9 +108,52 @@ jobs:
           npm publish
           echo "published=true" >> "$GITHUB_OUTPUT"
 
-  sdk-golden-verify:
+  # 新发 Packages 后打 v{semver}，触发 gh-release-on-tag → GitHub Release 页。
+  tag-release:
     needs: publish
-    if: always() && needs.publish.result == 'success'
+    if: >
+      always() &&
+      needs.publish.result == 'success' &&
+      needs.publish.outputs.published == 'true'
+    permissions:
+      contents: write
+    runs-on: ${{ github.event.repository.private && vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/heads/master
+          fetch-depth: 0
+          token: ${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Create annotated v* tag
+        env:
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          SHA="$(git rev-parse HEAD)"
+          git fetch --tags origin
+          if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+            EXISTING="$(git rev-list -n 1 "${TAG}")"
+            if [ "${EXISTING}" = "${SHA}" ]; then
+              echo "Skip tag: ${TAG} already at ${SHA}"
+              exit 0
+            fi
+            echo "::error::tag ${TAG} exists at ${EXISTING} but HEAD is ${SHA}; refusing to move tag"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git push origin "refs/tags/${TAG}"
+          echo "Created ${TAG} at ${SHA}"
+
+  sdk-golden-verify:
+    needs: [publish, tag-release]
+    if: >
+      always() &&
+      needs.publish.result == 'success' &&
+      (needs.tag-release.result == 'success' || needs.tag-release.result == 'skipped')
     runs-on: ${{ github.event.repository.private && vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
