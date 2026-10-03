@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.31",
+  "version": "0.4.32",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -51,6 +51,14 @@
     "./notify": {
       "import": "./dist/notify/client.js",
       "types": "./dist/notify/client.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser/index.js",
+      "types": "./dist/browser/index.d.ts"
+    },
+    "./browser/client": {
+      "import": "./dist/browser/client.js",
+      "types": "./dist/browser/client.d.ts"
     },
     "./attachment": {
       "import": "./dist/attachment/types.js",
