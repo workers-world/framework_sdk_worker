@@ -20,6 +20,8 @@ export default defineConfig({
         'd1/tech-meta': 'src/d1/tech-meta.ts',
         'd1/resource-lock': 'src/d1/resource-lock.ts',
         'notify/client': 'src/notify/client.ts',
+        'browser/index': 'src/browser/index.ts',
+        'browser/client': 'src/browser/client.ts',
         'attachment/types': 'src/attachment/types.ts',
         'auth/middleware': 'src/auth/middleware.ts',
         'auth/require-admin': 'src/auth/require-admin.ts',
