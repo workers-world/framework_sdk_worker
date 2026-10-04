@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.32",
+  "version": "0.4.33",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -71,6 +71,10 @@
     "./auth/require-admin": {
       "import": "./dist/auth/require-admin.js",
       "types": "./dist/auth/require-admin.d.ts"
+    },
+    "./auth/scoped-key": {
+      "import": "./dist/auth/scoped-key-middleware.js",
+      "types": "./dist/auth/scoped-key-middleware.d.ts"
     },
     "./hono": {
       "import": "./dist/hono/create-app.js",

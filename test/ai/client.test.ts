@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { chatGeneral, getModelLimits, resetModelLimitsCache } from '../../src/ai/client.js';
+import {
+    chatGeneral,
+    getModelLimits,
+    resetModelLimitsCache,
+    resolveLlmCallTimeoutMs,
+} from '../../src/ai/client.js';
 
 function fakeGateway() {
     const calls: Array<{ url: string; init: RequestInit }> = [];
@@ -16,6 +21,17 @@ function fakeGateway() {
     } as unknown as Fetcher;
     return { fetcher, calls };
 }
+
+describe('resolveLlmCallTimeoutMs', () => {
+    it('defaults to 25s and clamps invalid / huge values', () => {
+        expect(resolveLlmCallTimeoutMs()).toBe(25_000);
+        expect(resolveLlmCallTimeoutMs(0)).toBe(25_000);
+        expect(resolveLlmCallTimeoutMs(-1)).toBe(25_000);
+        expect(resolveLlmCallTimeoutMs(Number.NaN)).toBe(25_000);
+        expect(resolveLlmCallTimeoutMs(45_000)).toBe(45_000);
+        expect(resolveLlmCallTimeoutMs(999_000)).toBe(120_000);
+    });
+});
 
 describe('ai/client headers', () => {
     it('sends caller/dedupKey/traceId as correlation headers', async () => {
@@ -39,6 +55,17 @@ describe('ai/client headers', () => {
         expect(headers['X-Dedup-Key']).toBe('dk1');
         expect(headers['X-Trace-Id']).toBe('tr1');
         expect(headers.Authorization).toBe('Bearer tok');
+    });
+
+    it('uses AbortSignal.timeout with default 25s and optional timeoutMs', async () => {
+        const { fetcher, calls } = fakeGateway();
+        await chatGeneral(
+            { SVC_LLM_GATEWAY: fetcher, LLM_GATEWAY_AUTH_TOKEN: 'tok' },
+            { model: 'm', messages: [{ role: 'user', content: 'ping' }], timeoutMs: 45_000 },
+        );
+        const signal = calls[0].init.signal as AbortSignal | undefined;
+        expect(signal).toBeDefined();
+        expect(signal?.aborted).toBe(false);
     });
 
     it('returns {ok:false} without binding or token instead of throwing', async () => {

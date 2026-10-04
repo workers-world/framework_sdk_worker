@@ -1,7 +1,16 @@
 import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 
-/** LLM 调用超时：gateway 挂起时避免调用方占满 isolate 墙钟上限 */
-const LLM_CALL_TIMEOUT_MS = 25_000;
+/** LLM 调用超时缺省：gateway 挂起时避免调用方占满 isolate 墙钟上限 */
+export const DEFAULT_LLM_CALL_TIMEOUT_MS = 25_000;
+/** 调用方可覆盖的上限（日报等长预算）；仍远低于 Worker 墙钟 */
+const MAX_LLM_CALL_TIMEOUT_MS = 120_000;
+
+export function resolveLlmCallTimeoutMs(timeoutMs?: number): number {
+    if (typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0) {
+        return Math.min(Math.floor(timeoutMs), MAX_LLM_CALL_TIMEOUT_MS);
+    }
+    return DEFAULT_LLM_CALL_TIMEOUT_MS;
+}
 
 export interface LlmChatMessage {
     role: string;
@@ -23,6 +32,11 @@ export interface LlmChatParams {
      * 以 X-Caller 头送达网关，进入 AE quality_slo blob 与失败事件 detail，供按调用方统计。
      */
     caller?: string;
+    /**
+     * Service Binding fetch 超时（ms）。缺省 25s。
+     * 日报等长预算路径应传入剩余墙钟，避免被内核 25s 截断后外层还在等。
+     */
+    timeoutMs?: number;
 }
 
 export interface LlmChatResponse {
@@ -156,7 +170,7 @@ export async function getModelLimits(
     try {
         const resp = await env.SVC_LLM_GATEWAY.fetch(
             `https://llm/v1/models/${encodeURIComponent(id)}`,
-            { headers, signal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS) },
+            { headers, signal: AbortSignal.timeout(DEFAULT_LLM_CALL_TIMEOUT_MS) },
         );
         if (!resp.ok) {
             modelLimitsCache.set(id, { at: Date.now(), limits: null });
@@ -238,7 +252,7 @@ async function chatAt(
                 dedupKey: params.dedupKey,
                 traceId: params.traceId,
             }),
-            signal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS),
+            signal: AbortSignal.timeout(resolveLlmCallTimeoutMs(params.timeoutMs)),
         });
 
         const data = (await resp.json().catch(() => ({}))) as {
@@ -316,7 +330,7 @@ export async function checkNeuronQuota(
     try {
         const resp = await env.SVC_LLM_GATEWAY.fetch('https://llm/v1/usage/neurons', {
             headers: auth,
-            signal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS),
+            signal: AbortSignal.timeout(DEFAULT_LLM_CALL_TIMEOUT_MS),
         });
         const data = (await resp.json()) as Partial<NeuronQuotaSnapshot>;
         if (!resp.ok) {

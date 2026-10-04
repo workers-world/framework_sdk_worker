@@ -115,3 +115,17 @@ export {
     isAdminAuthSkippedFromEnv,
 } from './admin-auth-skip.js';
 export { authorizeRequest, checkBearerToken } from './bearer.js';
+export { introspectKey1Token } from './key1-introspect.js';
+export {
+    hasAllScopes,
+    isKey1Scope,
+    KEY1_SCOPE_PLANNING_READ,
+    KEY1_SCOPE_PLANNING_WRITE,
+    KEY1_SCOPES,
+} from './key1-scopes.js';
+export {
+    type AdminOrScopedKeyOptions,
+    createAdminOrScopedKeyMiddleware,
+    KEY1_AUTH_CONTEXT_KEY,
+    type Key1AuthInfo,
+} from './scoped-key-middleware.js';
