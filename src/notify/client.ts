@@ -7,6 +7,7 @@ export type {
     AttachmentReference,
     DigestAttachmentReference,
 } from '../attachment/types.js';
+export { hasDigestAttachBytes, hasDigestHrefOnly } from '../attachment/types.js';
 
 /** notify Service Binding 调用超时，避免热路径无限挂起 */
 const NOTIFY_FETCH_TIMEOUT_MS = 15_000;
@@ -50,8 +51,8 @@ export interface DigestItemBase {
     itemDedupKey?: string;
     source?: string;
     /**
-     * digest 合窗附件引用（只含 r2Key，禁止带 contentBase64）。
-     * notify flush 时从 R2 水合为 NotifyAttachment。
+     * digest 合窗附件引用（r2Key 和/或 href；禁止 contentBase64）。
+     * notify：有 r2Key 则水合 MIME；仅 href 则打进正文。
      */
     attachmentReferences?: DigestAttachmentReference[];
 }
