@@ -4,10 +4,13 @@ import {
     buildAgentDiagnosticsDedupKey,
     groupTailItemDiagnostics,
     isLifecycleCompleteEvent,
+    isPlumbingOnlyAgentDiagnostics,
     mergeAgentDiagnosticEvents,
     normalizeAgentDiagnosticEvent,
     readAgentDiagnosticsEventsFromPayload,
     resolveAgentDiagnosticsTraceId,
+    sanitizeAgentDiagnosticMessage,
+    shouldSkipPlumbingOnlyDefaultDiagnostics,
 } from '../../src/intake/agent-diagnostics.js';
 import { INTAKE_KIND_AGENT_DIAGNOSTICS } from '../../src/intake/kinds.js';
 import {
@@ -42,7 +45,23 @@ describe('resolveAgentDiagnosticsTraceId', () => {
         expect(r.source).toBe('traceId');
     });
 
-    it('unknown fallback', () => {
+    it('falls back to DO instance name before unknown', () => {
+        const r = resolveAgentDiagnosticsTraceId({
+            message: {
+                type: 'chat:turn:start',
+                agent: 'MarketQaAgent',
+                name: 'eac1ce5d-721f-4e9e-bba6-6a2350244be6',
+            },
+            scriptName: 'market-qa-agent',
+            eventTimestamp: 42,
+        });
+        expect(r).toEqual({
+            traceId: 'eac1ce5d-721f-4e9e-bba6-6a2350244be6',
+            source: 'instanceName',
+        });
+    });
+
+    it('unknown fallback when no conversationId/trace/name', () => {
         const r = resolveAgentDiagnosticsTraceId({
             message: { type: 'rpc' },
             scriptName: 'market-qa-agent',
@@ -50,6 +69,68 @@ describe('resolveAgentDiagnosticsTraceId', () => {
         });
         expect(r.traceId).toBe('unknown:market-qa-agent:42');
         expect(r.source).toBe('unknown');
+    });
+});
+
+describe('sanitizeAgentDiagnosticMessage', () => {
+    it('keeps payload body but redacts tokens', () => {
+        const out = sanitizeAgentDiagnosticMessage({
+            type: 'chat:message',
+            name: 'sess-1',
+            payload: {
+                role: 'assistant',
+                text: '今日黄金偏强',
+                authToken: 'secret-value',
+            },
+        });
+        expect(out.payload).toEqual({
+            role: 'assistant',
+            text: '今日黄金偏强',
+            authToken: '[redacted]',
+        });
+    });
+});
+
+describe('plumbing-only default skip', () => {
+    it('detects plumbing-only mcp handshake', () => {
+        const events = [
+            normalizeAgentDiagnosticEvent(
+                'agents:mcp',
+                { type: 'mcp:client:connect', name: 'default' },
+                1,
+            ),
+            normalizeAgentDiagnosticEvent(
+                'agents:mcp',
+                { type: 'mcp:client:discover', name: 'default' },
+                2,
+            ),
+        ];
+        expect(isPlumbingOnlyAgentDiagnostics(events)).toBe(true);
+        expect(
+            shouldSkipPlumbingOnlyDefaultDiagnostics({
+                traceId: 'default',
+                incomingEvents: events,
+            }),
+        ).toBe(true);
+    });
+
+    it('does not skip chat turn on UUID instance', () => {
+        const events = [
+            normalizeAgentDiagnosticEvent(
+                'agents:chat',
+                {
+                    type: 'chat:turn:start',
+                    name: 'eac1ce5d-721f-4e9e-bba6-6a2350244be6',
+                },
+                1,
+            ),
+        ];
+        expect(
+            shouldSkipPlumbingOnlyDefaultDiagnostics({
+                traceId: 'eac1ce5d-721f-4e9e-bba6-6a2350244be6',
+                incomingEvents: events,
+            }),
+        ).toBe(false);
     });
 });
 
@@ -141,5 +222,41 @@ describe('merge + assemble', () => {
         const g = groups.get('c1');
         expect(g?.events).toHaveLength(3);
         expect(g?.complete).toBe(true);
+    });
+
+    it('groupTailItemDiagnostics merges across invocations by DO name', () => {
+        const session = 'eac1ce5d-721f-4e9e-bba6-6a2350244be6';
+        const first = groupTailItemDiagnostics({
+            scriptName: 'market-qa-agent',
+            eventTimestamp: 1000,
+            diagnosticsChannelEvents: [
+                {
+                    channel: 'agents:chat',
+                    timestamp: 1001,
+                    message: { type: 'chat:turn:start', agent: 'MarketQaAgent', name: session },
+                },
+            ],
+        });
+        const second = groupTailItemDiagnostics({
+            scriptName: 'market-qa-agent',
+            eventTimestamp: 2000,
+            diagnosticsChannelEvents: [
+                {
+                    channel: 'agents:lifecycle',
+                    timestamp: 2001,
+                    message: { type: 'disconnect', agent: 'MarketQaAgent', name: session },
+                },
+            ],
+        });
+        expect(first.size).toBe(1);
+        expect(second.size).toBe(1);
+        expect(first.has(session)).toBe(true);
+        expect(second.has(session)).toBe(true);
+        expect(second.get(session)?.complete).toBe(true);
+        const secondKey = [...second.keys()][0];
+        expect(secondKey).toBe(session);
+        expect(buildAgentDiagnosticsDedupKey('market-qa-agent', session)).toBe(
+            buildAgentDiagnosticsDedupKey('market-qa-agent', secondKey ?? ''),
+        );
     });
 });
