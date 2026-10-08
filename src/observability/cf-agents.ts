@@ -14,16 +14,22 @@ export type CfAgentsIdentity = {
 
 /** AI SDK experimental_telemetry.metadata（勿把用户问题当 conversationId） */
 export function buildCfAgentsTelemetryMetadata(input: {
+    /** draft 血缘；有则同时作为 conversationId（Dashboard / sch1 互链） */
     lineageId?: string;
+    /** 无 draft 时的故事键（Chat DO 名或 mint 的 32-hex） */
+    conversationId?: string;
     draftId?: number;
     source?: string;
 }): Record<string, string | number> {
     const meta: Record<string, string | number> = {
         agentId: MARKET_QA_AGENT_PRODUCTION_ID,
     };
-    if (input.lineageId) {
-        meta.lineageId = input.lineageId;
-        meta.conversationId = input.lineageId;
+    const conversationId = input.conversationId?.trim() || input.lineageId?.trim() || '';
+    if (conversationId) {
+        meta.conversationId = conversationId;
+    }
+    if (input.lineageId?.trim()) {
+        meta.lineageId = input.lineageId.trim();
     }
     if (input.draftId != null) {
         meta.draftId = input.draftId;

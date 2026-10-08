@@ -11,6 +11,8 @@ export {
     extractTraceIdFromTraceparent,
     groupTailItemDiagnostics,
     isLifecycleCompleteEvent,
+    isPlumbingOnlyAgentDiagnostics,
+    isSharedDefaultAgentDiagnosticsStory,
     isW3cTraceId,
     mergeAgentDiagnosticEvents,
     type NormalizedAgentDiagnosticEvent,
@@ -19,6 +21,7 @@ export {
     readAgentDiagnosticsEventsFromPayload,
     resolveAgentDiagnosticsTraceId,
     sanitizeAgentDiagnosticMessage,
+    shouldSkipPlumbingOnlyDefaultDiagnostics,
 } from './agent-diagnostics.js';
 export {
     buildDeskDraftQualityDedupKey,

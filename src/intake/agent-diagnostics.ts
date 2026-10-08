@@ -5,7 +5,6 @@
  */
 
 import { buildCfAgentsDashboardUrl } from '../cf-agents.js';
-import { sanitizeForLog } from '../ops-error/sanitize.js';
 import { shanghaiIsoString } from '../time.js';
 import { INTAKE_KIND_AGENT_DIAGNOSTICS } from './kinds.js';
 import {
@@ -100,7 +99,8 @@ export function isW3cTraceId(value: string | null | undefined): boolean {
  * traceId 解析优先级（WW-23 写死）：
  * 1. message.conversationId / payload.conversationId / lineageId
  * 2. message.traceId / payload.traceId / tail.traceId / W3C traceparent
- * 3. unknown:{scriptName}:{eventTimestamp}
+ * 3. message.name（DO 实例名；跨 invocation 归并）
+ * 4. unknown:{scriptName}:{eventTimestamp}
  */
 export function resolveAgentDiagnosticsTraceId(input: {
     message?: unknown;
@@ -136,10 +136,16 @@ export function resolveAgentDiagnosticsTraceId(input: {
         if (isW3cTraceId(c)) {
             return { traceId: c.toLowerCase(), source: 'traceId' };
         }
-        // 非 hex 也可用（DO name 等），但 conversationId 已优先
+        // 非 hex 也可用（显式 trace 字段），但 conversationId 已优先
         if (c.length >= 8 && c.length <= 128) {
             return { traceId: c, source: 'traceId' };
         }
+    }
+
+    // CF Agents 多数 diagnostics 在 message.name 带 DO 实例名（Chat UUID 或 default）
+    const instanceName = asString(msg?.name) ?? asString(payload?.name);
+    if (instanceName && instanceName.length >= 1 && instanceName.length <= 128) {
+        return { traceId: instanceName, source: 'instanceName' };
     }
 
     const script = asString(input.scriptName) ?? 'unknown-script';
@@ -167,12 +173,141 @@ function stableEventKey(ts: number, channel: string, type: string, message: unkn
     return `${ts}:${channel}:${type}:${(hash >>> 0).toString(16)}`;
 }
 
+/**
+ * Agents diagnostics 专用脱敏：保留 message.payload 结构（问答/tool 正文在此），
+ * 仅打掉 token/cookie/email 等敏感键。勿直接套 sanitizeForLog——其会把 `payload` 整段 [redacted]。
+ */
+/** 仅密钥类；保留 text/body/content 等问答正文键（与 ops-error sanitize 刻意分流） */
+const DIAGNOSTICS_SENSITIVE_EXACT = new Set(['apikey', 'messageid']);
+const DIAGNOSTICS_SENSITIVE_TOKENS = new Set([
+    'token',
+    'authorization',
+    'auth',
+    'password',
+    'passwd',
+    'secret',
+    'apikey',
+    'credential',
+    'cookie',
+    'headers',
+    'header',
+    'rawbody',
+]);
+const DIAGNOSTICS_SENSITIVE_SUBSTRINGS = [
+    'token',
+    'apikey',
+    'secret',
+    'password',
+    'passwd',
+    'credential',
+    'cookie',
+    'authorization',
+    'bearer',
+];
+
+function segmentDiagnosticsKey(key: string): string[] {
+    return key
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean);
+}
+
+function isDiagnosticsSensitiveKey(key: string): boolean {
+    // CF Agents 业务载荷键：保留并递归（勿整段打红）
+    if (key === 'payload' || key === 'content' || key === 'snippet') {
+        return false;
+    }
+    const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (DIAGNOSTICS_SENSITIVE_EXACT.has(normalized)) {
+        return true;
+    }
+    for (const needle of DIAGNOSTICS_SENSITIVE_SUBSTRINGS) {
+        if (normalized.includes(needle)) {
+            return true;
+        }
+    }
+    return segmentDiagnosticsKey(key).some((token) => DIAGNOSTICS_SENSITIVE_TOKENS.has(token));
+}
+
+function sanitizeDiagnosticsValue(value: unknown): unknown {
+    if (value == null || typeof value !== 'object') {
+        return value;
+    }
+    if (Array.isArray(value)) {
+        return value.map((item) => sanitizeDiagnosticsValue(item));
+    }
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+        return value;
+    }
+    return sanitizeAgentDiagnosticFields(value as Record<string, unknown>);
+}
+
+function sanitizeAgentDiagnosticFields(fields: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(fields)) {
+        if (isDiagnosticsSensitiveKey(key)) {
+            out[key] = '[redacted]';
+            continue;
+        }
+        out[key] = sanitizeDiagnosticsValue(value);
+    }
+    return out;
+}
+
 export function sanitizeAgentDiagnosticMessage(message: unknown): Record<string, unknown> {
     const rec = asRecord(message);
     if (!rec) {
         return { value: message == null ? null : String(message).slice(0, 500) };
     }
-    return sanitizeForLog(rec) as Record<string, unknown>;
+    return sanitizeAgentDiagnosticFields(rec);
+}
+
+/** 共享 default DO 上仅有 MCP 握手 / ledger 清扫的噪声事件 */
+const PLUMBING_DIAGNOSTIC_TYPES = new Set([
+    'mcp:client:connect',
+    'mcp:client:discover',
+    'action:ledger:swept',
+]);
+
+export function isPlumbingOnlyAgentDiagnostics(
+    events: ReadonlyArray<NormalizedAgentDiagnosticEvent>,
+): boolean {
+    if (events.length === 0) {
+        return true;
+    }
+    return events.every((e) => PLUMBING_DIAGNOSTIC_TYPES.has(e.type.toLowerCase()));
+}
+
+/** 是否共享 default 实例故事（无 Chat session） */
+export function isSharedDefaultAgentDiagnosticsStory(
+    traceId: string,
+    events: ReadonlyArray<NormalizedAgentDiagnosticEvent>,
+): boolean {
+    if (traceId === 'default' || traceId.endsWith(':default')) {
+        return true;
+    }
+    return events.length > 0 && events.every((e) => (e.name ?? '').trim() === 'default');
+}
+
+/**
+ * 丢弃共享 default 上「仅 plumbing」故事，避免日报唤醒每天刷 NEW Intake。
+ * 已有非 plumbing 事件的故事不丢（合并后仍有实质内容时继续 upsert）。
+ */
+export function shouldSkipPlumbingOnlyDefaultDiagnostics(input: {
+    traceId: string;
+    incomingEvents: ReadonlyArray<NormalizedAgentDiagnosticEvent>;
+    existingEvents?: ReadonlyArray<NormalizedAgentDiagnosticEvent>;
+}): boolean {
+    const merged = mergeAgentDiagnosticEvents(
+        [...(input.existingEvents ?? [])],
+        [...input.incomingEvents],
+    );
+    if (!isSharedDefaultAgentDiagnosticsStory(input.traceId, merged)) {
+        return false;
+    }
+    return isPlumbingOnlyAgentDiagnostics(merged);
 }
 
 export function normalizeAgentDiagnosticEvent(
