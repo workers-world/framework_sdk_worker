@@ -629,6 +629,53 @@ export const DEFAULT_FALLBACK_SPEC: OpenApiDoc = {
                 },
             },
         },
+        '/v1/deps': {
+            get: {
+                operationId: 'listDepCatalog',
+                tags: ['infra', 'consumers'],
+                summary: '依赖目录（WW-151；Bearer RULES_ADMIN_TOKEN）',
+                responses: {
+                    '200': { description: 'deps 列表' },
+                    '401': { description: 'unauthorized' },
+                },
+            },
+        },
+        '/v1/consumers': {
+            get: {
+                operationId: 'listDepConsumers',
+                tags: ['infra', 'consumers'],
+                summary: '按 dep 拉消费者（default branch；Bearer RULES_ADMIN_TOKEN）',
+                parameters: [
+                    { name: 'dep', in: 'query', required: true, schema: { type: 'string' } },
+                    {
+                        name: 'status',
+                        in: 'query',
+                        required: false,
+                        schema: { type: 'string', enum: ['all', 'upgradable', 'current'] },
+                    },
+                ],
+                responses: {
+                    '200': { description: 'consumers 列表' },
+                    '400': { description: 'invalid_dep' },
+                    '401': { description: 'unauthorized' },
+                },
+            },
+        },
+        '/v1/consumers/scan': {
+            post: {
+                operationId: 'scanDepConsumers',
+                tags: ['infra', 'consumers'],
+                summary: '强制刷新消费者快照',
+                parameters: [
+                    { name: 'dep', in: 'query', required: true, schema: { type: 'string' } },
+                ],
+                responses: {
+                    '200': { description: '扫描摘要' },
+                    '400': { description: 'invalid_dep' },
+                    '401': { description: 'unauthorized' },
+                },
+            },
+        },
     },
 };
 
