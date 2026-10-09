@@ -284,6 +284,36 @@ export interface ErrorBurstGroup {
     count: number;
 }
 
+/** cron 字段：数字、星号、问号、范围/列表/步长（如 star-slash-5、0-6、1,15） */
+const CRON_FIELD_RE = /^(\*|\d{1,2}|\?)(\/\d{1,2})?$/;
+const CRON_LIST_OR_RANGE_RE = /^(\d{1,2}|\*)([,-](\d{1,2}|\*))*(\/\d{1,2})?$/;
+
+function looksLikeCronField(token: string): boolean {
+    return CRON_FIELD_RE.test(token) || CRON_LIST_OR_RANGE_RE.test(token);
+}
+
+/**
+ * Observability `$metadata.message` 噪声：cron 表达式、日志频道前缀，不当成 error burst。
+ * 真异常（如 `D1_ERROR: internal error`）返回 false。
+ */
+export function isNoisyErrorBurstMessage(message: string): boolean {
+    const text = message.trim();
+    if (!text) {
+        return true;
+    }
+    const parts = text.split(/\s+/);
+    if ((parts.length === 5 || parts.length === 6) && parts.every(looksLikeCronField)) {
+        return true;
+    }
+    if (/^\S+\s+\S+\s+ERROR$/i.test(text)) {
+        return true;
+    }
+    if (text.length < 8 && !/error|exception|d1_/i.test(text)) {
+        return true;
+    }
+    return false;
+}
+
 export function groupsFromCountCalculation(
     calculations: CalculationResult[] | undefined,
     input?: { scriptKey?: string; messageKey?: string },

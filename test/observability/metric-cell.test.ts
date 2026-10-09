@@ -4,6 +4,7 @@ import {
     compareHintOf,
     groupsFromCountCalculation,
     invocationIdsFromTelemetry,
+    isNoisyErrorBurstMessage,
     waitHintOf,
 } from '../../src/observability/metric-cell.js';
 
@@ -51,6 +52,17 @@ describe('metric-cell', () => {
             },
         ]);
         expect(groups).toEqual([{ script: 'desk', message: 'UNIQUE', count: 6 }]);
+    });
+
+    it('filters cron and log-channel burst fingerprints, keeps D1_ERROR', () => {
+        expect(isNoisyErrorBurstMessage('*/5 * * * *')).toBe(true);
+        expect(isNoisyErrorBurstMessage('0 1 * * 5')).toBe(true);
+        expect(isNoisyErrorBurstMessage('sch1 d1_all ERROR')).toBe(true);
+        expect(isNoisyErrorBurstMessage('   ')).toBe(true);
+        expect(isNoisyErrorBurstMessage('D1_ERROR: internal error; reference = abc')).toBe(false);
+        expect(isNoisyErrorBurstMessage('UNIQUE constraint failed: DESK_DRAFT_LINEAGE_T')).toBe(
+            false,
+        );
     });
 
     it('walks invocation ids', () => {
