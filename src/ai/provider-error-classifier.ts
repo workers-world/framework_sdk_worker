@@ -1,5 +1,5 @@
 /**
- * llm-gateway / AI Gateway 错误分类（Neurons 4006、wholesale 2018）。
+ * llm-gateway / AI Gateway 错误分类（Neurons 4006、wholesale 2018、provider credential 2009）。
  */
 import {
     type ClassifiableError,
@@ -8,6 +8,10 @@ import {
     type ProviderErrorClassifier,
     type RetryDecision,
 } from '../resilience/provider-error.js';
+import {
+    isProviderCredentialError,
+    isUnifiedBillingProviderCredentialError,
+} from './provider-credential.js';
 
 function isNeuronQuotaMessage(message: string): boolean {
     const m = message.toLowerCase();
@@ -38,6 +42,38 @@ export const llmGatewayProviderErrorClassifier: ProviderErrorClassifier = {
                 delaySeconds: headerRetryAfterSec(input.headers) ?? 60,
                 reason: 'wholesale_2018',
                 action: 'retry',
+            };
+        }
+        // provider BYOK 凭证无效：永久失败，不重试（含 401+2009 与 Unified Billing 503）
+        if (
+            isProviderCredentialError({
+                status: input.status,
+                message,
+                name: input.name,
+                internalCode: input.internalCode,
+                code: input.internalCode ?? input.code,
+            })
+        ) {
+            if (
+                isUnifiedBillingProviderCredentialError({
+                    status: input.status,
+                    message,
+                    name: input.name,
+                    internalCode: input.internalCode,
+                })
+            ) {
+                return {
+                    kind: 'permanent',
+                    retryable: false,
+                    reason: 'unified_billing_credential_503',
+                    action: 'give_up',
+                };
+            }
+            return {
+                kind: 'permanent',
+                retryable: false,
+                reason: 'provider_credential_2009',
+                action: 'give_up',
             };
         }
         return null;

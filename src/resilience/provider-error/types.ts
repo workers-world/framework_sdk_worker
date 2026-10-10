@@ -20,6 +20,8 @@ export interface RetryDecision {
 export interface ClassifiableError {
     status?: number;
     code?: string;
+    /** AI Gateway / Workers AI 数值 internalCode（如 2009、4006、2018） */
+    internalCode?: number;
     message?: string;
     name?: string;
     headers?: Record<string, string | undefined>;

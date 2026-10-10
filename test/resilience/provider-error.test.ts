@@ -44,6 +44,33 @@ describe('provider-error', () => {
         expect(d.action).toBe('defer_until');
     });
 
+    it('llm provider credential 2009 → give_up', () => {
+        const d = classifyProviderError('llm-gateway', {
+            status: 401,
+            internalCode: 2009,
+            message: 'AI Gateway error 2009: provider credentials rejected',
+        });
+        expect(d.retryable).toBe(false);
+        expect(d.kind).toBe('permanent');
+        expect(d.reason).toBe('provider_credential_2009');
+        expect(d.action).toBe('give_up');
+    });
+
+    it('llm unified billing credential 503 → give_up', () => {
+        const d = classifyProviderError('llm-gateway', {
+            status: 503,
+            message: '2009: provider credentials rejected under Unified Billing',
+        });
+        expect(d.retryable).toBe(false);
+        expect(d.reason).toBe('unified_billing_credential_503');
+    });
+
+    it('classifiableFromUnknown reads internalCode', () => {
+        const c = classifiableFromUnknown({ status: 401, internalCode: 2009, message: 'bad key' });
+        expect(c.internalCode).toBe(2009);
+        expect(c.status).toBe(401);
+    });
+
     it('isGithubRequestRetryable respects method', () => {
         const err = { status: 500, message: 'server' };
         expect(isGithubRequestRetryable(err, 'GET')).toBe(true);
