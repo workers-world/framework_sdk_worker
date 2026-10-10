@@ -40,6 +40,7 @@ export default defineConfig({
         'url/index': 'src/url/index.ts',
         'ai/gateway': 'src/ai/gateway.ts',
         'ai/neuron-quota': 'src/ai/neuron-quota.ts',
+        'ai/provider-credential': 'src/ai/provider-credential.ts',
         'ai/client': 'src/ai/client.ts',
         'ai/direct': 'src/ai/direct.ts',
         'github/app-auth': 'src/github/app-auth.ts',

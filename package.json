@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.36",
+  "version": "0.4.37",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -119,6 +119,10 @@
     "./ai/neuron-quota": {
       "import": "./dist/ai/neuron-quota.js",
       "types": "./dist/ai/neuron-quota.d.ts"
+    },
+    "./ai/provider-credential": {
+      "import": "./dist/ai/provider-credential.js",
+      "types": "./dist/ai/provider-credential.d.ts"
     },
     "./ai/client": {
       "import": "./dist/ai/client.js",
