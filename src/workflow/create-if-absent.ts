@@ -38,12 +38,16 @@ export type CreateWorkflowIfAbsentOptions = {
 /**
  * 用对象形式 `createBatch({ instances })` 创建单实例；id 已存在时返回 null。
  * 若同时有 created 与 errors（部分成功），打 warn 便于观测。
+ *
+ * 入参允许平台 `Workflow`：本地 `@cloudflare/workers-types` 可能仍只声明数组 overload，
+ * 运行时对象形式已可用（wrangler ≥ 4.148）。
  */
 export async function createWorkflowIfAbsent(
-    workflow: WorkflowWithObjectCreateBatch,
+    workflow: WorkflowWithObjectCreateBatch | Workflow,
     options: CreateWorkflowIfAbsentOptions,
 ): Promise<WorkflowInstance | null> {
-    const result = await workflow.createBatch({ instances: [options] });
+    const batchApi = workflow as WorkflowWithObjectCreateBatch;
+    const result = await batchApi.createBatch({ instances: [options] });
     if (result.errors.length > 0 && result.created.length > 0) {
         console.warn(
             JSON.stringify({
