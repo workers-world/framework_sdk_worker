@@ -1,4 +1,12 @@
 export {
+    type CreateWorkflowIfAbsentOptions,
+    createWorkflowIfAbsent,
+    type WorkflowCreateBatchError,
+    type WorkflowCreateBatchResult,
+    type WorkflowWithObjectCreateBatch,
+} from './create-if-absent.js';
+
+export {
     type CfWorkflowInstanceEvent,
     cfTypeToWorkerIoType,
     createWorkflowStreamControl,
