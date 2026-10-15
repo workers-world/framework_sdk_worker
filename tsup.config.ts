@@ -43,6 +43,7 @@ export default defineConfig({
         'ai/provider-credential': 'src/ai/provider-credential.ts',
         'ai/client': 'src/ai/client.ts',
         'ai/direct': 'src/ai/direct.ts',
+        'ai/clef': 'src/ai/clef.ts',
         'github/app-auth': 'src/github/app-auth.ts',
         'github/octokit': 'src/github/octokit.ts',
         'github/client': 'src/github/client.ts',
