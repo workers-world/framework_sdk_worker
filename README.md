@@ -39,6 +39,7 @@ Cloudflare Worker 公共基座 SDK（npm 包 `@workers-world/framework_sdk_worke
 - `framework_sdk_worker/ai` — AI Gateway 配置与 LLM Gateway 客户端
 - `framework_sdk_worker/ai/direct` — env.AI 直连统一封装（Agent/tool-loop 场景；超时 + `{ok:false}` 契约 + AI Gateway 注入）
 - `framework_sdk_worker/logger` — 轻量日志（带脱敏）
+- `framework_sdk_worker/workflow` — step 输出契约（`workflowStepOk/Skip/Err` + 谓词）、CF 实例事件映射（`mapWorkflowInstanceEvent` / `cfTypeToWorkerIoType` / `createWorkflowStreamControl`，ns/source 参数化、taskId 接受 string|number）、Admin SSE（`createWorkflowSseStream` / `workflowEventSseResponse` / `noWorkflowInstanceResponse`）、`stepStages` 信封→阶段纯函数、映射后点分类型谓词
 
 ### `/v1/meta` 接入
 
