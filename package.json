@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.38",
+  "version": "0.4.39",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -131,6 +131,10 @@
     "./ai/direct": {
       "import": "./dist/ai/direct.js",
       "types": "./dist/ai/direct.d.ts"
+    },
+    "./ai/clef": {
+      "import": "./dist/ai/clef.js",
+      "types": "./dist/ai/clef.d.ts"
     },
     "./github/app-auth": {
       "import": "./dist/github/app-auth.js",
