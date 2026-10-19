@@ -6,8 +6,10 @@ import {
     smokeAgentProvider,
 } from './providers/stub.js';
 import type {
+    AgentArchiveResult,
     AgentCreateInput,
     AgentCreateResult,
+    AgentListByPrResult,
     AgentModelsListResult,
     AgentProviderId,
     AgentRunRef,
@@ -88,6 +90,34 @@ export async function fetchAgentRun(
         return { status: 'ERROR', error: `${ref.provider} does not support fetchRun` };
     }
     return provider.fetchRun(ref, ctx);
+}
+
+export async function listAgentRunsByPrUrl(
+    providerId: AgentProviderId,
+    prUrl: string,
+    ctx: AgentProviderContext,
+    opts?: { includeArchived?: boolean; limit?: number },
+): Promise<AgentListByPrResult> {
+    const provider = requireProvider(providerId);
+    if (!provider.capabilities.listByPr || !provider.listByPrUrl) {
+        return { ok: false, error: `${providerId} does not support listByPr` };
+    }
+    return provider.listByPrUrl(prUrl, ctx, opts);
+}
+
+export async function archiveAgent(
+    ref: AgentRunRef,
+    ctx: AgentProviderContext,
+): Promise<AgentArchiveResult> {
+    const provider = requireProvider(ref.provider);
+    if (!provider.capabilities.archive || !provider.archive) {
+        return {
+            ok: false,
+            result: 'error',
+            error: `${ref.provider} does not support archive`,
+        };
+    }
+    return provider.archive(ref, ctx);
 }
 
 export async function* streamAgentRun(
