@@ -64,6 +64,33 @@ export interface AgentRunResult {
     terminal?: boolean;
 }
 
+/** listByPrUrl 的一条 agent（不含 run 正文） */
+export interface AgentListedRun {
+    provider: AgentProviderId;
+    agentId: string;
+    status?: string;
+    url?: string;
+    latestRunId?: string;
+}
+
+export interface AgentListByPrResult {
+    ok: boolean;
+    items?: AgentListedRun[];
+    error?: string;
+    status?: number;
+    retryable?: boolean;
+}
+
+export type AgentArchiveCode = 'ok' | 'already_archived' | 'not_found' | 'error';
+
+export interface AgentArchiveResult {
+    ok: boolean;
+    result: AgentArchiveCode;
+    error?: string;
+    status?: number;
+    retryable?: boolean;
+}
+
 /** neutral 流事件（sch1 D1 / Admin 轨迹复用） */
 export type AgentStreamEventType = 'status' | 'message' | 'tool_call' | 'result' | 'error' | 'meta';
 

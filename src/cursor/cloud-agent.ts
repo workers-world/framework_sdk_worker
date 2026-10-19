@@ -646,3 +646,169 @@ export async function fetchCursorAgentUsage(
         (opts?.runId ? fromMatchedRun : null) ?? fromTotal ?? firstRun ?? normalizeUsage(undefined);
     return { ok: true, totalTokens: usage.totalTokens, usage };
 }
+
+export interface CursorAgentListItem {
+    id: string;
+    name?: string;
+    status?: string;
+    url?: string;
+    latestRunId?: string;
+}
+
+export interface CursorAgentListResult {
+    ok: boolean;
+    items?: CursorAgentListItem[];
+    error?: string;
+    status?: number;
+    retryable?: boolean;
+}
+
+export type CursorAgentArchiveCode = 'ok' | 'already_archived' | 'not_found' | 'error';
+
+export interface CursorAgentArchiveResult {
+    ok: boolean;
+    result: CursorAgentArchiveCode;
+    id?: string;
+    error?: string;
+    status?: number;
+    retryable?: boolean;
+}
+
+interface CursorAgentListResponse {
+    items?: Array<{
+        id?: string;
+        name?: string;
+        status?: string;
+        url?: string;
+        latestRunId?: string;
+    }>;
+    error?: string | { code?: string; message?: string };
+}
+
+interface CursorAgentGetResponse {
+    id?: string;
+    status?: string;
+    error?: string | { code?: string; message?: string };
+}
+
+function isCursorRetryableStatus(status: number): boolean {
+    return status === 429 || status >= 500;
+}
+
+function parseCursorAgentListItem(raw: {
+    id?: string;
+    name?: string;
+    status?: string;
+    url?: string;
+    latestRunId?: string;
+}): CursorAgentListItem | null {
+    const id = raw.id?.trim() ?? '';
+    if (!id) {
+        return null;
+    }
+    return {
+        id,
+        name: raw.name?.trim() || undefined,
+        status: raw.status?.trim() || undefined,
+        url: raw.url?.trim() || undefined,
+        latestRunId: raw.latestRunId?.trim() || undefined,
+    };
+}
+
+/** GET /v1/agents?prUrl= — 仅返回该 API key 名下的 agents */
+export async function listCursorAgents(
+    apiKey: SecretLike,
+    opts: { prUrl: string; includeArchived?: boolean; limit?: number },
+): Promise<CursorAgentListResult> {
+    const resolved = await resolveSecret(apiKey);
+    if (!resolved) {
+        return { ok: false, error: 'CURSOR_API_KEY not configured' };
+    }
+    const prUrl = opts.prUrl.trim();
+    if (!prUrl) {
+        return { ok: false, error: 'prUrl required' };
+    }
+    const params = new URLSearchParams({ prUrl });
+    if (opts.includeArchived === false) {
+        params.set('includeArchived', 'false');
+    }
+    if (opts.limit != null && opts.limit > 0) {
+        params.set('limit', String(Math.min(100, Math.floor(opts.limit))));
+    }
+    const resp = await cursorFetch<CursorAgentListResponse>(
+        resolved,
+        `/agents?${params.toString()}`,
+    );
+    if (!resp.ok) {
+        return {
+            ok: false,
+            error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
+            status: resp.status,
+            retryable: isCursorRetryableStatus(resp.status),
+        };
+    }
+    const items: CursorAgentListItem[] = [];
+    for (const raw of resp.data.items ?? []) {
+        const item = parseCursorAgentListItem(raw);
+        if (item) {
+            items.push(item);
+        }
+    }
+    return { ok: true, items };
+}
+
+/**
+ * 软归档 Cloud Agent。先读状态：已 ARCHIVED 则 already_archived、不再 POST。
+ * 200 幂等；404 not_found；429/5xx retryable。
+ */
+export async function archiveCursorAgent(
+    apiKey: SecretLike,
+    agentId: string,
+): Promise<CursorAgentArchiveResult> {
+    const resolved = await resolveSecret(apiKey);
+    if (!resolved) {
+        return { ok: false, result: 'error', error: 'CURSOR_API_KEY not configured' };
+    }
+    const id = agentId.trim();
+    if (!id) {
+        return { ok: false, result: 'error', error: 'agentId required' };
+    }
+    const encoded = encodeURIComponent(id);
+    const current = await cursorFetch<CursorAgentGetResponse>(resolved, `/agents/${encoded}`);
+    if (current.status === 404) {
+        return { ok: false, result: 'not_found', status: 404, retryable: false };
+    }
+    if (!current.ok) {
+        return {
+            ok: false,
+            result: 'error',
+            status: current.status,
+            retryable: isCursorRetryableStatus(current.status),
+            error: formatCursorApiError(
+                current.data.error,
+                current.text.slice(0, 300),
+                current.status,
+            ),
+        };
+    }
+    if ((current.data.status ?? '').toUpperCase() === 'ARCHIVED') {
+        return { ok: true, result: 'already_archived', id: current.data.id?.trim() || id };
+    }
+    const resp = await cursorFetch<{
+        id?: string;
+        error?: string | { code?: string; message?: string };
+    }>(resolved, `/agents/${encoded}/archive`, { method: 'POST' });
+    if (resp.status === 404) {
+        return { ok: false, result: 'not_found', status: 404, retryable: false };
+    }
+    if (!resp.ok) {
+        return {
+            ok: false,
+            result: 'error',
+            status: resp.status,
+            retryable: isCursorRetryableStatus(resp.status),
+            error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
+        };
+    }
+    return { ok: true, result: 'ok', id: resp.data.id?.trim() || id, status: resp.status };
+}

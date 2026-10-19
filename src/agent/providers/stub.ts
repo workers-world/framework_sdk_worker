@@ -33,18 +33,39 @@ function stubProvider(
 /** selfhosted：模型列表 Phase 3；执行由 sch1 selfhosted-executor 负责 */
 export const selfHostedAgentProvider: AgentProvider = stubProvider(
     'selfhosted',
-    { listModels: false, remoteRun: false, streaming: false, autoPr: true },
+    {
+        listModels: false,
+        remoteRun: false,
+        streaming: false,
+        autoPr: true,
+        listByPr: false,
+        archive: false,
+    },
     'selfhosted execution uses sch1 selfhosted-executor, not AgentProvider.createRun',
 );
 
 export const smokeAgentProvider: AgentProvider = stubProvider(
     'smoke',
-    { listModels: false, remoteRun: false, streaming: false, autoPr: false },
+    {
+        listModels: false,
+        remoteRun: false,
+        streaming: false,
+        autoPr: false,
+        listByPr: false,
+        archive: false,
+    },
     'smoke tasks do not invoke remote agents',
 );
 
 export const copilotAgentProvider: AgentProvider = stubProvider(
     'copilot',
-    { listModels: false, remoteRun: true, streaming: false, autoPr: true },
+    {
+        listModels: false,
+        remoteRun: true,
+        streaming: false,
+        autoPr: true,
+        listByPr: false,
+        archive: false,
+    },
     'copilot provider not implemented',
 );
