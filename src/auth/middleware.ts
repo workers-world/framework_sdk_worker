@@ -121,6 +121,8 @@ export {
     isKey1Scope,
     KEY1_SCOPE_PLANNING_READ,
     KEY1_SCOPE_PLANNING_WRITE,
+    KEY1_SCOPE_SCH1_READ,
+    KEY1_SCOPE_SCH1_WRITE,
     KEY1_SCOPES,
 } from './key1-scopes.js';
 export {
