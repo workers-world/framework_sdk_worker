@@ -1,6 +1,7 @@
 /**
  * Workers-World org 级 I/O：CloudEvents 对齐信封 + 四通道 binding。
  */
+export { wantsAgentWorkerIo } from './agent-query.js';
 export {
     type CreateWorkerIoInput,
     createWorkerIoEnvelope,

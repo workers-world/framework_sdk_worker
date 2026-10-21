@@ -1,8 +1,15 @@
-/** KEY1 MVP 固定 scope 枚举（AND 授权） */
+/** KEY1 固定 scope 枚举（AND 授权） */
 export const KEY1_SCOPE_PLANNING_READ = 'planning.read';
 export const KEY1_SCOPE_PLANNING_WRITE = 'planning.write';
+export const KEY1_SCOPE_SCH1_READ = 'sch1.read';
+export const KEY1_SCOPE_SCH1_WRITE = 'sch1.write';
 
-export const KEY1_SCOPES = [KEY1_SCOPE_PLANNING_READ, KEY1_SCOPE_PLANNING_WRITE] as const;
+export const KEY1_SCOPES = [
+    KEY1_SCOPE_PLANNING_READ,
+    KEY1_SCOPE_PLANNING_WRITE,
+    KEY1_SCOPE_SCH1_READ,
+    KEY1_SCOPE_SCH1_WRITE,
+] as const;
 
 export type Key1Scope = (typeof KEY1_SCOPES)[number];
 
