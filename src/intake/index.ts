@@ -49,6 +49,16 @@ export {
     type QualityLogDigestIntakePayload,
 } from './builders.js';
 export {
+    buildObservabilityRefBlock,
+    hasIntakeHopMeta,
+    type IntakeHopMeta,
+    intakeMergeHopMeta,
+    intakeMergeHopMetaIntoEvent,
+    mergeIntakeHopMeta,
+    normalizeHopRequestId,
+    payloadHasHopPointer,
+} from './hop-meta.js';
+export {
     INTAKE_KIND_AGENT_DIAGNOSTICS,
     INTAKE_KIND_DESK_DRAFT_QUALITY,
     INTAKE_KIND_DESK_OBS_DUMP,
@@ -102,7 +112,33 @@ export {
     readPayloadIndex,
 } from './payload-envelope.js';
 export {
+    intakePlatformAssembleErrorBurst,
+    intakePlatformAssembleOptLatencyDigest,
+    intakePlatformAssembleQualityCluster,
+    intakePlatformAssembleQualityLogDigest,
+    intakePlatformAssembleUncaughtException,
+} from './platform-assemble.js';
+export {
+    INTAKE_PRODUCER_CHANNEL_ARTIFACT,
+    INTAKE_PRODUCER_CHANNEL_OPS,
+    INTAKE_PRODUCER_CHANNEL_PLATFORM,
+    type IntakeProducerChannel,
+    type IntakePublishContext,
+    type IntakePublishResult,
+    intakePublish,
+    intakePublishAsync,
+    intakePublishFinalize,
+} from './publish.js';
+export {
+    getIntakePublishScope,
+    type IntakePublishScopeState,
+    intakePublishScope,
+    resolveHopFromPublishScope,
+} from './publish-scope.js';
+export {
     type IntakeEnv,
+    intakePublishPost,
+    intakePublishPostAsync,
     type SubmitIntakeOptions,
     submitIntakeEvent,
     submitIntakeEventAsync,
@@ -113,6 +149,8 @@ export {
     appendObsAndAgentBlocks,
     buildQualityArtifactEvent,
     buildWorkerIoStreamBlocks,
+    intakePublishArtifact,
+    intakePublishArtifactAsync,
     putIntakeOverflowJson,
     QUALITY_ARTIFACT_INLINE_MAX_BYTES,
     type QualityArtifactEnv,

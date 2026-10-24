@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.42",
+    "version": "0.4.43",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -343,6 +343,10 @@
     "./evaluation/quality-code-targets": {
       "import": "./dist/evaluation/quality-code-targets.js",
       "types": "./dist/evaluation/quality-code-targets.d.ts"
+    },
+    "./observability/worker-invocation-id": {
+      "import": "./dist/observability/worker-invocation-id.js",
+      "types": "./dist/observability/worker-invocation-id.d.ts"
     },
     "./observability/platform-log": {
       "import": "./dist/observability/platform-log.js",

@@ -1,4 +1,5 @@
 import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+import type { IntakeHopMeta } from './hop-meta.js';
 import type { IntakeEvent, SubmitIntakeResult } from './types.js';
 
 const INTAKE_FETCH_TIMEOUT_MS = 15_000;
@@ -13,6 +14,8 @@ export interface IntakeEnv {
 
 export interface SubmitIntakeOptions {
     ctx?: Pick<ExecutionContext, 'waitUntil'>;
+    request?: Request;
+    hop?: IntakeHopMeta;
 }
 
 function stripTrailingSlashes(value: string): string {
@@ -63,7 +66,14 @@ export function validateIntakeEvent(event: IntakeEvent): string | null {
     return null;
 }
 
-async function postIntake(env: IntakeEnv, event: IntakeEvent): Promise<SubmitIntakeResult> {
+/**
+ * HTTP 传输层：校验 + POST sch1（不做 hop finalize）。
+ * 业务 / 平台生产者应走 {@link intakePublish}；本函数供发布闸与测试使用。
+ */
+export async function intakePublishPost(
+    env: IntakeEnv,
+    event: IntakeEvent,
+): Promise<SubmitIntakeResult> {
     const validationError = validateIntakeEvent(event);
     if (validationError) {
         return { ok: false, error: validationError };
@@ -133,22 +143,54 @@ async function postIntake(env: IntakeEnv, event: IntakeEvent): Promise<SubmitInt
     }
 }
 
-/** 提交 Intake 事件；失败只返回结果，不抛（调用方自行 warn） */
+/** @internal 热路径 POST；不做 finalize */
+export function intakePublishPostAsync(
+    env: IntakeEnv,
+    event: IntakeEvent,
+    ctx?: Pick<ExecutionContext, 'waitUntil'>,
+): void {
+    const promise = intakePublishPost(env, event).then((result) => {
+        if (!result.ok) {
+            console.warn(
+                `[intake] submit failed kind=${event.kind} dedupKey=${event.dedupKey} error=${result.error ?? 'unknown'}`,
+            );
+        }
+    });
+    if (ctx?.waitUntil) {
+        ctx.waitUntil(promise);
+        return;
+    }
+    void promise;
+}
+
+/**
+ * @deprecated 请用 {@link intakePublish}（含 hop finalize）。
+ * 兼容别名：经动态 import 走发布闸，避免漏 hop。
+ */
 export async function submitIntakeEvent(
     env: IntakeEnv,
     event: IntakeEvent,
-    _options?: SubmitIntakeOptions,
+    options?: SubmitIntakeOptions,
 ): Promise<SubmitIntakeResult> {
-    return postIntake(env, event);
+    const { intakePublish } = await import('./publish.js');
+    return intakePublish(env, event, {
+        ctx: options?.ctx,
+        request: options?.request,
+        hop: options?.hop,
+    });
 }
 
-/** 热路径 fire-and-forget */
+/**
+ * @deprecated 请用 {@link intakePublishAsync}。
+ * 兼容别名：经发布闸 finalize 后 POST。
+ */
 export function submitIntakeEventAsync(
     env: IntakeEnv,
     event: IntakeEvent,
     ctx?: Pick<ExecutionContext, 'waitUntil'>,
 ): void {
-    const promise = submitIntakeEvent(env, event).then((result) => {
+    const promise = import('./publish.js').then(async ({ intakePublish }) => {
+        const result = await intakePublish(env, event, { ctx });
         if (!result.ok) {
             console.warn(
                 `[intake] submit failed kind=${event.kind} dedupKey=${event.dedupKey} error=${result.error ?? 'unknown'}`,

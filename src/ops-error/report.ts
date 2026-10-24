@@ -1,5 +1,6 @@
 import { linkifyPlainTextEmail } from '../email/linkify-plain-text.js';
 import { getEnvMode } from '../env';
+import type { IntakeHopMeta } from '../intake/hop-meta.js';
 import type { IntakeEnv } from '../intake.js';
 import { type NotifyResult, sendNotify } from '../notify/client.js';
 import type { SecretLike } from '../secrets/resolve.js';
@@ -16,12 +17,14 @@ export interface OpsErrorPayload {
     /** 覆盖 env.OPS_ALERT_TO */
     to?: string;
     /**
-     * 默认旁路 submitIntakeEvent(kind=ops.error)。显式 false 关闭。
+     * 默认旁路 intakePublish(kind=ops.error)。显式 false 关闭。
      * 缺 SVC_SCH1 / SCH_INTAKE_TOKEN 时 intake 静默 warn，邮件仍发。
      */
     intake?: boolean;
-    /** 可选：写入 intake payload.requestId */
+    /** 可选：写入 intake index.requestId / observability_ref */
     requestId?: string;
+    /** 平台 hop（优先于单独 requestId） */
+    hop?: IntakeHopMeta;
 }
 
 export interface OpsErrorEnv extends IntakeEnv {
@@ -79,18 +82,23 @@ function submitOpsErrorIntake(
         return;
     }
     const promise = import('../intake.js')
-        .then(({ buildOpsErrorIntake, submitIntakeEventAsync }) => {
-            const { intake: _intake, to: _to, dedupKey, ...rest } = payload;
+        .then(({ buildOpsErrorIntake, intakePublishAsync }) => {
+            const { intake: _intake, to: _to, dedupKey, hop, requestId, ...rest } = payload;
             const event = buildOpsErrorIntake({
                 producer: payload.worker,
                 worker: payload.worker,
                 reason: payload.reason,
                 error: payload.error,
                 context: rest.context,
-                requestId: payload.requestId,
+                requestId,
+                hop,
                 ...(dedupKey?.trim() ? { dedupKey: dedupKey.trim() } : {}),
             });
-            submitIntakeEventAsync(env, event, ctx);
+            intakePublishAsync(env, event, {
+                ctx,
+                hop: hop ?? (requestId ? { requestId } : undefined),
+                channel: 'ops',
+            });
         })
         .catch((e: unknown) => {
             const msg = e instanceof Error ? e.message : String(e);

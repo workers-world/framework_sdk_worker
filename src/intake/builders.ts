@@ -1,5 +1,6 @@
 import { hashString, type LogFields, normalizeError, sanitizeForLog } from '../ops-error.js';
 import { shanghaiIsoString, shanghaiYmdDash } from '../time.js';
+import { buildObservabilityRefBlock, type IntakeHopMeta } from './hop-meta.js';
 import {
     INTAKE_KIND_DESK_DRAFT_QUALITY,
     INTAKE_KIND_DESK_OBS_DUMP,
@@ -9,7 +10,7 @@ import {
     INTAKE_KIND_QUALITY_CLUSTER,
     INTAKE_KIND_QUALITY_LOG_DIGEST,
 } from './kinds.js';
-import type { IntakePayloadEnvelope } from './payload-envelope.js';
+import type { IntakeEvidenceBlock, IntakePayloadEnvelope } from './payload-envelope.js';
 import type { IntakeEvent, IntakeLink, IntakeSeverity } from './types.js';
 
 export interface OpsErrorIntakePayload {
@@ -68,6 +69,10 @@ export interface QualityClusterCaseRef {
     kind?: string;
     /** = dedupKey；便于反查 audit-log */
     auditLogTraceId?: string;
+    /** 平台 hop（QualityIncident.invocationId） */
+    invocationId?: string;
+    /** 邮件热路径 hop（QualityIncident.emailInvocationId） */
+    emailInvocationId?: string;
     /** 按 ts 升序的 Agent 链路（capture → diagnosis → fix） */
     auditLogs?: QualityClusterAuditLogRef[];
 }
@@ -121,6 +126,8 @@ export function buildOpsErrorIntake(input: {
     error: string;
     context?: LogFields;
     requestId?: string;
+    /** 平台 hop；优先于单独 requestId */
+    hop?: IntakeHopMeta;
     severity?: IntakeSeverity;
     occurredAt?: string;
     dedupKey?: string;
@@ -139,6 +146,11 @@ export function buildOpsErrorIntake(input: {
         }
     }
     const error = truncate(String(input.error).trim(), 800);
+    const hopRequestId =
+        input.hop?.invocationId?.trim() ||
+        input.hop?.requestId?.trim() ||
+        input.requestId?.trim() ||
+        undefined;
     const items: Array<{ key: string; value: string }> = [
         { key: 'reason', value: input.reason },
         { key: 'worker', value: input.worker },
@@ -147,24 +159,33 @@ export function buildOpsErrorIntake(input: {
     for (const [key, value] of Object.entries(safeContext)) {
         items.push({ key, value: String(value) });
     }
-    if (input.requestId) {
-        items.push({ key: 'requestId', value: input.requestId });
+    if (hopRequestId) {
+        items.push({ key: 'requestId', value: hopRequestId });
+    }
+    const blocks: IntakeEvidenceBlock[] = [
+        {
+            id: 'kv-ops',
+            type: 'intake.key_value',
+            title: 'ops.error',
+            data: { items },
+        },
+    ];
+    const obs = buildObservabilityRefBlock('obs-hop', {
+        ...(input.hop ?? {}),
+        ...(hopRequestId ? { requestId: hopRequestId } : {}),
+    });
+    if (obs) {
+        blocks.push(obs);
     }
     const payload = {
         payloadVersion: 2 as const,
         index: {
             reason: input.reason,
             worker: input.worker,
-            ...(input.requestId ? { requestId: input.requestId } : {}),
+            ...(hopRequestId ? { requestId: hopRequestId } : {}),
+            ...(input.hop?.traceId?.trim() ? { traceId: input.hop.traceId.trim() } : {}),
         },
-        blocks: [
-            {
-                id: 'kv-ops',
-                type: 'intake.key_value',
-                title: 'ops.error',
-                data: { items },
-            },
-        ],
+        blocks,
     };
     const title = truncate(`[${input.worker}] ${input.reason}`, 120);
     const summary = truncate(error, 500);
