@@ -1,5 +1,4 @@
-import type { IntakeHopMeta } from '../intake/hop-meta.js';
-import { resolveHopFromPublishScope } from '../intake/publish-scope.js';
+import { type IntakeHopMeta, resolveHopFromPublishScope } from '../intake.js';
 import { resolveWorkerInvocationId } from '../observability/worker-invocation-id.js';
 import type { OpsErrorEnv } from './report.js';
 import { reportOpsErrorAsync } from './report.js';

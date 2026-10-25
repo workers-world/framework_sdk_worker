@@ -2,7 +2,7 @@
  * Admin SSE：workflow.get(instanceId).subscribe() → WorkerIoEnvelope 帧。
  * sch1 / deploy-tracker / decision-desk 三份拷贝收敛于此；taskId/source/ns 参数化。
  */
-import { encodeWorkerIoSseFrame, isWorkerIoTerminal, workerIoToHttpResponse } from '../io/index.js';
+import { encodeWorkerIoSseFrame, isWorkerIoTerminal, workerIoToHttpResponse } from '../io.js';
 import {
     type CfWorkflowInstanceEvent,
     createWorkflowStreamControl,

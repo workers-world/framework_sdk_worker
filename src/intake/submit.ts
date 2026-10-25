@@ -164,8 +164,8 @@ export function intakePublishPostAsync(
 }
 
 /**
- * @deprecated 请用 {@link intakePublish}（含 hop finalize）。
- * 兼容别名：经动态 import 走发布闸，避免漏 hop。
+ * 兼容别名：请优先用 {@link intakePublish}（含 hop finalize）。
+ * 经动态 import 走发布闸，避免漏 hop。
  */
 export async function submitIntakeEvent(
     env: IntakeEnv,
@@ -181,8 +181,8 @@ export async function submitIntakeEvent(
 }
 
 /**
- * @deprecated 请用 {@link intakePublishAsync}。
- * 兼容别名：经发布闸 finalize 后 POST。
+ * 兼容别名：请优先用 {@link intakePublishAsync}。
+ * 经发布闸 finalize 后 POST。
  */
 export function submitIntakeEventAsync(
     env: IntakeEnv,

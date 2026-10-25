@@ -503,7 +503,7 @@ export async function intakePublishArtifact(
     };
 }
 
-/** @deprecated 请用 {@link intakePublishArtifact} */
+/** 兼容别名：请优先用 {@link intakePublishArtifact} */
 export async function submitQualityArtifact(
     env: QualityArtifactEnv,
     input: SubmitQualityArtifactInput,
@@ -530,7 +530,7 @@ export function intakePublishArtifactAsync(
     void promise;
 }
 
-/** @deprecated 请用 {@link intakePublishArtifactAsync} */
+/** 兼容别名：请优先用 {@link intakePublishArtifactAsync} */
 export function submitQualityArtifactAsync(
     env: QualityArtifactEnv,
     input: SubmitQualityArtifactInput,

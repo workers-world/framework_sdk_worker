@@ -1,7 +1,6 @@
 import { linkifyPlainTextEmail } from '../email/linkify-plain-text.js';
 import { getEnvMode } from '../env';
-import type { IntakeHopMeta } from '../intake/hop-meta.js';
-import type { IntakeEnv } from '../intake.js';
+import type { IntakeEnv, IntakeHopMeta } from '../intake.js';
 import { type NotifyResult, sendNotify } from '../notify/client.js';
 import type { SecretLike } from '../secrets/resolve.js';
 import { shanghaiIsoString } from '../time.js';
