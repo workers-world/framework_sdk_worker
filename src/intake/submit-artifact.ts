@@ -8,6 +8,7 @@ import type { WorkerIoEnvelope } from '../io.js';
 import type { SecretLike } from '../secrets/resolve.js';
 import { shanghaiIsoString } from '../time.js';
 import { buildQualityArtifactIntake } from './builders.js';
+import type { IntakeHopMeta } from './hop-meta.js';
 import {
     INTAKE_KIND_DESK_DRAFT_QUALITY,
     INTAKE_KIND_DESK_OBS_DUMP,
@@ -28,7 +29,8 @@ import {
     type IntakePayloadEnvelope,
     type IntakePayloadIndexValue,
 } from './payload-envelope.js';
-import { type IntakeEnv, submitIntakeEvent } from './submit.js';
+import { intakePublish } from './publish.js';
+import type { IntakeEnv } from './submit.js';
 import type { IntakeEvent, IntakeLink, IntakeSeverity, SubmitIntakeResult } from './types.js';
 
 /** Intake 内联 envelope JSON 上限；超出且有 R2 时落桶 */
@@ -80,6 +82,9 @@ export interface SubmitQualityArtifactInput {
     /** 额外证据块（插在标准块之后、检测说明之前） */
     extraBlocks?: IntakeEvidenceBlock[];
     ctx?: Pick<ExecutionContext, 'waitUntil'>;
+    request?: Request;
+    /** 触发 intake 的当前 invocation / 故事 hop */
+    hop?: IntakeHopMeta;
 }
 
 export interface SubmitQualityArtifactResult extends SubmitIntakeResult {
@@ -469,10 +474,11 @@ export async function buildQualityArtifactEvent(
 }
 
 /**
- * 组装并提交业务产物 Intake。
+ * 组装并提交业务产物 Intake（artifact 通道）。
  * lite：失败假说 + 截断快照；dump：尽量完整 + 通用检测说明。
+ * 经 {@link intakePublish} finalize hop。
  */
-export async function submitQualityArtifact(
+export async function intakePublishArtifact(
     env: QualityArtifactEnv,
     input: SubmitQualityArtifactInput,
 ): Promise<SubmitQualityArtifactResult> {
@@ -480,7 +486,16 @@ export async function submitQualityArtifact(
     if ('error' in assembled) {
         return { ok: false, error: assembled.error };
     }
-    const result = await submitIntakeEvent(env, assembled.event);
+    const hop: IntakeHopMeta = {
+        traceId: input.storyId.trim(),
+        ...(input.hop ?? {}),
+    };
+    const result = await intakePublish(env, assembled.event, {
+        ctx: input.ctx,
+        request: input.request,
+        hop,
+        channel: 'artifact',
+    });
     return {
         ...result,
         dedupKey: assembled.event.dedupKey,
@@ -488,12 +503,20 @@ export async function submitQualityArtifact(
     };
 }
 
+/** 兼容别名：请优先用 {@link intakePublishArtifact} */
+export async function submitQualityArtifact(
+    env: QualityArtifactEnv,
+    input: SubmitQualityArtifactInput,
+): Promise<SubmitQualityArtifactResult> {
+    return intakePublishArtifact(env, input);
+}
+
 /** 热路径 fire-and-forget */
-export function submitQualityArtifactAsync(
+export function intakePublishArtifactAsync(
     env: QualityArtifactEnv,
     input: SubmitQualityArtifactInput,
 ): void {
-    const promise = submitQualityArtifact(env, input).then((result) => {
+    const promise = intakePublishArtifact(env, input).then((result) => {
         if (!result.ok) {
             console.warn(
                 `[intake] quality artifact failed kind=${result.kind ?? input.kindOverride ?? INTAKE_KIND_QUALITY_ARTIFACT} storyId=${input.storyId} error=${result.error ?? 'unknown'}`,
@@ -505,4 +528,12 @@ export function submitQualityArtifactAsync(
         return;
     }
     void promise;
+}
+
+/** 兼容别名：请优先用 {@link intakePublishArtifactAsync} */
+export function submitQualityArtifactAsync(
+    env: QualityArtifactEnv,
+    input: SubmitQualityArtifactInput,
+): void {
+    intakePublishArtifactAsync(env, input);
 }

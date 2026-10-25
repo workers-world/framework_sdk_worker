@@ -1,3 +1,5 @@
+import { type IntakeHopMeta, resolveHopFromPublishScope } from '../intake.js';
+import { resolveWorkerInvocationId } from '../observability/worker-invocation-id.js';
 import type { OpsErrorEnv } from './report.js';
 import { reportOpsErrorAsync } from './report.js';
 import { type LogFields, sanitizeForLog } from './sanitize.js';
@@ -7,6 +9,8 @@ export type OpsLogLevel = 'debug' | 'info' | 'warn' | 'error';
 export interface OpsLoggerOptions {
     env?: OpsErrorEnv;
     ctx?: Pick<ExecutionContext, 'waitUntil'>;
+    request?: Request;
+    hop?: IntakeHopMeta;
 }
 
 export interface OpsLogger {
@@ -53,16 +57,48 @@ function extractErrorMessage(fields: LogFields, event: string): string {
     return event;
 }
 
+function pickHopFromFields(fields: LogFields): IntakeHopMeta | undefined {
+    const requestId =
+        typeof fields.requestId === 'string'
+            ? fields.requestId
+            : typeof fields.invocationId === 'string'
+              ? fields.invocationId
+              : undefined;
+    const traceId = typeof fields.traceId === 'string' ? fields.traceId : undefined;
+    if (!requestId?.trim() && !traceId?.trim()) {
+        return undefined;
+    }
+    return {
+        ...(requestId?.trim()
+            ? { requestId: requestId.trim(), invocationId: requestId.trim() }
+            : {}),
+        ...(traceId?.trim() ? { traceId: traceId.trim() } : {}),
+    };
+}
+
 /** 结构化 JSON 日志；error 级即时运维邮件并默认旁路 sch1；fields.intake=false 关闭 intake */
 export function createOpsLogger(workerName: string, options: OpsLoggerOptions = {}): OpsLogger {
-    const { env, ctx } = options;
+    const { env, ctx, request, hop: optionHop } = options;
 
     const log = (level: OpsLogLevel, event: string, fields: LogFields = {}) => {
         writeLog(workerName, level, event, fields);
         if (level !== 'error' || !env) {
             return;
         }
-        const { error: _errorField, message: _messageField, intake, ...context } = fields;
+        const {
+            error: _errorField,
+            message: _messageField,
+            intake,
+            requestId: _requestId,
+            invocationId: _invocationId,
+            traceId: _traceId,
+            ...context
+        } = fields;
+        const fromRuntime = resolveWorkerInvocationId(ctx as ExecutionContext | undefined, request);
+        const hop =
+            resolveHopFromPublishScope(optionHop) ??
+            pickHopFromFields(fields) ??
+            (fromRuntime ? { requestId: fromRuntime, invocationId: fromRuntime } : optionHop);
         reportOpsErrorAsync(
             env,
             {
@@ -71,6 +107,7 @@ export function createOpsLogger(workerName: string, options: OpsLoggerOptions = 
                 error: extractErrorMessage(fields, event),
                 context,
                 intake: intake !== false,
+                ...(hop ? { hop, requestId: hop.invocationId ?? hop.requestId } : {}),
             },
             ctx,
         );

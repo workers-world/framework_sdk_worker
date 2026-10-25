@@ -97,6 +97,7 @@ export default defineConfig({
         'evaluation/quality-reject-detail': 'src/evaluation/quality-reject-detail.ts',
         'evaluation/article-text-quality': 'src/evaluation/article-text-quality.ts',
         'evaluation/quality-code-targets': 'src/evaluation/quality-code-targets.ts',
+        'observability/worker-invocation-id': 'src/observability/worker-invocation-id.ts',
         'observability/platform-log': 'src/observability/platform-log.ts',
         'observability/slim-platform-logs': 'src/observability/slim-platform-logs.ts',
         'observability/quality-sample': 'src/observability/quality-sample.ts',
