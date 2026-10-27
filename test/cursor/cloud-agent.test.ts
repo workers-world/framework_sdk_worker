@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+    archiveCursorAgent,
     createCursorAgent,
     fetchCursorAgentUsage,
     formatCursorApiError,
+    listCursorAgents,
     listCursorModels,
     pollCursorAgentRun,
 } from '../../src/cursor/cloud-agent.js';
@@ -234,5 +236,118 @@ describe('fetchCursorAgentUsage', () => {
         const result = await fetchCursorAgentUsage(API_KEY, 'a1');
         expect(result.ok).toBe(true);
         expect(result.totalTokens).toBe(10);
+    });
+});
+
+describe('listCursorAgents / archiveCursorAgent', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('lists agents filtered by prUrl', async () => {
+        const fetchMock = vi.fn(async (url: string) => {
+            expect(String(url)).toContain('prUrl=');
+            expect(String(url)).toContain(encodeURIComponent('https://github.com/o/r/pull/3'));
+            return new Response(
+                JSON.stringify({
+                    items: [
+                        {
+                            id: 'bc-1',
+                            status: 'ACTIVE',
+                            url: 'https://cursor.com/agents/bc-1',
+                            latestRunId: 'run-1',
+                        },
+                        { id: '' },
+                    ],
+                }),
+                { status: 200 },
+            );
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        const result = await listCursorAgents(API_KEY, {
+            prUrl: 'https://github.com/o/r/pull/3',
+            includeArchived: false,
+            limit: 20,
+        });
+        expect(result.ok).toBe(true);
+        expect(result.items).toEqual([
+            {
+                id: 'bc-1',
+                status: 'ACTIVE',
+                url: 'https://cursor.com/agents/bc-1',
+                latestRunId: 'run-1',
+            },
+        ]);
+    });
+
+    it('marks list 429 retryable and missing key', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response(JSON.stringify({ error: 'slow' }), { status: 429 })),
+        );
+        const limited = await listCursorAgents(API_KEY, { prUrl: 'https://github.com/o/r/pull/1' });
+        expect(limited.ok).toBe(false);
+        expect(limited.retryable).toBe(true);
+        const missing = await listCursorAgents(undefined, {
+            prUrl: 'https://github.com/o/r/pull/1',
+        });
+        expect(missing.error).toContain('CURSOR_API_KEY');
+        const empty = await listCursorAgents(API_KEY, { prUrl: '  ' });
+        expect(empty.ok).toBe(false);
+    });
+
+    it('archives an active agent and reports already_archived without posting twice', async () => {
+        const calls: string[] = [];
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string, init?: RequestInit) => {
+                calls.push(`${init?.method ?? 'GET'} ${url}`);
+                if (String(url).endsWith('/archive')) {
+                    return new Response(JSON.stringify({ id: 'bc-1' }), { status: 200 });
+                }
+                return new Response(JSON.stringify({ id: 'bc-1', status: 'ACTIVE' }), {
+                    status: 200,
+                });
+            }),
+        );
+        const archived = await archiveCursorAgent(API_KEY, 'bc-1');
+        expect(archived).toMatchObject({ ok: true, result: 'ok', id: 'bc-1' });
+        expect(calls.some((c) => c.startsWith('POST'))).toBe(true);
+
+        calls.length = 0;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string, init?: RequestInit) => {
+                calls.push(`${init?.method ?? 'GET'} ${url}`);
+                return new Response(JSON.stringify({ id: 'bc-1', status: 'ARCHIVED' }), {
+                    status: 200,
+                });
+            }),
+        );
+        const again = await archiveCursorAgent(API_KEY, 'bc-1');
+        expect(again.result).toBe('already_archived');
+        expect(calls.some((c) => c.startsWith('POST'))).toBe(false);
+    });
+
+    it('maps archive 404 and 503', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response('missing', { status: 404 })),
+        );
+        const missing = await archiveCursorAgent(API_KEY, 'bc-missing');
+        expect(missing).toMatchObject({ ok: false, result: 'not_found', retryable: false });
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response(JSON.stringify({ error: 'down' }), { status: 503 })),
+        );
+        const down = await archiveCursorAgent(API_KEY, 'bc-1');
+        expect(down.result).toBe('error');
+        expect(down.retryable).toBe(true);
+
+        const noKey = await archiveCursorAgent(undefined, 'bc-1');
+        expect(noKey.error).toContain('CURSOR_API_KEY');
+        const blank = await archiveCursorAgent(API_KEY, ' ');
+        expect(blank.ok).toBe(false);
     });
 });

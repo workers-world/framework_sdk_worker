@@ -4,6 +4,15 @@ export interface AiGatewayConfig {
     byokAlias?: string;
 }
 
+/** 平台 AiOptions / GatewayOptions 已有能力，透传不另造超时或关联体系 */
+export interface AiRunOptions {
+    signal?: AbortSignal;
+    tags?: string[];
+    requestTimeoutMs?: number;
+    eventId?: string;
+    metadata?: Record<string, string | number | boolean | null | bigint>;
+}
+
 export function resolveGatewayId(gatewayId?: string): string {
     const id = gatewayId?.trim();
     return id || 'default';
@@ -79,28 +88,53 @@ function buildGatewayExtraHeaders(config?: AiGatewayConfig): Record<string, stri
     return headers;
 }
 
-function buildExtraHeadersOnly(config?: AiGatewayConfig) {
-    const headers = buildGatewayExtraHeaders(config);
-    if (Object.keys(headers).length === 0) {
-        return {};
+function applyRunExtras(
+    options: Record<string, unknown>,
+    extras?: AiRunOptions,
+): Record<string, unknown> {
+    if (!extras) {
+        return options;
     }
-    return { extraHeaders: headers };
+    if (extras.tags && extras.tags.length > 0) {
+        options.tags = extras.tags.slice(0, 5);
+    }
+    if (extras.signal) {
+        options.signal = extras.signal;
+    }
+    const gateway = (options.gateway ?? {}) as Record<string, unknown>;
+    if (extras.requestTimeoutMs != null && extras.requestTimeoutMs > 0) {
+        gateway.requestTimeoutMs = extras.requestTimeoutMs;
+    }
+    if (extras.eventId?.trim()) {
+        gateway.eventId = extras.eventId.trim();
+    }
+    if (extras.metadata) {
+        gateway.metadata = extras.metadata;
+    }
+    if (Object.keys(gateway).length > 0) {
+        options.gateway = gateway;
+    }
+    return options;
 }
 
-export function aiGatewayRunOptions(config?: AiGatewayConfig) {
-    const options: {
-        gateway: { id: string };
-        extraHeaders?: Record<string, string>;
-    } = {
-        gateway: { id: resolveGatewayId(config?.gatewayId) },
-    };
-
+function buildExtraHeadersOnly(config?: AiGatewayConfig, extras?: AiRunOptions) {
+    const options: Record<string, unknown> = {};
     const headers = buildGatewayExtraHeaders(config);
     if (Object.keys(headers).length > 0) {
         options.extraHeaders = headers;
     }
+    return applyRunExtras(options, extras);
+}
 
-    return options;
+export function aiGatewayRunOptions(config?: AiGatewayConfig, extras?: AiRunOptions) {
+    const options: Record<string, unknown> = {
+        gateway: { id: resolveGatewayId(config?.gatewayId) },
+    };
+    const headers = buildGatewayExtraHeaders(config);
+    if (Object.keys(headers).length > 0) {
+        options.extraHeaders = headers;
+    }
+    return applyRunExtras(options, extras);
 }
 
 export async function callAiModel(
@@ -108,10 +142,11 @@ export async function callAiModel(
     model: string,
     inputs: Record<string, unknown>,
     config?: AiGatewayConfig,
+    extras?: AiRunOptions,
 ): Promise<unknown> {
     const options = shouldUseAiGateway(model, inputs)
-        ? aiGatewayRunOptions(config)
-        : buildExtraHeadersOnly(config);
+        ? aiGatewayRunOptions(config, extras)
+        : buildExtraHeadersOnly(config, extras);
 
     // Ai.run 的静态签名把 model 限定为 keyof AiModels（Workers AI 目录）；
     // 本函数按设计接受任意 provider 的动态模型名/入参（含 gateway 代理场景），

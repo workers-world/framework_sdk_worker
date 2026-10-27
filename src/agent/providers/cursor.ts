@@ -1,8 +1,10 @@
 import {
+    archiveCursorAgent,
     type CursorAgentRunRef,
     type CursorStreamEvent,
     createCursorAgent,
     fetchCursorAgentRun,
+    listCursorAgents,
     listCursorModels,
     streamCursorAgentRun,
 } from '../../cursor/cloud-agent.js';
@@ -11,8 +13,10 @@ import { normalizeAgentModelInput } from '../model-ref.js';
 import type { AgentProvider, AgentProviderContext } from '../provider.js';
 import { mapCursorStreamEvent } from '../stream.js';
 import type {
+    AgentArchiveResult,
     AgentCreateInput,
     AgentCreateResult,
+    AgentListByPrResult,
     AgentModelsListResult,
     AgentRunRef,
     AgentRunResult,
@@ -38,6 +42,8 @@ export const cursorAgentProvider: AgentProvider = {
         remoteRun: true,
         streaming: true,
         autoPr: true,
+        listByPr: true,
+        archive: true,
     },
 
     async listModels(ctx: AgentProviderContext): Promise<AgentModelsListResult> {
@@ -113,6 +119,55 @@ export const cursorAgentProvider: AgentProvider = {
             prUrl: result.prUrl,
             error: result.error,
             terminal: result.terminal,
+        };
+    },
+
+    async listByPrUrl(
+        prUrl: string,
+        ctx: AgentProviderContext,
+        opts?: { includeArchived?: boolean; limit?: number },
+    ): Promise<AgentListByPrResult> {
+        const apiKey = requireCursorApiKey(ctx);
+        if (!apiKey) {
+            return { ok: false, error: 'CURSOR_API_KEY not configured' };
+        }
+        const listed = await listCursorAgents(apiKey, {
+            prUrl,
+            includeArchived: opts?.includeArchived,
+            limit: opts?.limit,
+        });
+        if (!listed.ok || !listed.items) {
+            return {
+                ok: false,
+                error: listed.error,
+                status: listed.status,
+                retryable: listed.retryable,
+            };
+        }
+        return {
+            ok: true,
+            items: listed.items.map((item) => ({
+                provider: 'cursor' as const,
+                agentId: item.id,
+                status: item.status,
+                url: item.url,
+                latestRunId: item.latestRunId,
+            })),
+        };
+    },
+
+    async archive(ref: AgentRunRef, ctx: AgentProviderContext): Promise<AgentArchiveResult> {
+        const apiKey = requireCursorApiKey(ctx);
+        if (!apiKey) {
+            return { ok: false, result: 'error', error: 'CURSOR_API_KEY not configured' };
+        }
+        const archived = await archiveCursorAgent(apiKey, ref.agentId);
+        return {
+            ok: archived.ok,
+            result: archived.result,
+            error: archived.error,
+            status: archived.status,
+            retryable: archived.retryable,
         };
     },
 

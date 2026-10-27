@@ -27,7 +27,8 @@ export type CfWorkflowInstanceEvent = {
 
 export interface WorkflowInstanceEventData {
     instanceId: string;
-    taskId: number;
+    /** sch1/decision-desk 为数字任务 id；deploy-tracker 等可直放字符串业务 id */
+    taskId: string | number;
     stepName?: string;
     attempt?: number;
     durationMs?: number;
@@ -121,10 +122,13 @@ function summaryForCf(cf: CfWorkflowInstanceEvent): string {
     }
 }
 
-/** CF type → workers-world type（点分） */
-export function cfTypeToWorkerIoType(cfType: string): string {
+export const DEFAULT_WORKFLOW_IO_NS = 'sch1.task';
+export const DEFAULT_WORKFLOW_IO_SOURCE = '/workers/sch1';
+
+/** CF type → workers-world type（点分）；ns 默认对齐 sch1，其余 Worker 传自己的命名空间 */
+export function cfTypeToWorkerIoType(cfType: string, ns: string = DEFAULT_WORKFLOW_IO_NS): string {
     const dotted = cfType.replace(/_/g, '.');
-    return `workers-world.sch1.task.workflow.${dotted}`;
+    return `workers-world.${ns}.workflow.${dotted}`;
 }
 
 export function isCfWorkflowTerminalType(type: string): boolean {
@@ -133,7 +137,7 @@ export function isCfWorkflowTerminalType(type: string): boolean {
 
 export function mapWorkflowInstanceEvent(
     cf: CfWorkflowInstanceEvent,
-    ctx: { taskId: number; source?: string },
+    ctx: { taskId: string | number; source?: string; ns?: string },
 ): WorkflowInstanceIoEnvelope {
     const category = categoryForCfType(cf.type);
     const terminal = isCfWorkflowTerminalType(cf.type);
@@ -162,8 +166,8 @@ export function mapWorkflowInstanceEvent(
 
     return createWorkerIoEnvelope({
         id: `${cf.instanceId}:${cf.eventId}`,
-        source: ctx.source ?? '/workers/sch1',
-        type: cfTypeToWorkerIoType(cf.type),
+        source: ctx.source ?? DEFAULT_WORKFLOW_IO_SOURCE,
+        type: cfTypeToWorkerIoType(cf.type, ctx.ns),
         time: new Date(cf.timestamp).toISOString(),
         data,
         wwstream: STREAM_WORKFLOW_INSTANCE,
@@ -180,7 +184,7 @@ export function mapWorkflowInstanceEvent(
 export function createWorkflowStreamControl(
     kind: 'ready' | 'error' | 'end',
     ctx: {
-        taskId: number;
+        taskId: string | number;
         instanceId: string;
         source?: string;
         error?: { name: string; message: string };
@@ -194,7 +198,7 @@ export function createWorkflowStreamControl(
               : 'workers-world.io.stream.end';
     return createWorkerIoEnvelope({
         id: `0:${kind}:${ctx.instanceId}`,
-        source: ctx.source ?? '/workers/sch1',
+        source: ctx.source ?? DEFAULT_WORKFLOW_IO_SOURCE,
         type,
         data: { instanceId: ctx.instanceId, taskId: ctx.taskId },
         wwstream: STREAM_WORKFLOW_INSTANCE,
@@ -210,4 +214,75 @@ export function createWorkflowStreamControl(
             ? { code: ctx.error.name || 'Error', message: ctx.error.message }
             : undefined,
     });
+}
+
+/**
+ * 映射后点分类型谓词：Admin hook / stepStages / run-log 共用，替代散落的 includes() 嗅探。
+ * step 组不含 attempt.*（Admin hook 的 isDone/isStart 语义）；attempt.* 单独一组。
+ */
+export function isWorkflowIoStepStarted(type: string): boolean {
+    return (
+        type.endsWith('.step.started') ||
+        type.endsWith('.wait.started') ||
+        type.endsWith('.sleep.started')
+    );
+}
+
+export function isWorkflowIoStepCompleted(type: string): boolean {
+    return (
+        type.endsWith('.step.completed') ||
+        type.endsWith('.wait.completed') ||
+        type.endsWith('.sleep.completed')
+    );
+}
+
+export function isWorkflowIoStepErrored(type: string): boolean {
+    return type.endsWith('.step.errored');
+}
+
+export function isWorkflowIoAttemptStarted(type: string): boolean {
+    return type.endsWith('.attempt.started');
+}
+
+export function isWorkflowIoAttemptCompleted(type: string): boolean {
+    return type.endsWith('.attempt.completed');
+}
+
+export function isWorkflowIoAttemptErrored(type: string): boolean {
+    return type.endsWith('.attempt.errored');
+}
+
+/** 兼容 legacy 下划线拼写（部分旧帧未点分化），双写防御 */
+export function isWorkflowIoWaitTimedOut(type: string): boolean {
+    return type.endsWith('.wait.timed.out') || type.includes('wait_timed_out');
+}
+
+/** stepStages 的 eventKind：含 attempt.*（比 Admin hook 的 isDone/isStart 多 attempt 组） */
+export function workflowIoStepEventKind(type: string): {
+    started: boolean;
+    completed: boolean;
+    errored: boolean;
+} {
+    const t = type;
+    const errored =
+        t.includes('step.errored') ||
+        t.includes('attempt.errored') ||
+        t.includes('wait.timed.out') ||
+        t.includes('wait_timed_out');
+    const completed =
+        t.includes('step.completed') ||
+        t.includes('wait.completed') ||
+        t.includes('sleep.completed') ||
+        t.includes('attempt.completed');
+    const started =
+        t.includes('step.started') ||
+        t.includes('wait.started') ||
+        t.includes('sleep.started') ||
+        t.includes('attempt.started');
+    return { started, completed, errored };
+}
+
+/** 流控制帧 id（0:<kind>:<instanceId>）；数据帧 id 为 <instanceId>:<eventId> */
+export function isWorkflowStreamControlId(id: string): boolean {
+    return id.startsWith('0:');
 }

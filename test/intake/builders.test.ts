@@ -45,11 +45,19 @@ describe('buildOpsErrorIntake', () => {
         expect(event.dedupKey).toBe('custom-key');
         expect(event.title.length).toBeLessThanOrEqual(121);
         expect(event.summary.length).toBeLessThanOrEqual(501);
-        expect(event.payload).toMatchObject({ requestId: 'req-1' });
-        const ctx = (event.payload as { context: Record<string, unknown> }).context;
-        expect(JSON.stringify(ctx)).not.toContain('secret-token-value');
-        expect(ctx.nested).toBe(JSON.stringify({ a: 1 }));
-        expect(ctx.skip).toBeUndefined();
+        const payload = event.payload as {
+            payloadVersion: number;
+            index: { requestId?: string };
+            blocks: Array<{ data: { items: Array<{ key: string; value: string }> } }>;
+        };
+        expect(payload.payloadVersion).toBe(2);
+        expect(payload.index.requestId).toBe('req-1');
+        const items = Object.fromEntries(
+            (payload.blocks[0]?.data.items ?? []).map((item) => [item.key, item.value]),
+        );
+        expect(JSON.stringify(items)).not.toContain('secret-token-value');
+        expect(items.nested).toBe(JSON.stringify({ a: 1 }));
+        expect(items.skip).toBeUndefined();
     });
 });
 

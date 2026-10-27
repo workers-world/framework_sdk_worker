@@ -8,9 +8,11 @@ import {
     smokeAgentProvider,
 } from '../../src/agent/providers/stub.js';
 import {
+    archiveAgent,
     createAgentRun,
     fetchAgentRun,
     listAgentModels,
+    listAgentRunsByPrUrl,
     streamAgentRun,
 } from '../../src/agent/registry.js';
 import { mapCursorStreamEvent } from '../../src/agent/stream.js';
@@ -32,6 +34,8 @@ describe('stub providers', () => {
         ).resolves.toMatchObject({ ok: false });
         expect(copilotAgentProvider.capabilities.remoteRun).toBe(true);
         expect(copilotAgentProvider.capabilities.autoPr).toBe(true);
+        expect(copilotAgentProvider.capabilities.archive).toBe(false);
+        expect(selfHostedAgentProvider.capabilities.listByPr).toBe(false);
     });
 });
 
@@ -159,6 +163,22 @@ describe('registry capability gates', () => {
         );
         expect(smoke.ok).toBe(false);
         expect(smoke.error).toContain('does not support remote agent runs');
+    });
+
+    it('listAgentRunsByPrUrl / archiveAgent unsupported on stub', async () => {
+        const listed = await listAgentRunsByPrUrl(
+            'selfhosted',
+            'https://github.com/o/r/pull/1',
+            emptyCtx,
+        );
+        expect(listed.ok).toBe(false);
+        expect(listed.error).toContain('does not support listByPr');
+        const archived = await archiveAgent({ provider: 'smoke', agentId: 'a' }, emptyCtx);
+        expect(archived).toMatchObject({
+            ok: false,
+            result: 'error',
+        });
+        expect(archived.error).toContain('does not support archive');
     });
 
     it('fetchAgentRun / streamAgentRun unsupported on stub', async () => {
@@ -316,5 +336,50 @@ describe('registry success paths and unknown provider', () => {
             events.push(ev);
         }
         expect(events.some((e) => e.eventType === 'meta' || e.eventType === 'result')).toBe(true);
+    });
+
+    it('listAgentRunsByPrUrl and archiveAgent succeed for cursor', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string, init?: RequestInit) => {
+                const u = String(url);
+                if (u.includes('/archive')) {
+                    return new Response(JSON.stringify({ id: 'bc-1' }), { status: 200 });
+                }
+                if (u.includes('prUrl=')) {
+                    return new Response(
+                        JSON.stringify({
+                            items: [
+                                {
+                                    id: 'bc-1',
+                                    status: 'ACTIVE',
+                                    url: 'https://cursor.com/agents/bc-1',
+                                },
+                            ],
+                        }),
+                        { status: 200 },
+                    );
+                }
+                if ((init?.method ?? 'GET') === 'GET' && u.includes('/agents/bc-1')) {
+                    return new Response(JSON.stringify({ id: 'bc-1', status: 'ACTIVE' }), {
+                        status: 200,
+                    });
+                }
+                return new Response('no', { status: 500 });
+            }),
+        );
+        const listed = await listAgentRunsByPrUrl('cursor', 'https://github.com/o/r/pull/9', ctx);
+        expect(listed.ok).toBe(true);
+        expect(listed.items?.[0]).toMatchObject({ provider: 'cursor', agentId: 'bc-1' });
+        const archived = await archiveAgent({ provider: 'cursor', agentId: 'bc-1' }, ctx);
+        expect(archived).toMatchObject({ ok: true, result: 'ok' });
+        const noKey = await archiveAgent({ provider: 'cursor', agentId: 'bc-1' }, emptyCtx);
+        expect(noKey.error).toContain('CURSOR_API_KEY');
+        const noList = await listAgentRunsByPrUrl(
+            'cursor',
+            'https://github.com/o/r/pull/9',
+            emptyCtx,
+        );
+        expect(noList.ok).toBe(false);
     });
 });

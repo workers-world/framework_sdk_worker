@@ -11,6 +11,13 @@ describe('resolve-underlying', () => {
         expect(normalizeUnderlyingKey('600519')).toBe('600519');
     });
 
+    it('strips A-share and HK exchange suffixes', () => {
+        expect(normalizeUnderlyingKey('601091.SH')).toBe('601091');
+        expect(normalizeUnderlyingKey('600238.sz')).toBe('600238');
+        expect(normalizeUnderlyingKey('01815.HK')).toBe('01815');
+        expect(normalizeUnderlyingKey('1815.hk')).toBe('01815');
+    });
+
     it('prefers explicit over symbols and tags', () => {
         expect(
             resolveInvestEventUnderlying({
@@ -58,10 +65,11 @@ describe('resolve-underlying', () => {
         expect(resolveInvestEventUnderlying({ symbols: ['$$$'] })).toBe('$$$');
     });
 
-    it('generates uuid trace ids', () => {
+    it('generates W3C trace ids (32 hex)', () => {
         const a = newSignalTraceId();
         const b = newSignalTraceId();
-        expect(a).toMatch(/^[0-9a-f-]{36}$/i);
+        expect(a).toMatch(/^[0-9a-f]{32}$/);
+        expect(b).toMatch(/^[0-9a-f]{32}$/);
         expect(a).not.toBe(b);
     });
 });

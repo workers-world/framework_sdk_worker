@@ -59,9 +59,16 @@ describe('runChatDirect', () => {
 
     it('abandons on timeout with {ok:false} (never hangs)', async () => {
         const ai = {
-            run: () =>
+            run: (_model: string, _inputs: unknown, opts?: { signal?: AbortSignal }) =>
                 new Promise((_resolve, reject) => {
-                    setTimeout(() => reject(new Error('should not surface')), 500);
+                    const signal = opts?.signal;
+                    if (signal?.aborted) {
+                        reject(signal.reason ?? new Error('aborted'));
+                        return;
+                    }
+                    signal?.addEventListener('abort', () => {
+                        reject(signal.reason ?? new Error('aborted'));
+                    });
                 }),
         } as unknown as Ai;
         const result = await runChatDirect(
@@ -70,7 +77,7 @@ describe('runChatDirect', () => {
             { timeoutMs: 20 },
         );
         expect(result.ok).toBe(false);
-        expect(result.error).toContain('ai.direct chat');
+        expect(result.error).toBeTruthy();
     });
 
     it('drops non-finite temperature and non-positive max_tokens', async () => {

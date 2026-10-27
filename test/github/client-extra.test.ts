@@ -24,7 +24,13 @@ describe('github client extra branches', () => {
     it('getIssue returns null on error and maps closed state', async () => {
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () => new Response('no', { status: 404 })),
+            vi.fn(
+                async () =>
+                    new Response('no', {
+                        status: 404,
+                        headers: { 'content-type': 'application/json' },
+                    }),
+            ),
         );
         await expect(getIssue(TOKEN, 'o/r', 1)).resolves.toBeNull();
 
@@ -39,8 +45,9 @@ describe('github client extra branches', () => {
                             title: 't',
                             body: null,
                             updated_at: 't',
+                            html_url: 'https://github.com/o/r/issues/2',
                         }),
-                        { status: 200 },
+                        { status: 200, headers: { 'content-type': 'application/json' } },
                     ),
             ),
         );
@@ -67,7 +74,7 @@ describe('github client extra branches', () => {
                             html_url: 'https://github.com/o/r/issues/9',
                             state: 'open',
                         }),
-                        { status: 201 },
+                        { status: 201, headers: { 'content-type': 'application/json' } },
                     ),
             ),
         );
@@ -81,13 +88,25 @@ describe('github client extra branches', () => {
 
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () => new Response(JSON.stringify({}), { status: 201 })),
+            vi.fn(
+                async () =>
+                    new Response(JSON.stringify({}), {
+                        status: 201,
+                        headers: { 'content-type': 'application/json' },
+                    }),
+            ),
         );
         await expect(createIssue(TOKEN, 'o/r', { title: 't', body: 'b' })).resolves.toBeNull();
 
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () => new Response('no', { status: 500 })),
+            vi.fn(
+                async () =>
+                    new Response('no', {
+                        status: 500,
+                        headers: { 'content-type': 'application/json' },
+                    }),
+            ),
         );
         await expect(createIssue(TOKEN, 'o/r', { title: 't', body: 'b' })).resolves.toBeNull();
     });
@@ -123,23 +142,33 @@ describe('github client extra branches', () => {
             if (u === 'https://api.github.com/repos/o/r') {
                 return new Response(JSON.stringify({ id: 9, default_branch: 'main' }), {
                     status: 200,
+                    headers: { 'content-type': 'application/json' },
                 });
             }
             if (u.startsWith('https://uploads.github.com/user-attachments/assets')) {
-                return new Response(JSON.stringify({ href: '' }), { status: 201 });
+                return new Response(JSON.stringify({ href: '' }), {
+                    status: 201,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
             if (u.includes('/contents/') && init?.method === 'PUT') {
                 const body = JSON.parse(String(init.body)) as { sha?: string };
                 expect(body.sha).toBe('abc');
                 return new Response(
                     JSON.stringify({ commit: { html_url: 'https://github.com/o/r/commit/1' } }),
-                    { status: 200 },
+                    { status: 200, headers: { 'content-type': 'application/json' } },
                 );
             }
             if (u.includes('/contents/')) {
-                return new Response(JSON.stringify({ sha: 'abc' }), { status: 200 });
+                return new Response(JSON.stringify({ sha: 'abc' }), {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
-            return new Response('no', { status: 404 });
+            return new Response('no', {
+                status: 404,
+                headers: { 'content-type': 'application/json' },
+            });
         });
         vi.stubGlobal('fetch', spy);
         await expect(
@@ -158,15 +187,25 @@ describe('github client extra branches', () => {
             if (u === 'https://api.github.com/repos/o/r') {
                 return new Response(JSON.stringify({ id: 1, default_branch: 'main' }), {
                     status: 200,
+                    headers: { 'content-type': 'application/json' },
                 });
             }
             if (u.startsWith('https://uploads.github.com/')) {
-                return new Response('no', { status: 404 });
+                return new Response('no', {
+                    status: 404,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
             if (init?.method === 'PUT') {
-                return new Response('no', { status: 422 });
+                return new Response('no', {
+                    status: 422,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
-            return new Response('nf', { status: 404 });
+            return new Response('nf', {
+                status: 404,
+                headers: { 'content-type': 'application/json' },
+            });
         });
         vi.stubGlobal('fetch', failPut);
         await expect(
@@ -181,15 +220,25 @@ describe('github client extra branches', () => {
             if (u === 'https://api.github.com/repos/o/r') {
                 return new Response(JSON.stringify({ id: 1, default_branch: 'main' }), {
                     status: 200,
+                    headers: { 'content-type': 'application/json' },
                 });
             }
             if (u.startsWith('https://uploads.github.com/')) {
-                return new Response('no', { status: 404 });
+                return new Response('no', {
+                    status: 404,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
             if (init?.method === 'PUT') {
-                return new Response('{}', { status: 201 });
+                return new Response('{}', {
+                    status: 201,
+                    headers: { 'content-type': 'application/json' },
+                });
             }
-            return new Response('nf', { status: 404 });
+            return new Response('nf', {
+                status: 404,
+                headers: { 'content-type': 'application/json' },
+            });
         });
         vi.stubGlobal('fetch', emptyPut);
         await expect(
@@ -201,7 +250,13 @@ describe('github client extra branches', () => {
 
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () => new Response('no', { status: 404 })),
+            vi.fn(
+                async () =>
+                    new Response('no', {
+                        status: 404,
+                        headers: { 'content-type': 'application/json' },
+                    }),
+            ),
         );
         await expect(
             uploadIssueAttachment(TOKEN, 'o/r', 1, {

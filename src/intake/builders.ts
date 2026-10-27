@@ -1,13 +1,16 @@
 import { hashString, type LogFields, normalizeError, sanitizeForLog } from '../ops-error.js';
 import { shanghaiIsoString, shanghaiYmdDash } from '../time.js';
+import { buildObservabilityRefBlock, type IntakeHopMeta } from './hop-meta.js';
 import {
     INTAKE_KIND_DESK_DRAFT_QUALITY,
     INTAKE_KIND_DESK_OBS_DUMP,
     INTAKE_KIND_OPS_ERROR,
+    INTAKE_KIND_OPT_LATENCY_DIGEST,
+    INTAKE_KIND_QUALITY_ARTIFACT,
     INTAKE_KIND_QUALITY_CLUSTER,
     INTAKE_KIND_QUALITY_LOG_DIGEST,
 } from './kinds.js';
-import type { IntakePayloadEnvelope } from './payload-envelope.js';
+import type { IntakeEvidenceBlock, IntakePayloadEnvelope } from './payload-envelope.js';
 import type { IntakeEvent, IntakeLink, IntakeSeverity } from './types.js';
 
 export interface OpsErrorIntakePayload {
@@ -66,6 +69,10 @@ export interface QualityClusterCaseRef {
     kind?: string;
     /** = dedupKey；便于反查 audit-log */
     auditLogTraceId?: string;
+    /** 平台 hop（QualityIncident.invocationId） */
+    invocationId?: string;
+    /** 邮件热路径 hop（QualityIncident.emailInvocationId） */
+    emailInvocationId?: string;
     /** 按 ts 升序的 Agent 链路（capture → diagnosis → fix） */
     auditLogs?: QualityClusterAuditLogRef[];
 }
@@ -119,6 +126,8 @@ export function buildOpsErrorIntake(input: {
     error: string;
     context?: LogFields;
     requestId?: string;
+    /** 平台 hop；优先于单独 requestId */
+    hop?: IntakeHopMeta;
     severity?: IntakeSeverity;
     occurredAt?: string;
     dedupKey?: string;
@@ -137,11 +146,46 @@ export function buildOpsErrorIntake(input: {
         }
     }
     const error = truncate(String(input.error).trim(), 800);
-    const payload: OpsErrorIntakePayload = {
-        reason: input.reason,
-        error,
-        ...(Object.keys(safeContext).length > 0 ? { context: safeContext } : {}),
-        ...(input.requestId ? { requestId: input.requestId } : {}),
+    const hopRequestId =
+        input.hop?.invocationId?.trim() ||
+        input.hop?.requestId?.trim() ||
+        input.requestId?.trim() ||
+        undefined;
+    const items: Array<{ key: string; value: string }> = [
+        { key: 'reason', value: input.reason },
+        { key: 'worker', value: input.worker },
+        { key: 'error', value: error },
+    ];
+    for (const [key, value] of Object.entries(safeContext)) {
+        items.push({ key, value: String(value) });
+    }
+    if (hopRequestId) {
+        items.push({ key: 'requestId', value: hopRequestId });
+    }
+    const blocks: IntakeEvidenceBlock[] = [
+        {
+            id: 'kv-ops',
+            type: 'intake.key_value',
+            title: 'ops.error',
+            data: { items },
+        },
+    ];
+    const obs = buildObservabilityRefBlock('obs-hop', {
+        ...(input.hop ?? {}),
+        ...(hopRequestId ? { requestId: hopRequestId } : {}),
+    });
+    if (obs) {
+        blocks.push(obs);
+    }
+    const payload = {
+        payloadVersion: 2 as const,
+        index: {
+            reason: input.reason,
+            worker: input.worker,
+            ...(hopRequestId ? { requestId: hopRequestId } : {}),
+            ...(input.hop?.traceId?.trim() ? { traceId: input.hop.traceId.trim() } : {}),
+        },
+        blocks,
     };
     const title = truncate(`[${input.worker}] ${input.reason}`, 120);
     const summary = truncate(error, 500);
@@ -377,6 +421,122 @@ export function buildDeskObsDumpIntake(input: {
         title,
         summary,
         severity: input.severity ?? 'info',
+        occurredAt: input.occurredAt ?? shanghaiIsoString(),
+        payload: input.payloadEnvelope as unknown as Record<string, unknown>,
+        links: input.links,
+    };
+}
+
+/** opt.latency_digest：一日一行，payload 必须是 v2 envelope */
+export function buildOptLatencyDigestDedupKey(date: string): string {
+    return `${INTAKE_KIND_OPT_LATENCY_DIGEST}:${date}`;
+}
+
+export function buildOptLatencyDigestIntake(input: {
+    date: string;
+    payloadEnvelope: IntakePayloadEnvelope;
+    producer?: string;
+    severity?: IntakeSeverity;
+    occurredAt?: string;
+    summary?: string;
+    links?: IntakeLink[];
+}): IntakeEvent {
+    const cellCount = input.payloadEnvelope.index.cellCount;
+    return {
+        schemaVersion: 1,
+        kind: INTAKE_KIND_OPT_LATENCY_DIGEST,
+        dedupKey: buildOptLatencyDigestDedupKey(input.date),
+        source: {
+            producer: input.producer ?? 'orchestrator-worker',
+            worker: 'orchestrator-worker',
+        },
+        title: truncate(`优化延迟日报 ${input.date}`, 120),
+        summary: truncate(
+            input.summary ?? `Observability calculations Top-N · cells=${cellCount ?? 0}`,
+            500,
+        ),
+        severity: input.severity ?? 'info',
+        occurredAt: input.occurredAt ?? shanghaiIsoString(),
+        payload: input.payloadEnvelope as unknown as Record<string, unknown>,
+        links: input.links,
+    };
+}
+
+/** quality.artifact 通用产物通道 dedup */
+export function buildQualityArtifactDedupKey(input: {
+    worker: string;
+    artifactType: string;
+    storyId: string;
+    mode: 'lite' | 'dump';
+    reason?: string;
+    date?: string;
+}): string {
+    const day = input.date ?? shanghaiYmdDash();
+    const tail = input.mode === 'dump' ? 'dump' : input.reason?.trim() || 'unknown';
+    return `${INTAKE_KIND_QUALITY_ARTIFACT}:${input.worker}:${input.artifactType}:${input.storyId}:${tail}:${day}`;
+}
+
+export function buildQualityArtifactIntake(input: {
+    worker: string;
+    artifactType: string;
+    mode: 'lite' | 'dump';
+    storyId: string;
+    reason?: string;
+    primaryRepo?: string;
+    producer?: string;
+    title?: string;
+    summary?: string;
+    payloadEnvelope: IntakePayloadEnvelope;
+    severity?: IntakeSeverity;
+    occurredAt?: string;
+    dedupKey?: string;
+    links?: IntakeLink[];
+    /** 存量兼容：desk.draft_quality / desk.obs_dump */
+    kindOverride?: string;
+}): IntakeEvent {
+    const kind = input.kindOverride?.trim() || INTAKE_KIND_QUALITY_ARTIFACT;
+    const modeLabel = input.mode === 'dump' ? '观测包' : '质量';
+    const title = truncate(
+        input.title?.trim() ||
+            `${input.artifactType} ${modeLabel} · ${input.storyId.slice(0, 8)}${input.reason ? ` · ${input.reason}` : ''}`,
+        120,
+    );
+    const summary = truncate(
+        input.summary?.trim() ||
+            `storyId=${input.storyId} mode=${input.mode}${input.reason ? ` reason=${input.reason}` : ''}`,
+        500,
+    );
+    let dedupKey = input.dedupKey?.trim();
+    if (!dedupKey) {
+        if (kind === INTAKE_KIND_DESK_DRAFT_QUALITY) {
+            dedupKey = buildDeskDraftQualityDedupKey(
+                input.storyId,
+                input.reason?.trim() || 'unknown',
+            );
+        } else if (kind === INTAKE_KIND_DESK_OBS_DUMP) {
+            dedupKey = buildDeskObsDumpDedupKey(input.storyId);
+        } else {
+            dedupKey = buildQualityArtifactDedupKey({
+                worker: input.worker,
+                artifactType: input.artifactType,
+                storyId: input.storyId,
+                mode: input.mode,
+                reason: input.reason,
+            });
+        }
+    }
+    return {
+        schemaVersion: 1,
+        kind,
+        dedupKey,
+        source: {
+            producer: input.producer ?? input.worker,
+            worker: input.worker,
+            repo: input.primaryRepo,
+        },
+        title,
+        summary,
+        severity: input.severity ?? (input.mode === 'dump' ? 'info' : 'warn'),
         occurredAt: input.occurredAt ?? shanghaiIsoString(),
         payload: input.payloadEnvelope as unknown as Record<string, unknown>,
         links: input.links,

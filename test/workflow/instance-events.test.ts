@@ -3,7 +3,16 @@ import {
     cfTypeToWorkerIoType,
     createWorkflowStreamControl,
     isCfWorkflowTerminalType,
+    isWorkflowIoAttemptCompleted,
+    isWorkflowIoAttemptErrored,
+    isWorkflowIoAttemptStarted,
+    isWorkflowIoStepCompleted,
+    isWorkflowIoStepErrored,
+    isWorkflowIoStepStarted,
+    isWorkflowIoWaitTimedOut,
+    isWorkflowStreamControlId,
     mapWorkflowInstanceEvent,
+    workflowIoStepEventKind,
 } from '../../src/workflow/instance-events.js';
 
 const BASE = {
@@ -115,6 +124,75 @@ describe('mapWorkflowInstanceEvent categories and summaries', () => {
         );
         expect(env.wwsummary).toBe('回滚：s');
         expect(env.wwcategory).toBe('rollback');
+    });
+});
+
+describe('ns / taskId parameterization', () => {
+    it('accepts custom ns and string taskId', () => {
+        expect(cfTypeToWorkerIoType('step_completed', 'x.y')).toBe(
+            'workers-world.x.y.workflow.step.completed',
+        );
+        const env = mapWorkflowInstanceEvent(
+            { ...BASE, type: 'step_completed' },
+            { taskId: 'PGREQ1', ns: 'x.y' },
+        );
+        expect(env.type).toBe('workers-world.x.y.workflow.step.completed');
+        expect(env.data?.taskId).toBe('PGREQ1');
+    });
+
+    it('defaults stay sch1 for back-compat', () => {
+        expect(cfTypeToWorkerIoType('step_completed')).toBe(
+            'workers-world.sch1.task.workflow.step.completed',
+        );
+        const env = mapWorkflowInstanceEvent({ ...BASE, type: 'step_completed' }, { taskId: 1 });
+        expect(env.type).toBe('workers-world.sch1.task.workflow.step.completed');
+        expect(env.source).toBe('/workers/sch1');
+    });
+});
+
+describe('mapped-type predicates', () => {
+    const NS = 'workers-world.sch1.task.workflow';
+
+    it('step group excludes attempt', () => {
+        expect(isWorkflowIoStepStarted(`${NS}.step.started`)).toBe(true);
+        expect(isWorkflowIoStepStarted(`${NS}.wait.started`)).toBe(true);
+        expect(isWorkflowIoStepStarted(`${NS}.sleep.started`)).toBe(true);
+        expect(isWorkflowIoStepStarted(`${NS}.attempt.started`)).toBe(false);
+        expect(isWorkflowIoStepCompleted(`${NS}.step.completed`)).toBe(true);
+        expect(isWorkflowIoStepCompleted(`${NS}.attempt.completed`)).toBe(false);
+        expect(isWorkflowIoStepErrored(`${NS}.step.errored`)).toBe(true);
+    });
+
+    it('attempt group', () => {
+        expect(isWorkflowIoAttemptStarted(`${NS}.attempt.started`)).toBe(true);
+        expect(isWorkflowIoAttemptCompleted(`${NS}.attempt.completed`)).toBe(true);
+        expect(isWorkflowIoAttemptErrored(`${NS}.attempt.errored`)).toBe(true);
+        expect(isWorkflowIoAttemptStarted(`${NS}.step.started`)).toBe(false);
+    });
+
+    it('wait timed out double spelling', () => {
+        expect(isWorkflowIoWaitTimedOut(`${NS}.wait.timed.out`)).toBe(true);
+        expect(isWorkflowIoWaitTimedOut(`${NS}.wait_timed_out`)).toBe(true);
+        expect(isWorkflowIoWaitTimedOut(`${NS}.wait.completed`)).toBe(false);
+    });
+
+    it('eventKind includes attempt group', () => {
+        expect(workflowIoStepEventKind(`${NS}.attempt.completed`)).toEqual({
+            started: false,
+            completed: true,
+            errored: false,
+        });
+        expect(workflowIoStepEventKind(`${NS}.wait.timed.out`).errored).toBe(true);
+        expect(workflowIoStepEventKind(`${NS}.step.started`)).toEqual({
+            started: true,
+            completed: false,
+            errored: false,
+        });
+    });
+
+    it('stream control id', () => {
+        expect(isWorkflowStreamControlId('0:ready:i')).toBe(true);
+        expect(isWorkflowStreamControlId('i:1')).toBe(false);
     });
 });
 

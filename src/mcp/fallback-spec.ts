@@ -549,6 +549,133 @@ export const DEFAULT_FALLBACK_SPEC: OpenApiDoc = {
                 responses: { '200': { description: 'ok' } },
             },
         },
+        '/v1/agent/planning/requirements': {
+            post: {
+                operationId: 'agentPlanningCreateRequirement',
+                tags: ['infra', 'planning'],
+                summary: '创建规划暂存 PGREQ（Agent；Bearer RULES_ADMIN_TOKEN）',
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                required: ['title'],
+                                properties: {
+                                    title: { type: 'string' },
+                                    description: { type: 'string' },
+                                    priority: { type: 'string' },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    '200': { description: 'WorkerIoEnvelope requirement_created' },
+                    '401': { description: 'unauthorized' },
+                },
+            },
+        },
+        '/v1/agent/planning/requirements/{id}': {
+            get: {
+                operationId: 'agentPlanningGetRequirement',
+                tags: ['infra', 'planning'],
+                summary: '读取单条 PGREQ',
+                parameters: [
+                    { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+                ],
+                responses: {
+                    '200': { description: 'WorkerIoEnvelope requirement_fetched' },
+                    '404': { description: 'not found' },
+                },
+            },
+        },
+        '/v1/agent/planning/catalog': {
+            get: {
+                operationId: 'agentPlanningCatalog',
+                tags: ['infra', 'planning'],
+                summary: '搜索规划仓 catalog',
+                parameters: [
+                    { name: 'q', in: 'query', required: false, schema: { type: 'string' } },
+                ],
+                responses: { '200': { description: 'WorkerIoEnvelope catalog_listed' } },
+            },
+        },
+        '/v1/agent/planning/github-issue': {
+            post: {
+                operationId: 'agentPlanningCreateGithubIssue',
+                tags: ['infra', 'planning'],
+                summary: '闸 A：PGREQ → GitHub Issue（须 confirm: true；无 agent-needed）',
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                required: ['requirementId', 'targetRepo'],
+                                properties: {
+                                    requirementId: { type: 'string' },
+                                    targetRepo: { type: 'string' },
+                                    confirm: { type: 'boolean' },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    '200': { description: 'WorkerIoEnvelope github_issue_created' },
+                    '400': { description: 'preview（缺 confirm）或业务冲突' },
+                    '401': { description: 'unauthorized' },
+                },
+            },
+        },
+        '/v1/deps': {
+            get: {
+                operationId: 'listDepCatalog',
+                tags: ['infra', 'consumers'],
+                summary: '依赖目录（WW-151；Bearer RULES_ADMIN_TOKEN）',
+                responses: {
+                    '200': { description: 'deps 列表' },
+                    '401': { description: 'unauthorized' },
+                },
+            },
+        },
+        '/v1/consumers': {
+            get: {
+                operationId: 'listDepConsumers',
+                tags: ['infra', 'consumers'],
+                summary: '按 dep 拉消费者（default branch；Bearer RULES_ADMIN_TOKEN）',
+                parameters: [
+                    { name: 'dep', in: 'query', required: true, schema: { type: 'string' } },
+                    {
+                        name: 'status',
+                        in: 'query',
+                        required: false,
+                        schema: { type: 'string', enum: ['all', 'upgradable', 'current'] },
+                    },
+                ],
+                responses: {
+                    '200': { description: 'consumers 列表' },
+                    '400': { description: 'invalid_dep' },
+                    '401': { description: 'unauthorized' },
+                },
+            },
+        },
+        '/v1/consumers/scan': {
+            post: {
+                operationId: 'scanDepConsumers',
+                tags: ['infra', 'consumers'],
+                summary: '强制刷新消费者快照',
+                parameters: [
+                    { name: 'dep', in: 'query', required: true, schema: { type: 'string' } },
+                ],
+                responses: {
+                    '200': { description: '扫描摘要' },
+                    '400': { description: 'invalid_dep' },
+                    '401': { description: 'unauthorized' },
+                },
+            },
+        },
     },
 };
 

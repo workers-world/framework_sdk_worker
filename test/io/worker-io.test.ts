@@ -14,6 +14,7 @@ import {
 } from '../../src/io/serde.js';
 import { decodeWorkerIoQueueBody } from '../../src/io/transports/queue.js';
 import { decodeWorkerIoSseFrame, encodeWorkerIoSseFrame } from '../../src/io/transports/sse.js';
+import { InvalidTraceIdError } from '../../src/trace-id/index.js';
 import {
     createWorkflowStreamControl,
     mapWorkflowInstanceEvent,
@@ -34,6 +35,52 @@ describe('WorkerIoEnvelope', () => {
         const back = decodeWorkerIoEnvelope(json);
         expect(back.id).toBe('a:1');
         expect(back.data).toEqual({ taskId: 1 });
+    });
+
+    it('stores canonical CloudEvents traceparent', () => {
+        const traceId = '5b8aa5a2d2c872e8321cf37308d69df2';
+        const spanId = '00f067aa0ba902b7';
+        const e = createWorkerIoEnvelope({
+            id: 'a:1',
+            source: '/workers/sch1',
+            type: 'workers-world.sch1.task.step',
+            traceparent: `00-${traceId}-${spanId}-01`,
+            tracestate: 'ww=desk',
+        });
+        expect(e.traceparent).toBe(`00-${traceId}-${spanId}-01`);
+        expect(e.tracestate).toBe('ww=desk');
+        const back = decodeWorkerIoEnvelope(encodeWorkerIoEnvelope(e));
+        expect(back.traceparent).toBe(e.traceparent);
+    });
+
+    it('canonicalizes traceparent and rejects a non-W3C value', () => {
+        const traceId = '5b8aa5a2d2c872e8321cf37308d69df2';
+        const spanId = '00f067aa0ba902b7';
+        const e = createWorkerIoEnvelope({
+            id: 'a:2',
+            source: '/workers/sch1',
+            type: 'workers-world.sch1.task.step',
+            traceparent: `  00-${traceId.toUpperCase()}-${spanId.toUpperCase()}-01  `,
+            tracestate: '  ww=desk  ',
+        });
+        expect(e.traceparent).toBe(`00-${traceId}-${spanId}-01`);
+        expect(e.tracestate).toBe('ww=desk');
+        expect(() =>
+            createWorkerIoEnvelope({
+                id: 'a:3',
+                source: '/workers/sch1',
+                type: 'workers-world.sch1.task.step',
+                traceparent: 'trc_desk_20260921_k7m2n9p4qx',
+            }),
+        ).toThrow(InvalidTraceIdError);
+        expect(() =>
+            createWorkerIoEnvelope({
+                id: 'a:4',
+                source: '/workers/sch1',
+                type: 'workers-world.sch1.task.step',
+                tracestate: '   ',
+            }),
+        ).toThrow(InvalidTraceIdError);
     });
 
     it('assert rejects non-envelope', () => {

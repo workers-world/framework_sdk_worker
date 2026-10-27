@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.17",
+  "version": "0.4.43",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -15,6 +15,10 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "workers-deploy-worker": "./scripts/workers-deploy-worker.mjs",
+    "workers-preview-worker": "./scripts/workers-preview-worker.mjs"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -40,9 +44,25 @@
       "import": "./dist/d1/tech-meta.js",
       "types": "./dist/d1/tech-meta.d.ts"
     },
+    "./d1/resource-lock": {
+      "import": "./dist/d1/resource-lock.js",
+      "types": "./dist/d1/resource-lock.d.ts"
+    },
     "./notify": {
       "import": "./dist/notify/client.js",
       "types": "./dist/notify/client.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser/index.js",
+      "types": "./dist/browser/index.d.ts"
+    },
+    "./browser/client": {
+      "import": "./dist/browser/client.js",
+      "types": "./dist/browser/client.d.ts"
+    },
+    "./attachment": {
+      "import": "./dist/attachment/types.js",
+      "types": "./dist/attachment/types.d.ts"
     },
     "./auth": {
       "import": "./dist/auth/middleware.js",
@@ -51,6 +71,10 @@
     "./auth/require-admin": {
       "import": "./dist/auth/require-admin.js",
       "types": "./dist/auth/require-admin.d.ts"
+    },
+    "./auth/scoped-key": {
+      "import": "./dist/auth/scoped-key-middleware.js",
+      "types": "./dist/auth/scoped-key-middleware.d.ts"
     },
     "./hono": {
       "import": "./dist/hono/create-app.js",
@@ -96,6 +120,10 @@
       "import": "./dist/ai/neuron-quota.js",
       "types": "./dist/ai/neuron-quota.d.ts"
     },
+    "./ai/provider-credential": {
+      "import": "./dist/ai/provider-credential.js",
+      "types": "./dist/ai/provider-credential.d.ts"
+    },
     "./ai/client": {
       "import": "./dist/ai/client.js",
       "types": "./dist/ai/client.d.ts"
@@ -104,9 +132,17 @@
       "import": "./dist/ai/direct.js",
       "types": "./dist/ai/direct.d.ts"
     },
+    "./ai/clef": {
+      "import": "./dist/ai/clef.js",
+      "types": "./dist/ai/clef.d.ts"
+    },
     "./github/app-auth": {
       "import": "./dist/github/app-auth.js",
       "types": "./dist/github/app-auth.d.ts"
+    },
+    "./github/octokit": {
+      "import": "./dist/github/octokit.js",
+      "types": "./dist/github/octokit.d.ts"
     },
     "./github/client": {
       "import": "./dist/github/client.js",
@@ -148,6 +184,10 @@
       "import": "./dist/id-generator/index.js",
       "types": "./dist/id-generator/index.d.ts"
     },
+    "./trace-id": {
+      "import": "./dist/trace-id/index.js",
+      "types": "./dist/trace-id/index.d.ts"
+    },
     "./audit-log": {
       "import": "./dist/audit-log/client.js",
       "types": "./dist/audit-log/client.d.ts"
@@ -171,6 +211,10 @@
     "./resilience/circuit-breaker": {
       "import": "./dist/resilience/circuit-breaker.js",
       "types": "./dist/resilience/circuit-breaker.d.ts"
+    },
+    "./resilience/provider-error": {
+      "import": "./dist/resilience/provider-error.js",
+      "types": "./dist/resilience/provider-error.d.ts"
     },
     "./email/escape-html": {
       "import": "./dist/email/escape-html.js",
@@ -300,6 +344,10 @@
       "import": "./dist/evaluation/quality-code-targets.js",
       "types": "./dist/evaluation/quality-code-targets.d.ts"
     },
+    "./observability/worker-invocation-id": {
+      "import": "./dist/observability/worker-invocation-id.js",
+      "types": "./dist/observability/worker-invocation-id.d.ts"
+    },
     "./observability/platform-log": {
       "import": "./dist/observability/platform-log.js",
       "types": "./dist/observability/platform-log.d.ts"
@@ -311,6 +359,10 @@
     "./observability/quality-sample": {
       "import": "./dist/observability/quality-sample.js",
       "types": "./dist/observability/quality-sample.d.ts"
+    },
+    "./observability/metric-cell": {
+      "import": "./dist/observability/metric-cell.js",
+      "types": "./dist/observability/metric-cell.d.ts"
     },
     "./observability/cf-agents": {
       "import": "./dist/observability/cf-agents.js",
@@ -355,8 +407,9 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250617.0",
+    "@octokit/types": "^18.0.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "hono": "^4.13.7",
+    "hono": "^4.13.14",
     "tsup": "^8.5.0",
     "typescript": "^5.7.3",
     "vitest": "^4.1.11"
@@ -366,6 +419,7 @@
   },
   "files": [
     "dist",
+    "scripts",
     "biome-shared.json"
   ],
   "repository": {
@@ -375,5 +429,9 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "restricted"
+  },
+  "dependencies": {
+    "@octokit/core": "^7.0.8",
+    "@octokit/plugin-rest-endpoint-methods": "^18.0.0"
   }
 }

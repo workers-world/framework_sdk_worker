@@ -11,11 +11,13 @@ export {
     smokeAgentProvider,
 } from './providers/stub.js';
 export {
+    archiveAgent,
     createAgentRun,
     ensureDefaultAgentProviders,
     fetchAgentRun,
     getAgentProvider,
     listAgentModels,
+    listAgentRunsByPrUrl,
     listRegisteredProviders,
     registerAgentProvider,
     streamAgentRun,
@@ -27,8 +29,12 @@ export {
 } from './stream.js';
 export {
     AGENT_PROVIDER_IDS,
+    type AgentArchiveCode,
+    type AgentArchiveResult,
     type AgentCreateInput,
     type AgentCreateResult,
+    type AgentListByPrResult,
+    type AgentListedRun,
     type AgentModelEntry,
     type AgentModelRef,
     type AgentModelsListResult,

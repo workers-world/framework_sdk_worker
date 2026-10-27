@@ -2,6 +2,7 @@
  * Intake payload 通用信封 v2：index（routing/摘要）+ blocks（可扩展证据）。
  * 新 enrich / 新 kind 只追加 block，不修改既有 block type 的 data 形状。
  */
+import type { Attachment } from '../attachment/types.js';
 import type { QualityClusterAuditLogRef, QualityClusterCaseRef } from './builders.js';
 
 export const INTAKE_PAYLOAD_VERSION = 2 as const;
@@ -53,6 +54,8 @@ export const INTAKE_BLOCK_WORKER_IO_STREAM = 'intake.worker_io_stream';
 export const INTAKE_BLOCK_DRAFT_SNAPSHOT = 'intake.draft_snapshot';
 export const INTAKE_BLOCK_CF_AGENTS_REF = 'intake.cf_agents_ref';
 export const INTAKE_BLOCK_OBSERVABILITY_REF = 'intake.observability_ref';
+/** 业务产物快照（lite 截断 / dump 尽量完整） */
+export const INTAKE_BLOCK_ARTIFACT_SNAPSHOT = 'intake.artifact_snapshot';
 
 export interface AuditLogChainBlockData {
     logs: QualityClusterAuditLogRef[];
@@ -66,9 +69,8 @@ export interface MarkdownBlockData {
     text: string;
 }
 
-export interface AttachmentRefItem {
-    filename: string;
-    contentType?: string;
+/** Intake 证据附件：对齐 Attachment 祖先；r2Key 可选（批准后上传 GitHub） */
+export interface AttachmentRefItem extends Attachment {
     sizeBytes?: number;
     note?: string;
     /** orchestrator 写入 R2 的稳定 key；批准 Issue 时 sch1 据此拉取并上传 GitHub */
@@ -119,6 +121,13 @@ export interface ObservabilityRefBlockData {
     cfRequestId?: string;
     traceUrl?: string;
     note?: string;
+}
+
+export interface ArtifactSnapshotBlockData {
+    /** 产物类型，如 desk.draft */
+    artifactType?: string;
+    mode?: 'lite' | 'dump';
+    snapshot: Record<string, unknown>;
 }
 
 export function isIntakePayloadEnvelope(payload: unknown): payload is IntakePayloadEnvelope {
@@ -273,6 +282,30 @@ export function buildKeyValueBlock(
         title,
         data: { items } satisfies KeyValueBlockData,
         markdown: lines.length > 0 ? `### ${title}\n\n${lines.join('\n')}` : undefined,
+    };
+}
+
+export function buildArtifactSnapshotBlock(
+    id: string,
+    snapshot: Record<string, unknown>,
+    options?: {
+        title?: string;
+        artifactType?: string;
+        mode?: 'lite' | 'dump';
+        truncated?: boolean;
+    },
+): IntakeEvidenceBlock {
+    const title = options?.title ?? '产物快照';
+    return {
+        id,
+        type: INTAKE_BLOCK_ARTIFACT_SNAPSHOT,
+        title,
+        data: {
+            ...(options?.artifactType ? { artifactType: options.artifactType } : {}),
+            ...(options?.mode ? { mode: options.mode } : {}),
+            snapshot,
+        } satisfies ArtifactSnapshotBlockData,
+        truncated: options?.truncated,
     };
 }
 
