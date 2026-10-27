@@ -179,6 +179,56 @@ describe('fetchCursorAgentUsage', () => {
         expect(result.usage?.inputTokens).toBe(10);
     });
 
+    it('matches runs[] by id when runId field is absent', async () => {
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: {
+                        totalUsage: {
+                            inputTokens: 100,
+                            outputTokens: 200,
+                            totalTokens: 300,
+                        },
+                        runs: [
+                            {
+                                id: 'r1',
+                                usage: { inputTokens: 7, outputTokens: 8, totalTokens: 15 },
+                            },
+                        ],
+                    },
+                },
+            ]),
+        );
+        const result = await fetchCursorAgentUsage(API_KEY, 'a1', { runId: 'r1' });
+        expect(result.ok).toBe(true);
+        expect(result.totalTokens).toBe(15);
+    });
+
+    it('returns undefined totalTokens when usage is all zero', async () => {
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: {
+                        runs: [
+                            {
+                                id: 'r1',
+                                usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+                            },
+                        ],
+                    },
+                },
+            ]),
+        );
+        const result = await fetchCursorAgentUsage(API_KEY, 'a1', { runId: 'r1' });
+        expect(result.ok).toBe(true);
+        expect(result.totalTokens).toBeUndefined();
+        expect(result.usage).toBeUndefined();
+    });
+
     it('prefers the matching run usage over totalUsage when runId is passed', async () => {
         vi.stubGlobal(
             'fetch',

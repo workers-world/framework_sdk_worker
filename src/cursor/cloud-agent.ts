@@ -579,6 +579,7 @@ interface CursorUsageResponse {
         totalTokens?: number;
     };
     runs?: Array<{
+        id?: string;
         runId?: string;
         usage?: {
             inputTokens?: number;
@@ -602,15 +603,26 @@ function normalizeUsage(
           }
         | null
         | undefined,
-): CursorTokenUsage {
-    const inputTokens = Number(raw?.inputTokens ?? 0);
-    const outputTokens = Number(raw?.outputTokens ?? 0);
-    const cacheWriteTokens = Number(raw?.cacheWriteTokens ?? 0);
-    const cacheReadTokens = Number(raw?.cacheReadTokens ?? 0);
+): CursorTokenUsage | null {
+    if (!raw) {
+        return null;
+    }
+    const inputTokens = Number(raw.inputTokens ?? 0);
+    const outputTokens = Number(raw.outputTokens ?? 0);
+    const cacheWriteTokens = Number(raw.cacheWriteTokens ?? 0);
+    const cacheReadTokens = Number(raw.cacheReadTokens ?? 0);
     const totalTokens =
-        Number(raw?.totalTokens ?? 0) ||
+        Number(raw.totalTokens ?? 0) ||
         inputTokens + outputTokens + cacheWriteTokens + cacheReadTokens;
+    if (!Number.isFinite(totalTokens) || totalTokens <= 0) {
+        return null;
+    }
     return { inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens, totalTokens };
+}
+
+function runUsageId(run: { id?: string; runId?: string }): string | undefined {
+    const id = run.id ?? run.runId;
+    return id != null && id !== '' ? id : undefined;
 }
 
 /** 查询 Cloud Agent token 用量（可按 runId 过滤） */
@@ -636,15 +648,23 @@ export async function fetchCursorAgentUsage(
     }
     // 传 runId：优先 runs[] 中匹配 runId 的 usage（totalUsage 是整个 agent 的汇总），
     // 找不到才回退 totalUsage；未传 runId 才直接用 totalUsage
-    const fromTotal = resp.data.totalUsage ? normalizeUsage(resp.data.totalUsage) : null;
+    const fromTotal = normalizeUsage(resp.data.totalUsage);
     const matchedRun = opts?.runId
-        ? resp.data.runs?.find((r) => r.runId != null && r.runId === opts.runId)
+        ? resp.data.runs?.find((r) => runUsageId(r) === opts.runId)
         : undefined;
     const fromMatchedRun = matchedRun?.usage ? normalizeUsage(matchedRun.usage) : null;
-    const firstRun = resp.data.runs?.[0]?.usage ? normalizeUsage(resp.data.runs[0].usage) : null;
-    const usage =
-        (opts?.runId ? fromMatchedRun : null) ?? fromTotal ?? firstRun ?? normalizeUsage(undefined);
-    return { ok: true, totalTokens: usage.totalTokens, usage };
+    const firstRunUsage = resp.data.runs?.[0]?.usage;
+    const fromFirstRun = firstRunUsage ? normalizeUsage(firstRunUsage) : null;
+    const usage = opts?.runId
+        ? matchedRun
+            ? fromMatchedRun
+            : fromTotal
+        : (fromTotal ?? fromFirstRun);
+    return {
+        ok: true,
+        totalTokens: usage?.totalTokens,
+        usage: usage ?? undefined,
+    };
 }
 
 export interface CursorAgentListItem {
