@@ -263,6 +263,16 @@ function bytesToBase64(bytes: Uint8Array): string {
     return btoa(binary);
 }
 
+const MAX_CONTENTS_PATH_PREFIX_LEN = 512;
+
+function stripTrailingSlashes(value: string): string {
+    let end = value.length;
+    while (end > 0 && value[end - 1] === '/') {
+        end -= 1;
+    }
+    return value.slice(0, end);
+}
+
 function safeAttachmentFilename(filename: string): string {
     const base = filename.replace(/\\/g, '/').split('/').pop() ?? 'attachment.bin';
     return base.replace(/[^\w.\-()+@]/g, '_') || 'attachment.bin';
@@ -331,9 +341,15 @@ export async function uploadIssueAttachment(
         }
     }
 
+    const rawPrefix = input.contentsPathPrefix;
     const prefix =
-        input.contentsPathPrefix?.replace(/\/+$/, '') ||
-        `.sch1/intake-evidence/issue-${issueNumber}`;
+        (rawPrefix
+            ? stripTrailingSlashes(
+                  rawPrefix.length > MAX_CONTENTS_PATH_PREFIX_LEN
+                      ? rawPrefix.slice(0, MAX_CONTENTS_PATH_PREFIX_LEN)
+                      : rawPrefix,
+              )
+            : undefined) || `.sch1/intake-evidence/issue-${issueNumber}`;
     const path = `${prefix}/${filename}`;
     const branch = input.branch?.trim() || meta.defaultBranch;
     const encodedPath = encodeContentsPath(path);
