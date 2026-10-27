@@ -311,6 +311,9 @@ export function isNoisyErrorBurstMessage(message: string): boolean {
     if (text.length < 8 && !/error|exception|d1_/i.test(text)) {
         return true;
     }
+    if (/^ai_run\s+@cf\/\S+\s+->\s+(rate_limited|error)\b/i.test(text)) {
+        return true;
+    }
     return false;
 }
 
