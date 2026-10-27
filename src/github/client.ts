@@ -294,6 +294,23 @@ function bytesToBase64(bytes: Uint8Array): string {
 const MAX_ATTACHMENT_FILENAME_LEN = 512;
 const MAX_CONTENTS_PATH_PREFIX_LEN = 512;
 
+/**
+ * Cap UTF-16 length without splitting a surrogate pair at the boundary.
+ * A lone high surrogate would make encodeURIComponent / URL path encoding throw URIError.
+ */
+function boundStringLength(value: string, maxLen: number): string {
+    if (value.length <= maxLen) {
+        return value;
+    }
+    let end = maxLen;
+    const last = value.charCodeAt(end - 1);
+    // High surrogate (U+D800–U+DBFF) at the cut means the pair was split; drop the orphan.
+    if (last >= 0xd800 && last <= 0xdbff) {
+        end -= 1;
+    }
+    return value.slice(0, end);
+}
+
 function stripTrailingSlashes(value: string): string {
     let end = value.length;
     while (end > 0 && value.charCodeAt(end - 1) === 47) {
@@ -305,7 +322,7 @@ function stripTrailingSlashes(value: string): string {
 function safeAttachmentFilename(filename: string): string {
     const bounded =
         filename.length > MAX_ATTACHMENT_FILENAME_LEN
-            ? filename.slice(0, MAX_ATTACHMENT_FILENAME_LEN)
+            ? boundStringLength(filename, MAX_ATTACHMENT_FILENAME_LEN)
             : filename;
     const base = bounded.replaceAll('\\', '/').split('/').pop() ?? 'attachment.bin';
     return base.replace(/[^\w.\-()+@]/g, '_') || 'attachment.bin';
@@ -379,7 +396,7 @@ export async function uploadIssueAttachment(
         (rawPrefix
             ? stripTrailingSlashes(
                   rawPrefix.length > MAX_CONTENTS_PATH_PREFIX_LEN
-                      ? rawPrefix.slice(0, MAX_CONTENTS_PATH_PREFIX_LEN)
+                      ? boundStringLength(rawPrefix, MAX_CONTENTS_PATH_PREFIX_LEN)
                       : rawPrefix,
               )
             : undefined) || `.sch1/intake-evidence/issue-${issueNumber}`;
