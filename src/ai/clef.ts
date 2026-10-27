@@ -179,7 +179,7 @@ export async function runClefEvaluate(
  */
 export async function runClefNoul(
     ai: Ai | undefined,
-    params: ClefNoulParams,
-): Promise<ClefNoulResult> {
+    params: ClefEvaluateParams,
+): Promise<ClefEvaluateResult> {
     return runClefEvaluate(ai, params);
 }
