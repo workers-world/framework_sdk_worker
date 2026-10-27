@@ -1,30 +1,58 @@
 /**
  * decision-desk 标的（underlying）统一解析与 trace 发号。
  */
-import {isFundCode} from '../fund/normalize-code.js';
+import { isFundCode } from '../fund/normalize-code.js';
+import { mintTraceId } from '../trace-id.js';
 
 const TICKER_RE = /^[A-Z]{1,5}(\.[A-Z]+)?$/;
 
-/** 规范化标的键：trim；纯字母 ticker 大写；6 位数字保持原样。 */
+const A_SHARE_SUFFIX_RE = /^(\d{6})\.(SH|SZ|BJ)$/i;
+const HK_SUFFIX_RE = /^(\d{4,5})\.HK$/i;
+
+/** 规范化标的键：trim；交易所后缀 → 代码；纯字母 ticker 大写；6 位数字保持原样。 */
 export function normalizeUnderlyingKey(raw: string): string {
     const trimmed = String(raw ?? '').trim();
-    if (!trimmed) return '';
-    if (isFundCode(trimmed)) return trimmed;
-    if (/^[A-Za-z][A-Za-z0-9.]*$/.test(trimmed)) return trimmed.toUpperCase();
+    if (!trimmed) {
+        return '';
+    }
+    const ashare = trimmed.match(A_SHARE_SUFFIX_RE);
+    if (ashare) {
+        return ashare[1];
+    }
+    const hk = trimmed.match(HK_SUFFIX_RE);
+    if (hk) {
+        return hk[1].padStart(5, '0');
+    }
+    if (isFundCode(trimmed)) {
+        return trimmed;
+    }
+    if (/^[A-Za-z][A-Za-z0-9.]*$/.test(trimmed)) {
+        return trimmed.toUpperCase();
+    }
     return trimmed;
 }
 
 function pickFromTags(tags: string[] | undefined): string | null {
-    if (!tags?.length) return null;
-    for (const tag of tags) {
-        const normalized = normalizeUnderlyingKey(tag);
-        if (!normalized) continue;
-        if (isFundCode(normalized)) return normalized;
+    if (!tags?.length) {
+        return null;
     }
     for (const tag of tags) {
         const normalized = normalizeUnderlyingKey(tag);
-        if (!normalized) continue;
-        if (TICKER_RE.test(normalized)) return normalized;
+        if (!normalized) {
+            continue;
+        }
+        if (isFundCode(normalized)) {
+            return normalized;
+        }
+    }
+    for (const tag of tags) {
+        const normalized = normalizeUnderlyingKey(tag);
+        if (!normalized) {
+            continue;
+        }
+        if (TICKER_RE.test(normalized)) {
+            return normalized;
+        }
     }
     return null;
 }
@@ -49,7 +77,7 @@ export function resolveInvestEventUnderlying(input: {
     return fromTags ? normalizeUnderlyingKey(fromTags) : null;
 }
 
-/** signal / 批处理操作关联 ID（非业务发号）。 */
+/** signal / 批处理故事键（W3C 32 hex trace-id；与 desk lineageId 同形）。 */
 export function newSignalTraceId(): string {
-    return crypto.randomUUID();
+    return mintTraceId();
 }

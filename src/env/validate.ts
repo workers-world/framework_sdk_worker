@@ -1,4 +1,4 @@
-import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
 
 export type EnvMode = 'dev' | 'prod';
 
@@ -51,10 +51,7 @@ function isEmptyValue(value: unknown): boolean {
     return false;
 }
 
-async function isRuleMissing(
-    env: EnvLike,
-    rule: EnvRule,
-): Promise<boolean> {
+async function isRuleMissing(env: EnvLike, rule: EnvRule): Promise<boolean> {
     const value = env[rule.key];
     if (rule.secret) {
         const resolved = await resolveSecret(value as SecretLike | undefined);
@@ -103,13 +100,20 @@ export async function assertEnvAsync(
 
 const onceKeys = new Set<string>();
 
-/** 同一 Worker isolate 内只校验一次（按 rules 签名） */
+/**
+ * 同一 Worker isolate 内只校验一次（按 rules + mode 签名）。
+ * 缓存为 isolate 生命周期：成功后不再复验（Secrets Store 后续失效不会被发现）；
+ * 先后以不同 mode 调用会分别校验。
+ */
 export async function assertEnvOnce(
     env: object,
     rules: EnvRule[],
     options?: { mode?: EnvMode },
 ): Promise<void> {
-    const signature = rules.map((r) => `${r.key}:${r.required ?? ''}:${r.secret ?? ''}`).join('|');
+    const mode = options?.mode ?? getEnvMode(asEnvRecord(env));
+    const signature = `${mode}#${rules
+        .map((r) => `${r.key}:${r.required ?? ''}:${r.secret ?? ''}`)
+        .join('|')}`;
     if (onceKeys.has(signature)) {
         return;
     }
@@ -118,10 +122,7 @@ export async function assertEnvOnce(
 }
 
 /** dev 且无 RESEND_API_KEY 时走 console dryRun */
-export function shouldResendDryRun(
-    env: object,
-    apiKey?: string,
-): boolean {
+export function shouldResendDryRun(env: object, apiKey?: string): boolean {
     if (apiKey?.trim()) {
         return false;
     }

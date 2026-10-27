@@ -1,16 +1,24 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.1.13",
+  "version": "0.4.44",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "lint": "npx --yes @biomejs/biome@2.5.1 check src test",
+    "format": "npx --yes @biomejs/biome@2.5.1 format --write src test",
+    "typecheck": "tsc --noEmit -p tsconfig.src.json",
+    "check": "npm run lint && npm run typecheck"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "workers-deploy-worker": "./scripts/workers-deploy-worker.mjs",
+    "workers-preview-worker": "./scripts/workers-preview-worker.mjs"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -20,13 +28,53 @@
       "import": "./dist/async/sleep.js",
       "types": "./dist/async/sleep.d.ts"
     },
+    "./async/with-timeout": {
+      "import": "./dist/async/with-timeout.js",
+      "types": "./dist/async/with-timeout.d.ts"
+    },
+    "./async/map-with-concurrency": {
+      "import": "./dist/async/map-with-concurrency.js",
+      "types": "./dist/async/map-with-concurrency.d.ts"
+    },
+    "./d1/escape-like": {
+      "import": "./dist/d1/escape-like.js",
+      "types": "./dist/d1/escape-like.d.ts"
+    },
+    "./d1/tech-meta": {
+      "import": "./dist/d1/tech-meta.js",
+      "types": "./dist/d1/tech-meta.d.ts"
+    },
+    "./d1/resource-lock": {
+      "import": "./dist/d1/resource-lock.js",
+      "types": "./dist/d1/resource-lock.d.ts"
+    },
     "./notify": {
       "import": "./dist/notify/client.js",
       "types": "./dist/notify/client.d.ts"
     },
+    "./browser": {
+      "import": "./dist/browser/index.js",
+      "types": "./dist/browser/index.d.ts"
+    },
+    "./browser/client": {
+      "import": "./dist/browser/client.js",
+      "types": "./dist/browser/client.d.ts"
+    },
+    "./attachment": {
+      "import": "./dist/attachment/types.js",
+      "types": "./dist/attachment/types.d.ts"
+    },
     "./auth": {
       "import": "./dist/auth/middleware.js",
       "types": "./dist/auth/middleware.d.ts"
+    },
+    "./auth/require-admin": {
+      "import": "./dist/auth/require-admin.js",
+      "types": "./dist/auth/require-admin.d.ts"
+    },
+    "./auth/scoped-key": {
+      "import": "./dist/auth/scoped-key-middleware.js",
+      "types": "./dist/auth/scoped-key-middleware.d.ts"
     },
     "./hono": {
       "import": "./dist/hono/create-app.js",
@@ -36,9 +84,17 @@
       "import": "./dist/http/parse-json.js",
       "types": "./dist/http/parse-json.d.ts"
     },
+    "./http/fetch-page-meta": {
+      "import": "./dist/http/fetch-page-meta.js",
+      "types": "./dist/http/fetch-page-meta.d.ts"
+    },
     "./r2": {
       "import": "./dist/r2/put.js",
       "types": "./dist/r2/put.d.ts"
+    },
+    "./r2/retry": {
+      "import": "./dist/r2/retry.js",
+      "types": "./dist/r2/retry.d.ts"
     },
     "./r2/gold-price": {
       "import": "./dist/r2/gold-price.js",
@@ -64,9 +120,53 @@
       "import": "./dist/ai/neuron-quota.js",
       "types": "./dist/ai/neuron-quota.d.ts"
     },
+    "./ai/provider-credential": {
+      "import": "./dist/ai/provider-credential.js",
+      "types": "./dist/ai/provider-credential.d.ts"
+    },
     "./ai/client": {
       "import": "./dist/ai/client.js",
       "types": "./dist/ai/client.d.ts"
+    },
+    "./ai/direct": {
+      "import": "./dist/ai/direct.js",
+      "types": "./dist/ai/direct.d.ts"
+    },
+    "./ai/clef": {
+      "import": "./dist/ai/clef.js",
+      "types": "./dist/ai/clef.d.ts"
+    },
+    "./github/app-auth": {
+      "import": "./dist/github/app-auth.js",
+      "types": "./dist/github/app-auth.d.ts"
+    },
+    "./github/octokit": {
+      "import": "./dist/github/octokit.js",
+      "types": "./dist/github/octokit.d.ts"
+    },
+    "./github/client": {
+      "import": "./dist/github/client.js",
+      "types": "./dist/github/client.d.ts"
+    },
+    "./github/repo": {
+      "import": "./dist/github/repo.js",
+      "types": "./dist/github/repo.d.ts"
+    },
+    "./cursor/cloud-agent": {
+      "import": "./dist/cursor/cloud-agent.js",
+      "types": "./dist/cursor/cloud-agent.d.ts"
+    },
+    "./agent": {
+      "import": "./dist/agent/index.js",
+      "types": "./dist/agent/index.d.ts"
+    },
+    "./io": {
+      "import": "./dist/io/index.js",
+      "types": "./dist/io/index.d.ts"
+    },
+    "./workflow": {
+      "import": "./dist/workflow/index.js",
+      "types": "./dist/workflow/index.d.ts"
     },
     "./secrets": {
       "import": "./dist/secrets/resolve.js",
@@ -84,9 +184,21 @@
       "import": "./dist/id-generator/index.js",
       "types": "./dist/id-generator/index.d.ts"
     },
+    "./trace-id": {
+      "import": "./dist/trace-id/index.js",
+      "types": "./dist/trace-id/index.d.ts"
+    },
+    "./audit-log": {
+      "import": "./dist/audit-log/client.js",
+      "types": "./dist/audit-log/client.d.ts"
+    },
     "./email/decode-mime-header": {
       "import": "./dist/email/decode-mime-header.js",
       "types": "./dist/email/decode-mime-header.d.ts"
+    },
+    "./email/sender-allowlist": {
+      "import": "./dist/email/sender-allowlist.js",
+      "types": "./dist/email/sender-allowlist.d.ts"
     },
     "./email/regex-pattern": {
       "import": "./dist/email/regex-pattern.js",
@@ -100,9 +212,21 @@
       "import": "./dist/resilience/circuit-breaker.js",
       "types": "./dist/resilience/circuit-breaker.d.ts"
     },
+    "./resilience/provider-error": {
+      "import": "./dist/resilience/provider-error.js",
+      "types": "./dist/resilience/provider-error.d.ts"
+    },
     "./email/escape-html": {
       "import": "./dist/email/escape-html.js",
       "types": "./dist/email/escape-html.d.ts"
+    },
+    "./email/linkify-plain-text": {
+      "import": "./dist/email/linkify-plain-text.js",
+      "types": "./dist/email/linkify-plain-text.d.ts"
+    },
+    "./email/message-size": {
+      "import": "./dist/email/message-size.js",
+      "types": "./dist/email/message-size.d.ts"
     },
     "./env": {
       "import": "./dist/env/validate.js",
@@ -112,6 +236,14 @@
       "import": "./dist/ops-error/index.js",
       "types": "./dist/ops-error/index.d.ts"
     },
+    "./intake": {
+      "import": "./dist/intake/index.js",
+      "types": "./dist/intake/index.d.ts"
+    },
+    "./digest": {
+      "import": "./dist/digest/index.js",
+      "types": "./dist/digest/index.d.ts"
+    },
     "./fund/types": {
       "import": "./dist/fund/types.js",
       "types": "./dist/fund/types.d.ts"
@@ -119,6 +251,10 @@
     "./fund/normalize-code": {
       "import": "./dist/fund/normalize-code.js",
       "types": "./dist/fund/normalize-code.d.ts"
+    },
+    "./fund/parse-utils": {
+      "import": "./dist/fund/parse-utils.js",
+      "types": "./dist/fund/parse-utils.d.ts"
     },
     "./fund/tencent-nav": {
       "import": "./dist/fund/tencent-nav.js",
@@ -128,6 +264,10 @@
       "import": "./dist/fund/eastmoney-estimate.js",
       "types": "./dist/fund/eastmoney-estimate.d.ts"
     },
+    "./fund/calendar": {
+      "import": "./dist/fund/calendar.js",
+      "types": "./dist/fund/calendar.d.ts"
+    },
     "./fund/quote": {
       "import": "./dist/fund/quote.js",
       "types": "./dist/fund/quote.d.ts"
@@ -135,10 +275,6 @@
     "./monitor/threshold": {
       "import": "./dist/monitor/threshold.js",
       "types": "./dist/monitor/threshold.d.ts"
-    },
-    "./test/fake-bindings": {
-      "import": "./dist/test/fake-bindings.js",
-      "types": "./dist/test/fake-bindings.d.ts"
     },
     "./perf": {
       "import": "./dist/perf.js",
@@ -152,23 +288,139 @@
       "import": "./dist/desk/desk-signal.js",
       "types": "./dist/desk/desk-signal.d.ts"
     },
+    "./desk/reject-reason": {
+      "import": "./dist/desk/reject-reason.js",
+      "types": "./dist/desk/reject-reason.d.ts"
+    },
     "./desk/resolve-underlying": {
       "import": "./dist/desk/resolve-underlying.js",
       "types": "./dist/desk/resolve-underlying.d.ts"
-    }
+    },
+    "./desk/draft-lineage-io": {
+      "import": "./dist/desk/draft-lineage-io.js",
+      "types": "./dist/desk/draft-lineage-io.d.ts"
+    },
+    "./desk/traceparent": {
+      "import": "./dist/desk/traceparent.js",
+      "types": "./dist/desk/traceparent.d.ts"
+    },
+    "./desk/sector-profiles": {
+      "import": "./dist/desk/sector-profiles.js",
+      "types": "./dist/desk/sector-profiles.d.ts"
+    },
+    "./analysis/analysis-signal": {
+      "import": "./dist/analysis/analysis-signal.js",
+      "types": "./dist/analysis/analysis-signal.d.ts"
+    },
+    "./evaluation/content-filter": {
+      "import": "./dist/evaluation/content-filter.js",
+      "types": "./dist/evaluation/content-filter.d.ts"
+    },
+    "./evaluation/interrupt-inbox": {
+      "import": "./dist/evaluation/interrupt-inbox.js",
+      "types": "./dist/evaluation/interrupt-inbox.d.ts"
+    },
+    "./evaluation/quality-incident": {
+      "import": "./dist/evaluation/quality-incident.js",
+      "types": "./dist/evaluation/quality-incident.d.ts"
+    },
+    "./evaluation/summary-decision-because": {
+      "import": "./dist/evaluation/summary-decision-because.js",
+      "types": "./dist/evaluation/summary-decision-because.d.ts"
+    },
+    "./evaluation/article-fetch-reason": {
+      "import": "./dist/evaluation/article-fetch-reason.js",
+      "types": "./dist/evaluation/article-fetch-reason.d.ts"
+    },
+    "./evaluation/quality-reject-detail": {
+      "import": "./dist/evaluation/quality-reject-detail.js",
+      "types": "./dist/evaluation/quality-reject-detail.d.ts"
+    },
+    "./evaluation/article-text-quality": {
+      "import": "./dist/evaluation/article-text-quality.js",
+      "types": "./dist/evaluation/article-text-quality.d.ts"
+    },
+    "./evaluation/quality-code-targets": {
+      "import": "./dist/evaluation/quality-code-targets.js",
+      "types": "./dist/evaluation/quality-code-targets.d.ts"
+    },
+    "./observability/worker-invocation-id": {
+      "import": "./dist/observability/worker-invocation-id.js",
+      "types": "./dist/observability/worker-invocation-id.d.ts"
+    },
+    "./observability/platform-log": {
+      "import": "./dist/observability/platform-log.js",
+      "types": "./dist/observability/platform-log.d.ts"
+    },
+    "./observability/slim-platform-logs": {
+      "import": "./dist/observability/slim-platform-logs.js",
+      "types": "./dist/observability/slim-platform-logs.d.ts"
+    },
+    "./observability/quality-sample": {
+      "import": "./dist/observability/quality-sample.js",
+      "types": "./dist/observability/quality-sample.d.ts"
+    },
+    "./observability/metric-cell": {
+      "import": "./dist/observability/metric-cell.js",
+      "types": "./dist/observability/metric-cell.d.ts"
+    },
+    "./observability/cf-agents": {
+      "import": "./dist/observability/cf-agents.js",
+      "types": "./dist/observability/cf-agents.d.ts"
+    },
+    "./mcp": {
+      "import": "./dist/mcp/index.js",
+      "types": "./dist/mcp/index.d.ts"
+    },
+    "./mcp/types": {
+      "import": "./dist/mcp/types.js",
+      "types": "./dist/mcp/types.d.ts"
+    },
+    "./mcp/openapi": {
+      "import": "./dist/mcp/openapi.js",
+      "types": "./dist/mcp/openapi.d.ts"
+    },
+    "./mcp/host-router": {
+      "import": "./dist/mcp/host-router.js",
+      "types": "./dist/mcp/host-router.d.ts"
+    },
+    "./mcp/fallback-spec": {
+      "import": "./dist/mcp/fallback-spec.js",
+      "types": "./dist/mcp/fallback-spec.d.ts"
+    },
+    "./mcp/ensure-server": {
+      "import": "./dist/mcp/ensure-server.js",
+      "types": "./dist/mcp/ensure-server.d.ts"
+    },
+    "./mcp/qa-response-trim": {
+      "import": "./dist/mcp/qa-response-trim.js",
+      "types": "./dist/mcp/qa-response-trim.d.ts"
+    },
+    "./meta": {
+      "import": "./dist/meta/index.js",
+      "types": "./dist/meta/index.d.ts"
+    },
+    "./biome": "./biome-shared.json"
   },
   "peerDependencies": {
     "hono": "^4.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250617.0",
-    "@vitest/coverage-v8": "^3.2.6",
+    "@octokit/types": "^18.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "hono": "^4.13.14",
     "tsup": "^8.5.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "esbuild": "^0.28.2"
   },
   "files": [
-    "dist"
+    "dist",
+    "scripts",
+    "biome-shared.json"
   ],
   "repository": {
     "type": "git",
@@ -177,5 +429,9 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "restricted"
+  },
+  "dependencies": {
+    "@octokit/core": "^7.0.8",
+    "@octokit/plugin-rest-endpoint-methods": "^18.0.0"
   }
 }

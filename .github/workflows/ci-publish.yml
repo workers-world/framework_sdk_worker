@@ -1,12 +1,10 @@
-# action: 发布到GitHub Packages供其他worker下载。
+# push dev_*：sync-lock → verify。
+# dev_* → master PR 合入（push master）：publish。
 name: CI and Publish
 
 on:
   push:
-    branches: ["dev_*"]
-    tags: ["v*"]
-  pull_request:
-    branches: ["dev_*"]
+    branches: ["dev_*", "master"]
   workflow_dispatch:
 
 permissions:
@@ -14,10 +12,38 @@ permissions:
   packages: write
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
+  sync-lock:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/dev_')
+    permissions:
+      contents: write
+      packages: read
+    runs-on: ${{ github.event.repository.private && vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/sync-package-lock
+        with:
+          push-token: ${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}
+
+  verify:
+    needs: sync-lock
+    if: >
+      always() &&
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/heads/dev_') &&
+      (needs.sync-lock.result == 'success' || needs.sync-lock.result == 'skipped')
+    runs-on: ${{ github.event.repository.private && vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Pull lock commit from sync-lock job
+        if: needs.sync-lock.result == 'success'
+        run: git pull --ff-only origin "${GITHUB_REF_NAME}"
 
       - uses: actions/setup-node@v5
         with:
@@ -30,10 +56,27 @@ jobs:
 
   publish:
     needs: verify
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    if: >
+      always() &&
+      (
+        (
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/master' &&
+          needs.verify.result == 'skipped'
+        ) ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          (needs.verify.result == 'success' || needs.verify.result == 'skipped')
+        )
+      )
+    runs-on: ${{ github.event.repository.private && vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
+    outputs:
+      version: ${{ steps.pkg.outputs.version }}
+      published: ${{ steps.publish_pkg.outputs.published }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/heads/master
 
       - uses: actions/setup-node@v5
         with:
@@ -45,18 +88,84 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      # GitHub Packages 要求 scope=org；本地/file: 依赖仍用 unscoped 名 framework_sdk_worker
-      # 同版本不可覆盖（E409）；已发布则跳过，避免 master 重跑失败。
+      - id: pkg
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
       - name: Publish to GitHub Packages
+        id: publish_pkg
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VERSION="$(node -p "require('./package.json').version")"
+          VERSION="${{ steps.pkg.outputs.version }}"
           PKG="@workers-world/framework_sdk_worker"
           if npm view "${PKG}@${VERSION}" version >/dev/null 2>&1; then
             echo "Skip publish: ${PKG}@${VERSION} already exists"
+            echo "published=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           npm pkg set "name=${PKG}"
           npm publish
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+  # 新发 Packages 后打 v{semver}，触发 gh-release-on-tag → GitHub Release 页。
+  tag-release:
+    needs: publish
+    if: >
+      always() &&
+      needs.publish.result == 'success' &&
+      needs.publish.outputs.published == 'true'
+    permissions:
+      contents: write
+    runs-on: ${{ github.event.repository.private && vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/heads/master
+          fetch-depth: 0
+          token: ${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Create annotated v* tag
+        env:
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          SHA="$(git rev-parse HEAD)"
+          git fetch --tags origin
+          if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+            EXISTING="$(git rev-list -n 1 "${TAG}")"
+            if [ "${EXISTING}" = "${SHA}" ]; then
+              echo "Skip tag: ${TAG} already at ${SHA}"
+              exit 0
+            fi
+            echo "::error::tag ${TAG} exists at ${EXISTING} but HEAD is ${SHA}; refusing to move tag"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git push origin "refs/tags/${TAG}"
+          echo "Created ${TAG} at ${SHA}"
+
+  sdk-golden-verify:
+    needs: [publish, tag-release]
+    if: >
+      always() &&
+      needs.publish.result == 'success' &&
+      (needs.tag-release.result == 'success' || needs.tag-release.result == 'skipped')
+    runs-on: ${{ github.event.repository.private && vars.WORKERS_WORLD_GHA_RUNNER != '' && vars.WORKERS_WORLD_GHA_RUNNER || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+      packages: read
+      actions: write
+    steps:
+      - name: Dispatch mok1 golden-verify
+        env:
+          GH_TOKEN: ${{ secrets.WORKERS_WORLD_GHA_TOKEN || secrets.GITHUB_TOKEN }}
+          SDK_VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh api repos/workers-world/mok1/dispatches \
+            -f event_type=sdk-published \
+            -f "client_payload[version]=${SDK_VERSION}"

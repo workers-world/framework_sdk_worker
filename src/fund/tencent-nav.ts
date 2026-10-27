@@ -1,19 +1,28 @@
-import {sleep} from '../async/sleep.js';
-import type {FundNav} from './types.js';
-import {normalizeFundCode} from './normalize-code.js';
+/**
+ * 基金净值抓取（天天基金/Eastmoney API）。
+ * 命名说明：模块沿用历史名 tencent-nav，实际数据源是 fundcomapi.tiantianfunds.com
+ * （东方财富/天天基金，非腾讯）；导出名 fetchTencentNav 保持不变以兼容消费方。
+ */
+import { sleep } from '../async/sleep.js';
+import { normalizeFundCode } from './normalize-code.js';
+import { formatNavDate, parseDecimal, parsePct } from './parse-utils.js';
+import type { FundNav } from './types.js';
 
 export const DEFAULT_FUND_FETCH_TIMEOUT_MS = 10_000;
 export const FUND_TRANSIENT_RETRY_DELAYS_MS = [2000, 4000];
+const BATCH_CONCURRENCY = 5;
 
 export function isTransientFundError(status?: number, message = ''): boolean {
     if (status && status >= 500) {
         return true;
     }
     const lower = message.toLowerCase();
-    return lower.includes('network')
-        || lower.includes('timeout')
-        || lower.includes('fetch failed')
-        || lower.includes('abort');
+    return (
+        lower.includes('network') ||
+        lower.includes('timeout') ||
+        lower.includes('fetch failed') ||
+        lower.includes('abort')
+    );
 }
 
 interface TencentFundRow {
@@ -25,7 +34,10 @@ interface TencentFundRow {
     jzrq?: string;
 }
 
-export async function fetchTencentNav(code: string, timeoutMs = DEFAULT_FUND_FETCH_TIMEOUT_MS): Promise<FundNav> {
+export async function fetchTencentNav(
+    code: string,
+    timeoutMs = DEFAULT_FUND_FETCH_TIMEOUT_MS,
+): Promise<FundNav> {
     const fundCode = normalizeFundCode(code);
     const url = `https://fundcomapi.tiantianfunds.com/mm/fundTrade/FundBaseInfos?FCODE=${fundCode}`;
 
@@ -40,13 +52,17 @@ export async function fetchTencentNav(code: string, timeoutMs = DEFAULT_FUND_FET
         });
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        const error = new Error(`tencent fund fetch failed: ${msg}`) as Error & { transient?: boolean };
+        const error = new Error(`tencent fund fetch failed: ${msg}`) as Error & {
+            transient?: boolean;
+        };
         error.transient = isTransientFundError(undefined, msg);
         throw error;
     }
 
     if (!resp.ok) {
-        const error = new Error(`tencent fund HTTP ${resp.status}`) as Error & { transient?: boolean };
+        const error = new Error(`tencent fund HTTP ${resp.status}`) as Error & {
+            transient?: boolean;
+        };
         error.transient = isTransientFundError(resp.status, error.message);
         throw error;
     }
@@ -73,7 +89,10 @@ export async function fetchTencentNav(code: string, timeoutMs = DEFAULT_FUND_FET
     };
 }
 
-export async function fetchTencentNavWithRetry(code: string, timeoutMs = DEFAULT_FUND_FETCH_TIMEOUT_MS): Promise<FundNav> {
+export async function fetchTencentNavWithRetry(
+    code: string,
+    timeoutMs = DEFAULT_FUND_FETCH_TIMEOUT_MS,
+): Promise<FundNav> {
     let lastError: Error | null = null;
     for (let attempt = 0; attempt <= FUND_TRANSIENT_RETRY_DELAYS_MS.length; attempt++) {
         try {
@@ -97,42 +116,19 @@ export async function fetchTencentNavBatch(
 ): Promise<FundNav[]> {
     const unique = [...new Set(codes.map((c) => normalizeFundCode(c)))];
     const results: FundNav[] = [];
-    for (const code of unique) {
-        results.push(await fetchTencentNavWithRetry(code, timeoutMs));
+    for (let i = 0; i < unique.length; i += BATCH_CONCURRENCY) {
+        const batch = unique.slice(i, i + BATCH_CONCURRENCY);
+        const settled = await Promise.allSettled(
+            batch.map((code) => fetchTencentNavWithRetry(code, timeoutMs)),
+        );
+        for (const r of settled) {
+            if (r.status === 'fulfilled') {
+                results.push(r.value);
+            } else {
+                const msg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+                console.warn(`tencent nav batch skip: ${msg}`);
+            }
+        }
     }
     return results;
-}
-
-function parseDecimal(raw?: string): number | null {
-    if (raw == null || raw === '') {
-        return null;
-    }
-    const n = Number(String(raw).trim());
-    if (!Number.isFinite(n)) {
-        return null;
-    }
-    return Math.round(n * 10000) / 10000;
-}
-
-function parsePct(raw?: string): number | null {
-    if (raw == null || raw === '') {
-        return null;
-    }
-    const cleaned = String(raw).trim().replace('%', '');
-    const n = Number(cleaned);
-    if (!Number.isFinite(n)) {
-        return null;
-    }
-    return Math.round(n * 10000) / 10000 / 100;
-}
-
-function formatNavDate(raw?: string): string {
-    const text = String(raw ?? '').trim();
-    if (/^\d{8}$/.test(text)) {
-        return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`;
-    }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-        return text;
-    }
-    return text || '';
 }

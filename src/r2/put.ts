@@ -10,7 +10,7 @@ export async function putBinary(
     options: R2PutOptions,
 ): Promise<string> {
     await bucket.put(key, data, {
-        httpMetadata: {contentType: options.contentType},
+        httpMetadata: { contentType: options.contentType },
         customMetadata: options.customMetadata,
     });
     return key;
@@ -23,7 +23,7 @@ export async function putJson(
     customMetadata?: Record<string, string>,
 ): Promise<string> {
     await bucket.put(key, JSON.stringify(data), {
-        httpMetadata: {contentType: 'application/json'},
+        httpMetadata: { contentType: 'application/json' },
         customMetadata,
     });
     return key;

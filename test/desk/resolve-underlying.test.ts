@@ -1,0 +1,75 @@
+import { describe, expect, it } from 'vitest';
+import {
+    newSignalTraceId,
+    normalizeUnderlyingKey,
+    resolveInvestEventUnderlying,
+} from '../../src/desk/resolve-underlying.js';
+
+describe('resolve-underlying', () => {
+    it('normalizes tickers to uppercase', () => {
+        expect(normalizeUnderlyingKey('  aapl ')).toBe('AAPL');
+        expect(normalizeUnderlyingKey('600519')).toBe('600519');
+    });
+
+    it('strips A-share and HK exchange suffixes', () => {
+        expect(normalizeUnderlyingKey('601091.SH')).toBe('601091');
+        expect(normalizeUnderlyingKey('600238.sz')).toBe('600238');
+        expect(normalizeUnderlyingKey('01815.HK')).toBe('01815');
+        expect(normalizeUnderlyingKey('1815.hk')).toBe('01815');
+    });
+
+    it('prefers explicit over symbols and tags', () => {
+        expect(
+            resolveInvestEventUnderlying({
+                explicit: 'MSFT',
+                symbols: ['AAPL'],
+                tags: ['600519'],
+            }),
+        ).toBe('MSFT');
+    });
+
+    it('uses symbols before tags', () => {
+        expect(
+            resolveInvestEventUnderlying({
+                symbols: ['goog'],
+                tags: ['600519', 'META'],
+            }),
+        ).toBe('GOOG');
+    });
+
+    it('prefers 6-digit tag over ticker tag', () => {
+        expect(
+            resolveInvestEventUnderlying({
+                tags: ['科技', '600519', 'AAPL'],
+            }),
+        ).toBe('600519');
+    });
+
+    it('falls back to ticker-like tag', () => {
+        expect(
+            resolveInvestEventUnderlying({
+                tags: ['宏观', 'nvda'],
+            }),
+        ).toBe('NVDA');
+    });
+
+    it('returns null when no candidate', () => {
+        expect(resolveInvestEventUnderlying({ tags: ['宏观', '政策'] })).toBeNull();
+        expect(normalizeUnderlyingKey('   ')).toBe('');
+        expect(normalizeUnderlyingKey('茅台')).toBe('茅台');
+        expect(resolveInvestEventUnderlying({ explicit: '  ' })).toBeNull();
+        expect(resolveInvestEventUnderlying({ symbols: ['  ', 'nvda'] })).toBe('NVDA');
+        expect(resolveInvestEventUnderlying({ tags: ['  ', '600519'] })).toBe('600519');
+        expect(resolveInvestEventUnderlying({ tags: [] })).toBeNull();
+        expect(resolveInvestEventUnderlying({})).toBeNull();
+        expect(resolveInvestEventUnderlying({ symbols: ['$$$'] })).toBe('$$$');
+    });
+
+    it('generates W3C trace ids (32 hex)', () => {
+        const a = newSignalTraceId();
+        const b = newSignalTraceId();
+        expect(a).toMatch(/^[0-9a-f]{32}$/);
+        expect(b).toMatch(/^[0-9a-f]{32}$/);
+        expect(a).not.toBe(b);
+    });
+});

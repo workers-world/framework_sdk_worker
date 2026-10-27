@@ -5,7 +5,11 @@
 
 /** 截断字符串到最多 max 个 UTF-16 code unit；max ≤ 0 返回空串。 */
 export function capInput(value: string, max: number): string {
-    if (max <= 0) return '';
-    if (value.length <= max) return value;
+    if (max <= 0) {
+        return '';
+    }
+    if (value.length <= max) {
+        return value;
+    }
     return value.slice(0, max);
 }

@@ -1,6 +1,6 @@
-import {IdGenerator} from './generator.js';
-import {InMemoryIdSequenceStore} from './store.js';
-import type {IdSequenceStore} from './store.js';
+import { IdGenerator } from './generator.js';
+import type { IdSequenceStore } from './store.js';
+import { InMemoryIdSequenceStore } from './store.js';
 
 /**
  * ID 生成器工厂，按 prefix 缓存 IdGenerator 实例。
@@ -8,8 +8,7 @@ import type {IdSequenceStore} from './store.js';
 export class IdFactory {
     private readonly generators = new Map<string, IdGenerator>();
 
-    constructor(private readonly store: IdSequenceStore = new InMemoryIdSequenceStore()) {
-    }
+    constructor(private readonly store: IdSequenceStore = new InMemoryIdSequenceStore()) {}
 
     getIdGenerator(prefix: string): IdGenerator {
         let generator = this.generators.get(prefix);

@@ -1,0 +1,31 @@
+[
+  {
+    "sectorCode": "gold",
+    "displayName": "黄金",
+    "lexicon": ["黄金", "金价", "gold", "XAU", "518880", "159934", "GLD"],
+    "worldviewThemeId": "gold_macro",
+    "promptFragment": "黄金板块：关注实际利率、美元、地缘与央行购金；区分金价 ETF 与金矿股。",
+    "deskUnderlyingFilter": ["518880", "159934", "GLD"]
+  },
+  {
+    "sectorCode": "oil",
+    "displayName": "石油",
+    "lexicon": ["石油", "原油", "oil", "OPEC", "EIA", "API", "库存", "布伦特", "WTI"],
+    "worldviewThemeId": "energy_oil",
+    "promptFragment": "石油板块：关注 OPEC+、库存、炼厂开工与地缘溢价；区分上游与炼化。"
+  },
+  {
+    "sectorCode": "tech",
+    "displayName": "科技",
+    "lexicon": ["科技", "半导体", "芯片", "AI", "算力", "NVDA", "AAPL", "MSFT", "纳指"],
+    "worldviewThemeId": "tech_ai_cycle",
+    "promptFragment": "科技板块：关注 AI 资本开支、半导体周期与利率敏感度。"
+  },
+  {
+    "sectorCode": "baijiu",
+    "displayName": "白酒",
+    "lexicon": ["白酒", "茅台", "五粮液", "600519", "000858"],
+    "worldviewThemeId": "consumer_baijiu",
+    "promptFragment": "白酒板块：关注批价、渠道库存与消费政策。"
+  }
+]

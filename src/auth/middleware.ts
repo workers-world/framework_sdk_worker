@@ -1,24 +1,53 @@
-import {checkBearerToken} from './bearer.js';
-import {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+import { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+import { isAdminAuthSkippedFromEnv } from './admin-auth-skip.js';
+import { checkBearerToken } from './bearer.js';
 
 export interface BearerAuthMiddlewareOptions {
     requireConfigured?: boolean;
     missingConfigMessage?: string;
+    /**
+     * 显式跳过开关 Env 键（如 SCH_SKIP_ADMIN_AUTH）。
+     * 值为 1|true|yes 时跳过 Bearer；同时 ENVIRONMENT=development 也跳过。
+     * 未设本选项时行为与旧版一致（不因 development 自动跳过）。
+     */
+    skipFlagEnvKey?: string;
+    /**
+     * 为 true 时：仅当 ENVIRONMENT=development 就跳过（可不设 skipFlagEnvKey）。
+     * 与 skipFlagEnvKey 同时存在时，二者任一满足即跳过。
+     */
+    skipWhenEnvironmentDevelopment?: boolean;
+}
+
+/** 中间件上下文的最小结构类型（兼容任意 env 泛型的 Hono Context） */
+interface BearerAuthContext {
+    env: object;
+    req: { header(name: string): string | undefined };
+    json(body: unknown, status?: number): Response;
+}
+
+function shouldSkipAdminAuth(env: object, options?: BearerAuthMiddlewareOptions): boolean {
+    if (options?.skipFlagEnvKey) {
+        return isAdminAuthSkippedFromEnv(env, { skipFlagEnvKey: options.skipFlagEnvKey });
+    }
+    if (options?.skipWhenEnvironmentDevelopment) {
+        return isAdminAuthSkippedFromEnv(env);
+    }
+    return false;
 }
 
 /**
  * 按 Env 字段名取 Bearer token（string 或 Secrets Store）。
  */
-export function createBearerAuthMiddleware(
-    envKey: string,
-    options?: BearerAuthMiddlewareOptions,
-) {
-    return async (c: {
-        // Hono Bindings Env 通常无 index signature；用宽松类型兼容
-        env: object;
-        req: { header(name: string): string | undefined };
-        json(body: unknown, status?: number): Response;
-    }, next: () => Promise<void>): Promise<Response | void> => {
+export function createBearerAuthMiddleware(envKey: string, options?: BearerAuthMiddlewareOptions) {
+    return async (
+        c: BearerAuthContext,
+        next: () => Promise<void>,
+    ): Promise<Response | undefined> => {
+        if (shouldSkipAdminAuth(c.env, options)) {
+            await next();
+            return undefined;
+        }
+
         const envRecord = c.env as Record<string, unknown>;
         const token = await resolveSecret(envRecord[envKey] as SecretLike | undefined);
         const result = checkBearerToken(c.req.header('Authorization'), token, {
@@ -27,10 +56,10 @@ export function createBearerAuthMiddleware(
         });
 
         if (!result.ok) {
-            return c.json({error: result.error}, result.status ?? 401);
+            return c.json({ error: result.error }, result.status ?? 401);
         }
 
-        return next();
+        await next();
     };
 }
 
@@ -39,10 +68,7 @@ export function createBearerAuthMiddleware(
  */
 export function registerBearerAuthRoutes(
     app: {
-        use: (
-            path: string,
-            handler: (c: any, next: () => Promise<void>) => Promise<Response | void>,
-        ) => unknown;
+        use(path: string, handler: unknown): unknown;
     },
     paths: string[],
     envKey: string,
@@ -57,5 +83,51 @@ export function registerBearerAuthRoutes(
     }
 }
 
-export {checkBearerToken, authorizeRequest} from './bearer.js';
-export {resolveSecret, type SecretLike} from '../secrets/resolve.js';
+/**
+ * 注册无鉴权的 GET admin-config（供 Admin UI 探测 skipAdminAuth）。
+ */
+export function registerAdminConfigRoute(
+    app: {
+        get(path: string, handler: (c: unknown) => unknown): unknown;
+    },
+    options?: { path?: string; skipFlagEnvKey?: string },
+): void {
+    const path = options?.path ?? '/admin-config';
+    app.get(path, (c) => {
+        const ctx = c as BearerAuthContext & {
+            env: object;
+            json(body: unknown, status?: number): Response;
+        };
+        const envRecord = ctx.env as Record<string, unknown>;
+        const skipAdminAuth = isAdminAuthSkippedFromEnv(ctx.env, {
+            skipFlagEnvKey: options?.skipFlagEnvKey,
+        });
+        return ctx.json({
+            skipAdminAuth,
+            environment: typeof envRecord.ENVIRONMENT === 'string' ? envRecord.ENVIRONMENT : null,
+        });
+    });
+}
+
+export { resolveSecret, type SecretLike } from '../secrets/resolve.js';
+export {
+    isAdminAuthSkipped,
+    isAdminAuthSkippedFromEnv,
+} from './admin-auth-skip.js';
+export { authorizeRequest, checkBearerToken } from './bearer.js';
+export { introspectKey1Token } from './key1-introspect.js';
+export {
+    hasAllScopes,
+    isKey1Scope,
+    KEY1_SCOPE_PLANNING_READ,
+    KEY1_SCOPE_PLANNING_WRITE,
+    KEY1_SCOPE_SCH1_READ,
+    KEY1_SCOPE_SCH1_WRITE,
+    KEY1_SCOPES,
+} from './key1-scopes.js';
+export {
+    type AdminOrScopedKeyOptions,
+    createAdminOrScopedKeyMiddleware,
+    KEY1_AUTH_CONTEXT_KEY,
+    type Key1AuthInfo,
+} from './scoped-key-middleware.js';

@@ -1,0 +1,25 @@
+/** 初始 kind 常量（权威注册表在 sch1/rules/intake-kinds.json） */
+
+export const INTAKE_KIND_OPS_ERROR = 'ops.error';
+export const INTAKE_KIND_QUALITY_CLUSTER = 'quality.cluster';
+export const INTAKE_KIND_QUALITY_LOG_DIGEST = 'quality.log_digest';
+export const INTAKE_KIND_DESK_DRAFT_QUALITY = 'desk.draft_quality';
+export const INTAKE_KIND_DESK_OBS_DUMP = 'desk.obs_dump';
+export const INTAKE_KIND_OPT_LATENCY_DIGEST = 'opt.latency_digest';
+/** 业务产物通用通道（lite 失败 / dump 观测包）；身份靠 artifactType */
+export const INTAKE_KIND_QUALITY_ARTIFACT = 'quality.artifact';
+/** CF Agents diagnostics：一 traceId / 故事一行 */
+export const INTAKE_KIND_AGENT_DIAGNOSTICS = 'agent.diagnostics';
+
+export const KNOWN_INTAKE_KINDS = [
+    INTAKE_KIND_OPS_ERROR,
+    INTAKE_KIND_QUALITY_CLUSTER,
+    INTAKE_KIND_QUALITY_LOG_DIGEST,
+    INTAKE_KIND_DESK_DRAFT_QUALITY,
+    INTAKE_KIND_DESK_OBS_DUMP,
+    INTAKE_KIND_OPT_LATENCY_DIGEST,
+    INTAKE_KIND_QUALITY_ARTIFACT,
+    INTAKE_KIND_AGENT_DIAGNOSTICS,
+] as const;
+
+export type KnownIntakeKind = (typeof KNOWN_INTAKE_KINDS)[number];
