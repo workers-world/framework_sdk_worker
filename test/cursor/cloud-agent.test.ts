@@ -213,7 +213,12 @@ describe('fetchCursorAgentUsage', () => {
                 {
                     status: 200,
                     body: {
-                        runs: [{ id: 'r1', usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } }],
+                        runs: [
+                            {
+                                id: 'r1',
+                                usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+                            },
+                        ],
                     },
                 },
             ]),

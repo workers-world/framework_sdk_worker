@@ -64,9 +64,7 @@ describe('metric-cell', () => {
             false,
         );
         expect(
-            isNoisyErrorBurstMessage(
-                'ai_run @cf/moonshotai/kimi-k2.7-code -> rate_limited',
-            ),
+            isNoisyErrorBurstMessage('ai_run @cf/moonshotai/kimi-k2.7-code -> rate_limited'),
         ).toBe(true);
         expect(isNoisyErrorBurstMessage('ai_run @cf/foo -> error')).toBe(true);
     });
