@@ -63,6 +63,10 @@ describe('metric-cell', () => {
         expect(isNoisyErrorBurstMessage('UNIQUE constraint failed: DESK_DRAFT_LINEAGE_T')).toBe(
             false,
         );
+        expect(
+            isNoisyErrorBurstMessage('ai_run @cf/moonshotai/kimi-k2.7-code -> rate_limited'),
+        ).toBe(true);
+        expect(isNoisyErrorBurstMessage('ai_run @cf/foo -> error')).toBe(true);
     });
 
     it('walks invocation ids', () => {
