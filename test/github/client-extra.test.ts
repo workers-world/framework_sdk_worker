@@ -136,6 +136,75 @@ describe('github client extra branches', () => {
         log.mockRestore();
     });
 
+    it('uploadIssueAttachment caps contentsPathPrefix without splitting surrogate pairs', async () => {
+        // 511 ASCII + emoji (surrogate pair): naive slice(0, 512) leaves a lone high surrogate
+        // that makes encodeURIComponent throw URIError and escape the null-on-failure contract.
+        const emoji = '\u{1F600}';
+        const rawPrefix = `${'a'.repeat(511)}${emoji}`;
+        expect(rawPrefix.length).toBe(513);
+        expect(() => encodeURIComponent(rawPrefix.slice(0, 512))).toThrow(URIError);
+
+        const spy = vi.fn(async (url: string, init?: RequestInit) => {
+            const u = String(url);
+            if (u === 'https://api.github.com/repos/o/r') {
+                return new Response(
+                    JSON.stringify({
+                        id: 9,
+                        default_branch: 'main',
+                        html_url: 'https://github.com/o/r',
+                    }),
+                    { status: 200, headers: { 'content-type': 'application/json' } },
+                );
+            }
+            if (u.startsWith('https://uploads.github.com/user-attachments/assets')) {
+                return new Response('no', {
+                    status: 404,
+                    headers: { 'content-type': 'application/json' },
+                });
+            }
+            if (u.includes('/contents/') && init?.method === 'PUT') {
+                return new Response(
+                    JSON.stringify({
+                        content: {
+                            name: 'a.csv',
+                            download_url: 'https://raw.githubusercontent.com/o/r/main/a.csv',
+                        },
+                    }),
+                    { status: 201, headers: { 'content-type': 'application/json' } },
+                );
+            }
+            if (u.includes('/contents/')) {
+                return new Response('nf', {
+                    status: 404,
+                    headers: { 'content-type': 'application/json' },
+                });
+            }
+            return new Response('no', {
+                status: 404,
+                headers: { 'content-type': 'application/json' },
+            });
+        });
+        vi.stubGlobal('fetch', spy);
+
+        await expect(
+            uploadIssueAttachment(TOKEN, 'o/r', 4, {
+                filename: 'a.csv',
+                bytes: new TextEncoder().encode('a'),
+                contentsPathPrefix: rawPrefix,
+                branch: 'main',
+            }),
+        ).resolves.toMatchObject({ via: 'repo-contents' });
+
+        const contentsUrls = spy.mock.calls
+            .map((c) => String(c[0]))
+            .filter((u) => u.includes('/contents/'));
+        expect(contentsUrls.length).toBeGreaterThan(0);
+        // Truncation drops the incomplete emoji; Octokit encodes path `/` as %2F.
+        const expectedPath = `${'a'.repeat(511)}%2Fa.csv`;
+        expect(contentsUrls.some((u) => u.includes(`/contents/${expectedPath}`))).toBe(true);
+        expect(contentsUrls.every((u) => !u.includes(encodeURIComponent(emoji)))).toBe(true);
+    });
+
     it('uploadIssueAttachment covers sha update href and missing urls', async () => {
         const spy = vi.fn(async (url: string, init?: RequestInit) => {
             const u = String(url);
