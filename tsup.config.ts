@@ -64,6 +64,7 @@ export default defineConfig({
         'email/probe': 'src/email/probe.ts',
         'resilience/circuit-breaker': 'src/resilience/circuit-breaker.ts',
         'resilience/provider-error': 'src/resilience/provider-error/index.ts',
+        'provider-adapter/index': 'src/provider-adapter/index.ts',
 
         'email/escape-html': 'src/email/escape-html.ts',
         'email/linkify-plain-text': 'src/email/linkify-plain-text.ts',
