@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.44",
+  "version": "0.4.45",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -215,6 +215,10 @@
     "./resilience/provider-error": {
       "import": "./dist/resilience/provider-error.js",
       "types": "./dist/resilience/provider-error.d.ts"
+    },
+    "./provider-adapter": {
+      "import": "./dist/provider-adapter/index.js",
+      "types": "./dist/provider-adapter/index.d.ts"
     },
     "./email/escape-html": {
       "import": "./dist/email/escape-html.js",
