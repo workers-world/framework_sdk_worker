@@ -41,9 +41,9 @@ function tokensFromRecord(tokens: unknown): Omit<TokenMetrics, 'cost_usd'> | nul
 }
 
 export interface SumTokenMetricsOptions {
-    /** OpenCode Harness：message id 前缀 `msg_${operationId}` */
+    /** OpenCode Harness：user inbox message id 为 `msg_${operationId}` */
     operationId?: string;
-    /** 无 id/metadata 命中时，按 message time.created ≥ sinceMs */
+    /** user op 消息不在 transcript 时，按 message time.created ≥ sinceMs（如 compaction 后） */
     sinceMs?: number;
 }
 
@@ -63,63 +63,96 @@ function messageCreatedMs(msg: Record<string, unknown>): number | null {
     return null;
 }
 
-function messageMatchesFilter(
-    msg: Record<string, unknown>,
-    options: SumTokenMetricsOptions | undefined,
-): boolean {
-    if (!options?.operationId && options?.sinceMs == null) {
-        return true;
-    }
+function operationMessagePrefix(operationId: string): string {
+    return `msg_${operationId.trim()}`;
+}
 
-    const operationId = options.operationId?.trim();
-    if (operationId) {
-        const id = typeof msg.id === 'string' ? msg.id : '';
-        // OpenCode Harness：submit(operationId) → message id 前缀 msg_${operationId}
-        const prefix = `msg_${operationId}`;
-        if (id === prefix || id.startsWith(`${prefix}_`) || id.startsWith(prefix)) {
-            return true;
-        }
-
-        const meta = msg.metadata;
-        if (meta && typeof meta === 'object') {
-            const metaOp = (meta as Record<string, unknown>).operationId;
-            if (typeof metaOp === 'string' && metaOp === operationId) {
-                return true;
-            }
-        }
-    }
-
-    if (options.sinceMs != null) {
-        const created = messageCreatedMs(msg);
-        if (created != null && created >= options.sinceMs) {
-            return true;
-        }
-    }
-
-    // 有过滤条件但未命中 → 不回退整棵 ses_root
-    return false;
+function messageIdMatchesOperationPrefix(id: string, prefix: string): boolean {
+    return id === prefix || id.startsWith(`${prefix}_`) || id.startsWith(prefix);
 }
 
 /**
- * Sum `tokens` / `cost` from OpenCode transcript messages (assistant turns).
- * 传入 operationId/sinceMs 时按本 run 过滤；无命中不回退整棵 ses_root。
+ * Mirror OpenCodeHarness `_messagesAfter(msg_${operationId})`: user op row, then
+ * following messages until the next `user` or `idle`.
  */
-export function sumTokenMetricsFromMessages(
+export function messagesForOperation(
     messages: readonly unknown[],
-    options?: SumTokenMetricsOptions,
-): TokenMetrics {
-    const out = emptyTokenMetrics();
-    const filtering = Boolean(options?.operationId || options?.sinceMs != null);
-    let matched = 0;
+    operationId: string,
+): unknown[] | null {
+    const prefix = operationMessagePrefix(operationId);
+    const start = messages.findIndex((msg) => {
+        if (!msg || typeof msg !== 'object') {
+            return false;
+        }
+        const id =
+            typeof (msg as Record<string, unknown>).id === 'string'
+                ? ((msg as Record<string, unknown>).id as string)
+                : '';
+        return messageIdMatchesOperationPrefix(id, prefix);
+    });
+    if (start < 0) {
+        return null;
+    }
 
+    const out: unknown[] = [messages[start]];
+    for (let i = start + 1; i < messages.length; i++) {
+        const msg = messages[i];
+        if (!msg || typeof msg !== 'object') {
+            continue;
+        }
+        const type =
+            typeof (msg as Record<string, unknown>).type === 'string'
+                ? ((msg as Record<string, unknown>).type as string)
+                : '';
+        if (type === 'user' || type === 'idle') {
+            break;
+        }
+        out.push(msg);
+    }
+    return out;
+}
+
+type ScopedMessages =
+    | { mode: 'all'; scope: readonly unknown[] }
+    | { mode: 'operation_window'; scope: readonly unknown[] }
+    | { mode: 'since_ms'; scope: readonly unknown[] }
+    | { mode: 'empty'; scope: readonly unknown[] };
+
+function resolveScopedMessages(
+    messages: readonly unknown[],
+    options: SumTokenMetricsOptions | undefined,
+): ScopedMessages {
+    if (!options?.operationId?.trim() && options?.sinceMs == null) {
+        return { mode: 'all', scope: messages };
+    }
+
+    const operationId = options?.operationId?.trim();
+    if (operationId) {
+        const window = messagesForOperation(messages, operationId);
+        if (window != null) {
+            return { mode: 'operation_window', scope: window };
+        }
+        if (options?.sinceMs != null) {
+            return { mode: 'since_ms', scope: messages };
+        }
+        return { mode: 'empty', scope: [] };
+    }
+
+    return { mode: 'since_ms', scope: messages };
+}
+
+function messageMatchesSinceMs(msg: Record<string, unknown>, sinceMs: number): boolean {
+    const created = messageCreatedMs(msg);
+    return created != null && created >= sinceMs;
+}
+
+function accumulateAssistantMetrics(messages: readonly unknown[], out: TokenMetrics): number {
+    let matched = 0;
     for (const msg of messages) {
         if (!msg || typeof msg !== 'object') {
             continue;
         }
         const m = msg as Record<string, unknown>;
-        if (filtering && !messageMatchesFilter(m, options)) {
-            continue;
-        }
         const type = typeof m.type === 'string' ? m.type : '';
         if (type && type !== 'assistant') {
             continue;
@@ -135,7 +168,58 @@ export function sumTokenMetricsFromMessages(
         }
         out.cost_usd += asFinite(m.cost);
     }
+    return matched;
+}
 
+/**
+ * Sum `tokens` / `cost` from OpenCode transcript messages (assistant turns).
+ * With operationId, scope matches harness `_messagesAfter`; no ses_root fallback.
+ */
+export function sumTokenMetricsFromMessages(
+    messages: readonly unknown[],
+    options?: SumTokenMetricsOptions,
+): TokenMetrics {
+    const scoped = resolveScopedMessages(messages, options);
+    if (scoped.mode === 'empty') {
+        return emptyTokenMetrics();
+    }
+
+    const out = emptyTokenMetrics();
+    let matched = 0;
+
+    if (scoped.mode === 'operation_window' || scoped.mode === 'all') {
+        matched = accumulateAssistantMetrics(scoped.scope, out);
+    } else {
+        const sinceMs = options?.sinceMs;
+        if (sinceMs == null) {
+            return emptyTokenMetrics();
+        }
+        for (const msg of scoped.scope) {
+            if (!msg || typeof msg !== 'object') {
+                continue;
+            }
+            const m = msg as Record<string, unknown>;
+            if (!messageMatchesSinceMs(m, sinceMs)) {
+                continue;
+            }
+            const type = typeof m.type === 'string' ? m.type : '';
+            if (type && type !== 'assistant') {
+                continue;
+            }
+            matched += 1;
+            const part = tokensFromRecord(m.tokens);
+            if (part) {
+                out.tokens_input += part.tokens_input;
+                out.tokens_output += part.tokens_output;
+                out.tokens_reasoning += part.tokens_reasoning;
+                out.tokens_cache_read += part.tokens_cache_read;
+                out.tokens_cache_write += part.tokens_cache_write;
+            }
+            out.cost_usd += asFinite(m.cost);
+        }
+    }
+
+    const filtering = scoped.mode !== 'all';
     if (filtering && matched === 0) {
         return emptyTokenMetrics();
     }
@@ -172,13 +256,22 @@ export function filterMessagesForRun(
     messages: readonly unknown[],
     options: SumTokenMetricsOptions,
 ): unknown[] {
-    if (!options.operationId && options.sinceMs == null) {
-        return [...messages];
+    const scoped = resolveScopedMessages(messages, options);
+    if (scoped.mode === 'empty') {
+        return [];
+    }
+    if (scoped.mode === 'operation_window' || scoped.mode === 'all') {
+        return [...scoped.scope];
+    }
+
+    const sinceMs = options.sinceMs;
+    if (sinceMs == null) {
+        return [];
     }
     return messages.filter((msg) => {
         if (!msg || typeof msg !== 'object') {
             return false;
         }
-        return messageMatchesFilter(msg as Record<string, unknown>, options);
+        return messageMatchesSinceMs(msg as Record<string, unknown>, sinceMs);
     });
 }
