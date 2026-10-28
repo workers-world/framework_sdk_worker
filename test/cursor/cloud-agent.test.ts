@@ -229,6 +229,57 @@ describe('fetchCursorAgentUsage', () => {
         expect(result.usage).toBeUndefined();
     });
 
+    it('falls back to totalUsage when matched run has no usage field', async () => {
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: {
+                        totalUsage: {
+                            inputTokens: 10,
+                            outputTokens: 20,
+                            totalTokens: 30,
+                        },
+                        runs: [{ id: 'r1' }],
+                    },
+                },
+            ]),
+        );
+        const result = await fetchCursorAgentUsage(API_KEY, 'a1', { runId: 'r1' });
+        expect(result.ok).toBe(true);
+        expect(result.totalTokens).toBe(30);
+        expect(result.usage?.inputTokens).toBe(10);
+    });
+
+    it('falls back to totalUsage when matched run usage is all zero', async () => {
+        vi.stubGlobal(
+            'fetch',
+            mockFetch([
+                {
+                    status: 200,
+                    body: {
+                        totalUsage: {
+                            inputTokens: 4,
+                            outputTokens: 6,
+                            totalTokens: 10,
+                        },
+                        runs: [
+                            {
+                                id: 'r1',
+                                usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+                            },
+                        ],
+                    },
+                },
+            ]),
+        );
+        const result = await fetchCursorAgentUsage(API_KEY, 'a1', { runId: 'r1' });
+        expect(result.ok).toBe(true);
+        expect(result.totalTokens).toBe(10);
+        expect(result.usage?.inputTokens).toBe(4);
+    });
+
     it('prefers the matching run usage over totalUsage when runId is passed', async () => {
         vi.stubGlobal(
             'fetch',
