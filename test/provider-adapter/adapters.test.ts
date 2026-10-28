@@ -66,6 +66,11 @@ describe('opencode_go bindModel + billing', () => {
             messages: [
                 {
                     id: 'msg_rev-sha-review',
+                    type: 'user',
+                    text: 'review',
+                },
+                {
+                    id: 'msg_1591409e0003aspemQUovklFoN',
                     type: 'assistant',
                     tokens: {
                         input: 1_000_000,
