@@ -35,6 +35,7 @@ export default defineConfig({
         'r2/retry': 'src/r2/retry.ts',
         'r2/gold-price': 'src/r2/gold-price.ts',
         'kv/dedup': 'src/kv/dedup.ts',
+        'idempotency/index': 'src/idempotency/index.ts',
         'time/index': 'src/time/index.ts',
         'url/product-landing-link': 'src/url/product-landing-link.ts',
         'url/index': 'src/url/index.ts',
