@@ -8,6 +8,18 @@ describe('isRetryableR2Error', () => {
         expect(isRetryableR2Error('ServiceUnavailable')).toBe(true);
     });
 
+    it('matches spaced internal error and please try again messages', () => {
+        expect(
+            isRetryableR2Error(
+                new Error('We encountered an internal error. Please try again. (10001)'),
+            ),
+        ).toBe(true);
+        expect(
+            isRetryableR2Error(new Error('We encountered an internal error. Please try again.')),
+        ).toBe(true);
+        expect(isRetryableR2Error(new Error('Please try again later'))).toBe(true);
+    });
+
     it('rejects non-transient errors', () => {
         expect(isRetryableR2Error(new Error('The specified key does not exist.'))).toBe(false);
         expect(isRetryableR2Error(new Error('invalid json'))).toBe(false);
