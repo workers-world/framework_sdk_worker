@@ -104,6 +104,10 @@
       "import": "./dist/kv/dedup.js",
       "types": "./dist/kv/dedup.d.ts"
     },
+    "./idempotency": {
+      "import": "./dist/idempotency/index.js",
+      "types": "./dist/idempotency/index.d.ts"
+    },
     "./time": {
       "import": "./dist/time/index.js",
       "types": "./dist/time/index.d.ts"
