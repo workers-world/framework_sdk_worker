@@ -14,6 +14,8 @@ export function isRetryableR2Error(error: unknown): boolean {
         msg.includes('10001') ||
         msg.includes('serviceunavailable') ||
         msg.includes('internalerror') ||
+        msg.includes('internal error') ||
+        msg.includes('please try again') ||
         msg.includes('temporarily unavailable')
     );
 }
