@@ -18,7 +18,6 @@ import {
     buildQualityArtifactEvent,
     submitQualityArtifact,
 } from '../../src/intake/submit-artifact.js';
-import { shanghaiYmdDash } from '../../src/time.js';
 
 describe('quality artifact builders', () => {
     it('buildQualityArtifactDedupKey', () => {
@@ -43,7 +42,7 @@ describe('quality artifact builders', () => {
         ).toBe('quality.artifact:w:desk.draft:story1:dump:2026-09-24');
     });
 
-    it('kindOverride keeps desk dedup formulas', () => {
+    it('kindOverride desk kinds fall back to quality.artifact dedup without explicit dedupKey', () => {
         const envelope = buildIntakePayloadEnvelope({
             index: { storyId: 'L' },
             blocks: [],
@@ -59,7 +58,13 @@ describe('quality artifact builders', () => {
         });
         expect(lite.kind).toBe(INTAKE_KIND_DESK_DRAFT_QUALITY);
         expect(lite.dedupKey).toBe(
-            `${INTAKE_KIND_DESK_DRAFT_QUALITY}:line-1:thin:${shanghaiYmdDash()}`,
+            buildQualityArtifactDedupKey({
+                worker: 'decision-desk-worker',
+                artifactType: 'desk.draft',
+                storyId: 'line-1',
+                mode: 'lite',
+                reason: 'thin',
+            }),
         );
         expect(validateIntakeEvent(lite)).toBeNull();
 
@@ -72,7 +77,14 @@ describe('quality artifact builders', () => {
             kindOverride: INTAKE_KIND_DESK_OBS_DUMP,
         });
         expect(dump.kind).toBe(INTAKE_KIND_DESK_OBS_DUMP);
-        expect(dump.dedupKey).toBe(`${INTAKE_KIND_DESK_OBS_DUMP}:line-1:dump:${shanghaiYmdDash()}`);
+        expect(dump.dedupKey).toBe(
+            buildQualityArtifactDedupKey({
+                worker: 'decision-desk-worker',
+                artifactType: 'desk.draft',
+                storyId: 'line-1',
+                mode: 'dump',
+            }),
+        );
     });
 });
 
