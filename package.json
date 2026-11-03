@@ -1,7 +1,7 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.48",
-  "description": "Cloudflare Worker 公共基座 SDK",
+  "version": "0.4.49",
+  "description": "Cloudflare Worker \u516c\u5171\u57fa\u5ea7 SDK",
   "type": "module",
   "scripts": {
     "build": "tsup",
