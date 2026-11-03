@@ -67,8 +67,8 @@ export interface SubmitQualityArtifactInput {
     primaryRepo?: string;
     producer?: string;
     /**
-     * 存量兼容：desk.draft_quality / desk.obs_dump。
-     * 设置后沿用该 kind 的 dedup 公式，不改写历史 UNIQUE(dedup_key)。
+     * Optional kind alias (e.g. `desk.draft_quality` / `desk.obs_dump`).
+     * Dedup is never inferred from this alias — pass explicit `dedupKey` for stable business keys.
      */
     kindOverride?: string;
     dedupKey?: string;
