@@ -40,6 +40,7 @@ Cloudflare Worker 公共基座 SDK（npm 包 `@workers-world/framework_sdk_worke
 - `framework_sdk_worker/ai/direct` — env.AI 直连统一封装（Agent/tool-loop 场景；超时 + `{ok:false}` 契约 + AI Gateway 注入）
 - `framework_sdk_worker/logger` — 轻量日志（带脱敏）
 - `framework_sdk_worker/workflow` — step 输出契约（`workflowStepOk/Skip/Err` + 谓词）、CF 实例事件映射（`mapWorkflowInstanceEvent` / `cfTypeToWorkerIoType` / `createWorkflowStreamControl`，ns/source 参数化、taskId 接受 string|number）、Admin SSE（`createWorkflowSseStream` / `workflowEventSseResponse` / `noWorkflowInstanceResponse`）、`stepStages` 信封→阶段纯函数、映射后点分类型谓词
+- `framework_sdk_worker/intake` — sch1 Intake 组装与提交；通用 dedup 见 [docs/intake-dedup-conventions.md](./docs/intake-dedup-conventions.md)（desk 业务 key 由生产者显式 `dedupKey`）
 
 ### `/v1/meta` 接入
 

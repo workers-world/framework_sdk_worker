@@ -1,9 +1,8 @@
 import { hashString, type LogFields, normalizeError, sanitizeForLog } from '../ops-error.js';
 import { shanghaiIsoString, shanghaiYmdDash } from '../time.js';
+import { buildIntakeDedupKey } from './dedup-key.js';
 import { buildObservabilityRefBlock, type IntakeHopMeta } from './hop-meta.js';
 import {
-    INTAKE_KIND_DESK_DRAFT_QUALITY,
-    INTAKE_KIND_DESK_OBS_DUMP,
     INTAKE_KIND_OPS_ERROR,
     INTAKE_KIND_OPT_LATENCY_DIGEST,
     INTAKE_KIND_QUALITY_ARTIFACT,
@@ -316,117 +315,6 @@ export function buildQualityLogDigestIntake(input: {
     };
 }
 
-export interface DeskDraftQualityIntakePayload {
-    lineageId: string;
-    draftId?: number;
-    underlying?: string;
-    reason: string;
-    primaryRepo?: string;
-}
-
-export interface DeskObsDumpIntakePayload {
-    lineageId: string;
-    draftId?: number;
-    underlying?: string;
-    purpose: 'full_dump' | 'lite';
-    primaryRepo?: string;
-}
-
-/** desk.draft_quality 轻量 Intake（Phase 4） */
-export function buildDeskDraftQualityDedupKey(lineageId: string, reason: string): string {
-    const day = shanghaiYmdDash();
-    return `${INTAKE_KIND_DESK_DRAFT_QUALITY}:${lineageId}:${reason}:${day}`;
-}
-
-export function buildDeskDraftQualityIntake(input: {
-    producer?: string;
-    lineageId: string;
-    draftId?: number;
-    underlying?: string;
-    reason: string;
-    primaryRepo?: string;
-    payloadEnvelope?: IntakePayloadEnvelope;
-    severity?: IntakeSeverity;
-    occurredAt?: string;
-    dedupKey?: string;
-    links?: IntakeLink[];
-}): IntakeEvent {
-    const payload: DeskDraftQualityIntakePayload | IntakePayloadEnvelope =
-        input.payloadEnvelope ?? {
-            lineageId: input.lineageId,
-            ...(input.draftId != null ? { draftId: input.draftId } : {}),
-            ...(input.underlying ? { underlying: input.underlying } : {}),
-            reason: input.reason,
-            ...(input.primaryRepo ? { primaryRepo: input.primaryRepo } : {}),
-        };
-    const title = truncate(
-        `desk 草稿质量 · ${input.underlying ?? input.lineageId.slice(0, 8)} · ${input.reason}`,
-        120,
-    );
-    const summary = truncate(
-        `lineageId=${input.lineageId}${input.draftId != null ? ` draftId=${input.draftId}` : ''}`,
-        500,
-    );
-    return {
-        schemaVersion: 1,
-        kind: INTAKE_KIND_DESK_DRAFT_QUALITY,
-        dedupKey:
-            input.dedupKey?.trim() || buildDeskDraftQualityDedupKey(input.lineageId, input.reason),
-        source: {
-            producer: input.producer ?? 'decision-desk-worker',
-            worker: 'decision-desk-worker',
-            repo: input.primaryRepo,
-        },
-        title,
-        summary,
-        severity: input.severity ?? 'warn',
-        occurredAt: input.occurredAt ?? shanghaiIsoString(),
-        payload: payload as unknown as Record<string, unknown>,
-        links: input.links,
-    };
-}
-
-/** desk.obs_dump 全量观测包（Phase 6） */
-export function buildDeskObsDumpDedupKey(lineageId: string, date?: string): string {
-    const day = date ?? shanghaiYmdDash();
-    return `${INTAKE_KIND_DESK_OBS_DUMP}:${lineageId}:dump:${day}`;
-}
-
-export function buildDeskObsDumpIntake(input: {
-    producer?: string;
-    lineageId: string;
-    draftId?: number;
-    underlying?: string;
-    primaryRepo?: string;
-    payloadEnvelope: IntakePayloadEnvelope;
-    severity?: IntakeSeverity;
-    occurredAt?: string;
-    dedupKey?: string;
-    links?: IntakeLink[];
-}): IntakeEvent {
-    const title = truncate(
-        `desk 观测导出 · ${input.underlying ?? input.lineageId.slice(0, 8)}`,
-        120,
-    );
-    const summary = truncate(`全量 lineage 观测包 · ${input.lineageId}`, 500);
-    return {
-        schemaVersion: 1,
-        kind: INTAKE_KIND_DESK_OBS_DUMP,
-        dedupKey: input.dedupKey?.trim() || buildDeskObsDumpDedupKey(input.lineageId),
-        source: {
-            producer: input.producer ?? 'decision-desk-worker',
-            worker: 'decision-desk-worker',
-            repo: input.primaryRepo,
-        },
-        title,
-        summary,
-        severity: input.severity ?? 'info',
-        occurredAt: input.occurredAt ?? shanghaiIsoString(),
-        payload: input.payloadEnvelope as unknown as Record<string, unknown>,
-        links: input.links,
-    };
-}
-
 /** opt.latency_digest：一日一行，payload 必须是 v2 envelope */
 export function buildOptLatencyDigestDedupKey(date: string): string {
     return `${INTAKE_KIND_OPT_LATENCY_DIGEST}:${date}`;
@@ -462,6 +350,24 @@ export function buildOptLatencyDigestIntake(input: {
     };
 }
 
+/** desk.draft_quality payload shape (key builder lives in decision-desk-worker). */
+export interface DeskDraftQualityIntakePayload {
+    lineageId: string;
+    draftId?: number;
+    underlying?: string;
+    reason: string;
+    primaryRepo?: string;
+}
+
+/** desk.obs_dump payload shape (key builder lives in decision-desk-worker). */
+export interface DeskObsDumpIntakePayload {
+    lineageId: string;
+    draftId?: number;
+    underlying?: string;
+    purpose: 'full_dump' | 'lite';
+    primaryRepo?: string;
+}
+
 /** quality.artifact 通用产物通道 dedup */
 export function buildQualityArtifactDedupKey(input: {
     worker: string;
@@ -471,9 +377,12 @@ export function buildQualityArtifactDedupKey(input: {
     reason?: string;
     date?: string;
 }): string {
-    const day = input.date ?? shanghaiYmdDash();
     const tail = input.mode === 'dump' ? 'dump' : input.reason?.trim() || 'unknown';
-    return `${INTAKE_KIND_QUALITY_ARTIFACT}:${input.worker}:${input.artifactType}:${input.storyId}:${tail}:${day}`;
+    return buildIntakeDedupKey(
+        INTAKE_KIND_QUALITY_ARTIFACT,
+        [input.worker, input.artifactType, input.storyId, tail],
+        input.date ? { strategy: 'shanghai', date: input.date } : { strategy: 'shanghai' },
+    );
 }
 
 export function buildQualityArtifactIntake(input: {
@@ -491,7 +400,10 @@ export function buildQualityArtifactIntake(input: {
     occurredAt?: string;
     dedupKey?: string;
     links?: IntakeLink[];
-    /** 存量兼容：desk.draft_quality / desk.obs_dump */
+    /**
+     * Optional kind alias (e.g. `desk.draft_quality`). Does not change dedup: pass explicit
+     * `dedupKey` for business-stable keys; otherwise the generic `quality.artifact` formula applies.
+     */
     kindOverride?: string;
 }): IntakeEvent {
     const kind = input.kindOverride?.trim() || INTAKE_KIND_QUALITY_ARTIFACT;
@@ -506,25 +418,15 @@ export function buildQualityArtifactIntake(input: {
             `storyId=${input.storyId} mode=${input.mode}${input.reason ? ` reason=${input.reason}` : ''}`,
         500,
     );
-    let dedupKey = input.dedupKey?.trim();
-    if (!dedupKey) {
-        if (kind === INTAKE_KIND_DESK_DRAFT_QUALITY) {
-            dedupKey = buildDeskDraftQualityDedupKey(
-                input.storyId,
-                input.reason?.trim() || 'unknown',
-            );
-        } else if (kind === INTAKE_KIND_DESK_OBS_DUMP) {
-            dedupKey = buildDeskObsDumpDedupKey(input.storyId);
-        } else {
-            dedupKey = buildQualityArtifactDedupKey({
-                worker: input.worker,
-                artifactType: input.artifactType,
-                storyId: input.storyId,
-                mode: input.mode,
-                reason: input.reason,
-            });
-        }
-    }
+    const dedupKey =
+        input.dedupKey?.trim() ||
+        buildQualityArtifactDedupKey({
+            worker: input.worker,
+            artifactType: input.artifactType,
+            storyId: input.storyId,
+            mode: input.mode,
+            reason: input.reason,
+        });
     return {
         schemaVersion: 1,
         kind,

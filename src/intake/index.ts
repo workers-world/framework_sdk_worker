@@ -24,10 +24,6 @@ export {
     shouldSkipPlumbingOnlyDefaultDiagnostics,
 } from './agent-diagnostics.js';
 export {
-    buildDeskDraftQualityDedupKey,
-    buildDeskDraftQualityIntake,
-    buildDeskObsDumpDedupKey,
-    buildDeskObsDumpIntake,
     buildOpsErrorDedupKey,
     buildOpsErrorIntake,
     buildOptLatencyDigestDedupKey,
@@ -48,6 +44,12 @@ export {
     type QualityClusterIntakePayload,
     type QualityLogDigestIntakePayload,
 } from './builders.js';
+export {
+    buildIntakeDedupKey,
+    type IntakeDedupDayBucket,
+    joinIntakeDedupKeyParts,
+    normalizeIntakeDedupSegment,
+} from './dedup-key.js';
 export {
     buildObservabilityRefBlock,
     hasIntakeHopMeta,
