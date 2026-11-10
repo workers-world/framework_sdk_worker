@@ -34,8 +34,6 @@ export {
     fetchAiGatewayCostOnce,
     type ReviewGatewayMetadata,
     resolveGatewayCostUsd,
-    resolveReviewCostUsd,
-    sumAiGatewayCostUsd,
 } from './ai-gateway-cost.js';
 export { resetDefaultProviderAdaptersForTest } from './install-defaults.js';
 export { fetchOpenCodeGoQuota } from './opencode-go-quota.js';

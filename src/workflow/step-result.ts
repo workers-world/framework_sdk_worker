@@ -81,3 +81,43 @@ export function workflowStepMessage(output: unknown): string | null {
     const msg = (output as { message?: unknown }).message;
     return typeof msg === 'string' && msg.trim() ? msg.trim() : null;
 }
+
+export type WithWorkflowStepCatchOptions<T> = {
+    /** 异常时并入 workflowStepErr 的 payload（如 { code }） */
+    extraPayload?: T;
+    /** catch 后副作用（写 run log 等）；不改变返回信封 */
+    onCatch?: (message: string, error: unknown) => void | Promise<void>;
+};
+
+/**
+ * 把 step 体抛错收成 `workflowStepErr`（平台 step 仍 completed，不会按 throw 重试）。
+ * 仅用于「业务失败写信封、不要平台重试」的 step；需要重试的 step 应继续 throw。
+ */
+export async function withWorkflowStepCatch<T = Record<string, never>>(
+    fn: () => Promise<WorkflowStepResult<T>>,
+    opts?: WithWorkflowStepCatchOptions<T>,
+): Promise<WorkflowStepResult<T>> {
+    try {
+        return await fn();
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (opts?.onCatch) {
+            await opts.onCatch(message, e);
+        }
+        return workflowStepErr(message, opts?.extraPayload);
+    }
+}
+
+/**
+ * 从 `WorkflowStepResult` 取 payload；`error` 时调 `onError`（通常落库后 throw NonRetryableError）。
+ * `ok` / `skipped` 都返回 payload（skip 不是失败）。
+ */
+export async function unwrapWorkflowStep<T>(
+    result: WorkflowStepResult<T>,
+    onError: (message: string, result: WorkflowStepResult<T>) => Promise<never> | never,
+): Promise<T> {
+    if (isWorkflowStepError(result)) {
+        await onError(result.message || 'step error', result);
+    }
+    return result.payload;
+}

@@ -220,27 +220,6 @@ export async function awaitAiGatewayCostUsd(options: {
 }
 
 /**
- * @deprecated Prefer `awaitAiGatewayCostUsd` — single attempt, null on failure.
- */
-export async function sumAiGatewayCostUsd(options: {
-    accountId?: string;
-    apiToken?: string;
-    gatewayId: string;
-    runId: string;
-    startedAtMs: number;
-    fetchImpl?: typeof fetch;
-}): Promise<number | null> {
-    const once = await fetchAiGatewayCostOnce(options);
-    if (once.status === 'no_credentials') {
-        return null;
-    }
-    if (once.status !== 'ok') {
-        return null;
-    }
-    return once.matched > 0 ? once.costUsd : 0;
-}
-
-/**
  * Resolve cost after gateway lookup.
  * Empty-log (matched=0)：`ai_gateway` + 0 — Gateway is authoritative.
  * API fail / no credentials：message cost → `provider_reported`，否则 `none`。
@@ -256,19 +235,4 @@ export function resolveGatewayCostUsd(options: {
         return { costUsd: options.messageCostUsd, source: 'provider_reported' };
     }
     return { costUsd: 0, source: 'none' };
-}
-
-/** @deprecated Use {@link resolveGatewayCostUsd}; maps `provider_reported` → `message_fallback` for old callers. */
-export function resolveReviewCostUsd(options: {
-    gateway: AwaitAiGatewayCostResult;
-    messageCostUsd: number;
-}): { costUsd: number; costSource: 'ai_gateway' | 'message_fallback' | 'none' } {
-    const resolved = resolveGatewayCostUsd(options);
-    if (resolved.source === 'provider_reported') {
-        return { costUsd: resolved.costUsd, costSource: 'message_fallback' };
-    }
-    if (resolved.source === 'ai_gateway') {
-        return { costUsd: resolved.costUsd, costSource: 'ai_gateway' };
-    }
-    return { costUsd: 0, costSource: 'none' };
 }
