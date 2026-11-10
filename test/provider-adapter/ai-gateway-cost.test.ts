@@ -4,8 +4,7 @@ import {
     awaitAiGatewayCostUsd,
     buildReviewGatewayMetadata,
     fetchAiGatewayCostOnce,
-    resolveReviewCostUsd,
-    sumAiGatewayCostUsd,
+    resolveGatewayCostUsd,
 } from '../../src/provider-adapter/ai-gateway-cost.js';
 
 describe('buildReviewGatewayMetadata', () => {
@@ -26,7 +25,7 @@ describe('buildReviewGatewayMetadata', () => {
     });
 });
 
-describe('fetchAiGatewayCostOnce / sumAiGatewayCostUsd', () => {
+describe('fetchAiGatewayCostOnce', () => {
     it('uses per_page at most 50 for Gateway logs API', () => {
         expect(AI_GATEWAY_LOGS_PER_PAGE).toBe(50);
     });
@@ -54,14 +53,14 @@ describe('fetchAiGatewayCostOnce / sumAiGatewayCostUsd', () => {
         expect(requestedUrl).toContain('per_page=50');
     });
 
-    it('returns null without credentials (legacy sum)', async () => {
+    it('returns no_credentials without credentials', async () => {
         await expect(
-            sumAiGatewayCostUsd({
+            fetchAiGatewayCostOnce({
                 gatewayId: 'default',
                 runId: 'abc',
                 startedAtMs: Date.now(),
             }),
-        ).resolves.toBeNull();
+        ).resolves.toEqual({ status: 'no_credentials' });
     });
 
     it('sums cost for matching runId metadata', async () => {
@@ -248,49 +247,49 @@ describe('awaitAiGatewayCostUsd', () => {
     });
 });
 
-describe('resolveReviewCostUsd', () => {
+describe('resolveGatewayCostUsd', () => {
     it('uses gateway totals when outcome ok', () => {
         expect(
-            resolveReviewCostUsd({
+            resolveGatewayCostUsd({
                 gateway: { outcome: 'ok', costUsd: 0.5, matched: 2, attempts: 1 },
                 messageCostUsd: 0.1,
             }),
-        ).toEqual({ costUsd: 0.5, costSource: 'ai_gateway' });
+        ).toEqual({ costUsd: 0.5, source: 'ai_gateway' });
     });
 
     it('uses ai_gateway with zero when gateway ok but matched zero (empty-log policy)', () => {
         expect(
-            resolveReviewCostUsd({
+            resolveGatewayCostUsd({
                 gateway: { outcome: 'ok', costUsd: 0, matched: 0, attempts: 6 },
                 messageCostUsd: 0.1,
             }),
-        ).toEqual({ costUsd: 0, costSource: 'ai_gateway' });
+        ).toEqual({ costUsd: 0, source: 'ai_gateway' });
     });
 
-    it('falls back to message cost when credentials missing', () => {
+    it('falls back to provider_reported when credentials missing', () => {
         expect(
-            resolveReviewCostUsd({
+            resolveGatewayCostUsd({
                 gateway: { outcome: 'no_credentials' },
                 messageCostUsd: 0.1,
             }),
-        ).toEqual({ costUsd: 0.1, costSource: 'message_fallback' });
+        ).toEqual({ costUsd: 0.1, source: 'provider_reported' });
     });
 
-    it('falls back to message cost when API failed after retries', () => {
+    it('falls back to provider_reported when API failed after retries', () => {
         expect(
-            resolveReviewCostUsd({
+            resolveGatewayCostUsd({
                 gateway: { outcome: 'api_failed', attempts: 6, lastHttpStatus: 503 },
                 messageCostUsd: 0.2,
             }),
-        ).toEqual({ costUsd: 0.2, costSource: 'message_fallback' });
+        ).toEqual({ costUsd: 0.2, source: 'provider_reported' });
     });
 
     it('returns none when gateway unavailable and no message cost', () => {
         expect(
-            resolveReviewCostUsd({
+            resolveGatewayCostUsd({
                 gateway: { outcome: 'api_failed', attempts: 3 },
                 messageCostUsd: 0,
             }),
-        ).toEqual({ costUsd: 0, costSource: 'none' });
+        ).toEqual({ costUsd: 0, source: 'none' });
     });
 });
