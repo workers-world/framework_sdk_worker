@@ -129,7 +129,7 @@ export function shanghaiDayStartUnix(ymd: string | undefined): number | null {
     if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
         return null;
     }
-    const [y, m, d] = ymd.split('-').map((p) => parseInt(p, 10));
+    const [y, m, d] = ymd.split('-').map((p) => Number.parseInt(p, 10));
     if (m < 1 || m > 12) {
         return null;
     }

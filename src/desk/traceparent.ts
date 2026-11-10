@@ -13,7 +13,7 @@ export function createTraceparent(): string {
 }
 
 export function injectTraceparent(headers: HeadersInit | Headers, traceparent: string): Headers {
-    const h = headers instanceof Headers ? new Headers(headers) : new Headers(headers);
+    const h = new Headers(headers);
     h.set(TRACEPARENT_HEADER, traceparent);
     return h;
 }

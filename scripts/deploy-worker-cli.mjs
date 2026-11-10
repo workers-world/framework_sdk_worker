@@ -97,7 +97,7 @@ export function runWorkersDeployCli(mode, cwd, argv, env = process.env) {
 
 	const result = spawnSync("npx", ["--yes", cmd, ...args], {
 		cwd,
-		env,
+		env, // NOSONAR javascript:S4036 — CI/dev PATH required for npx wrangler/cf resolution
 		stdio: "inherit",
 		shell: false,
 	});
