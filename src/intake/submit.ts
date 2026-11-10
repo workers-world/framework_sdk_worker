@@ -4,6 +4,9 @@ import type { IntakeEvent, SubmitIntakeResult } from './types.js';
 
 const INTAKE_FETCH_TIMEOUT_MS = 15_000;
 
+/** Default when `SVC_SCH1` binding is used; mesh hop, not public cleartext HTTP. */
+const DEFAULT_SVC_SCH1_INTAKE_URL = 'http://sch1/sch1/intake'; // NOSONAR typescript:S5332
+
 export interface IntakeEnv {
     /** Service Binding → sch1 */
     SVC_SCH1?: Fetcher;
@@ -84,7 +87,7 @@ export async function intakePublishPost(
         return { ok: false, error: 'SCH_INTAKE_TOKEN or SVC_SCH1 not configured' };
     }
 
-    let url = 'http://sch1/sch1/intake';
+    let url = DEFAULT_SVC_SCH1_INTAKE_URL;
     if (env.SCH_INTAKE_URL?.trim()) {
         url = normalizeIntakeUrl(env.SCH_INTAKE_URL);
     }

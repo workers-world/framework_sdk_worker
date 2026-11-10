@@ -166,7 +166,7 @@ export function buildSlowTraceQuery(input: {
 function groupKey(groups: CalculationAggregate['groups']): string {
     return (groups ?? [])
         .map((g) => `${g.key}=${String(g.value)}`)
-        .sort()
+        .sort((a, b) => a.localeCompare(b))
         .join('\0');
 }
 
