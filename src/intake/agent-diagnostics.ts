@@ -168,7 +168,8 @@ function stableEventKey(ts: number, channel: string, type: string, message: unkn
     let hash = 0;
     const raw = JSON.stringify(message ?? null);
     for (let i = 0; i < raw.length; i += 1) {
-        hash = (hash * 31 + raw.charCodeAt(i)) | 0;
+        // 32-bit coercion for stable dedup keys (not floating-point truncation).
+        hash = (hash * 31 + raw.charCodeAt(i)) | 0; // NOSONAR typescript:S7767
     }
     return `${ts}:${channel}:${type}:${(hash >>> 0).toString(16)}`;
 }

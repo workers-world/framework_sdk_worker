@@ -320,10 +320,7 @@ function stripTrailingSlashes(value: string): string {
 }
 
 function safeAttachmentFilename(filename: string): string {
-    const bounded =
-        filename.length > MAX_ATTACHMENT_FILENAME_LEN
-            ? boundStringLength(filename, MAX_ATTACHMENT_FILENAME_LEN)
-            : filename;
+    const bounded = boundStringLength(filename, MAX_ATTACHMENT_FILENAME_LEN);
     const base = bounded.replaceAll('\\', '/').split('/').pop() ?? 'attachment.bin';
     return base.replace(/[^\w.\-()+@]/g, '_') || 'attachment.bin';
 }

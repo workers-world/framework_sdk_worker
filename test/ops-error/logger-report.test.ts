@@ -162,10 +162,12 @@ describe('reportOpsErrorAsync', () => {
     });
 
     it('fire-and-forgets without ctx', () => {
-        reportOpsErrorAsync(
-            { ENVIRONMENT: 'development' },
-            { worker: 'w', reason: 'r', error: 'e' },
-        );
+        expect(
+            reportOpsErrorAsync(
+                { ENVIRONMENT: 'development' },
+                { worker: 'w', reason: 'r', error: 'e' },
+            ),
+        ).toBeUndefined();
     });
 
     it('intake:true posts to sch1 when SVC_SCH1 configured', async () => {
