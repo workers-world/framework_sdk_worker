@@ -446,13 +446,61 @@ export function classifyPageMetaForFetch(meta: PageMeta): PageMetaFetchKind {
     return 'unknown';
 }
 
+function removeBalancedHtmlBlocks(html: string, tag: 'script' | 'style'): string {
+    const lower = html.toLowerCase();
+    const openNeedle = `<${tag}`;
+    const closeNeedle = `</${tag}>`;
+    let out = '';
+    let i = 0;
+    while (i < html.length) {
+        const open = lower.indexOf(openNeedle, i);
+        if (open === -1) {
+            out += html.slice(i);
+            break;
+        }
+        out += html.slice(i, open);
+        const openEnd = html.indexOf('>', open);
+        if (openEnd === -1) {
+            out += html.slice(open);
+            break;
+        }
+        const close = lower.indexOf(closeNeedle, openEnd + 1);
+        if (close === -1) {
+            out += html.slice(open);
+            break;
+        }
+        out += ' ';
+        i = close + closeNeedle.length;
+    }
+    return out;
+}
+
+function stripHtmlTagsLinear(html: string): string {
+    let result = '';
+    let i = 0;
+    while (i < html.length) {
+        const open = html.indexOf('<', i);
+        if (open === -1) {
+            result += html.slice(i);
+            break;
+        }
+        result += html.slice(i, open);
+        result += ' ';
+        const close = html.indexOf('>', open + 1);
+        if (close === -1) {
+            break;
+        }
+        i = close + 1;
+    }
+    return result;
+}
+
 function stripHtmlToText(html: string): string {
-    return html
-        .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, ' ')
-        .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, ' ')
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n')
-        .replace(/<[^>]+>/g, ' ')
+    let text = removeBalancedHtmlBlocks(html, 'script');
+    text = removeBalancedHtmlBlocks(text, 'style');
+    text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n');
+    text = stripHtmlTagsLinear(text);
+    return text
         .replace(/&nbsp;/gi, ' ')
         .replace(/\s+\n/g, '\n')
         .replace(/\n{3,}/g, '\n\n')

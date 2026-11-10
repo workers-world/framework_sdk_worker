@@ -1,5 +1,12 @@
 import { vi } from 'vitest';
 
+/** example.com A record per RFC 2606 — safe for DNS mock tests. */
+const EXAMPLE_COM_IPV4 = '93.184.216.34'; // NOSONAR typescript:S1313
+
+const DEFAULT_DNS_ADDRESSES: { ipv4?: string[]; ipv6?: string[] } = {
+    ipv4: [EXAMPLE_COM_IPV4],
+};
+
 function dnsJsonResponse(addresses: string[], recordType: 1 | 28): Response {
     return new Response(
         JSON.stringify({
@@ -18,9 +25,7 @@ function dnsJsonResponse(addresses: string[], recordType: 1 | 28): Response {
 /** fetch mock：自动应答 cloudflare-dns.com DoH，其余请求返回 pageResponse */
 export function createFetchImplWithDns(
     pageResponse: Response,
-    dnsAddresses: { ipv4?: string[]; ipv6?: string[] } = {
-        ipv4: ['93.184.216.34'],
-    },
+    dnsAddresses: { ipv4?: string[]; ipv6?: string[] } = DEFAULT_DNS_ADDRESSES,
 ): ReturnType<typeof vi.fn> {
     return vi.fn((input: string | URL | Request) => {
         const url = typeof input === 'string' ? input : input.toString();

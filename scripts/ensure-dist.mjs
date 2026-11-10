@@ -8,5 +8,6 @@ const distIndex = join(dirname(fileURLToPath(import.meta.url)), '../dist/index.j
 try {
   accessSync(distIndex);
 } catch {
+  // NOSONAR javascript:S4036 — local bootstrap inherits trusted dev/CI PATH for npm.
   execSync('npm run build', { stdio: 'inherit', cwd: join(dirname(fileURLToPath(import.meta.url)), '..') });
 }

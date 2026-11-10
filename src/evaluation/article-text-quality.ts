@@ -61,9 +61,22 @@ export function stripAggregatorEmailNoise(text: string): string {
     for (const pattern of cutPatterns) {
         cleaned = cleaned.replace(pattern, '').trim();
     }
+    const untilParagraph = '(?:[^\\n]|\\n(?!\\n))*';
     cleaned = cleaned
-        .replace(/^Yahoo Finance\nAt Yahoo Finance, you get free stock quotes[\s\S]*?\n\n/m, '')
-        .replace(/^Hacker News\nLinks for the intellectually curious[\s\S]*?\n\n/m, '')
+        .replace(
+            new RegExp(
+                `^Yahoo Finance\\nAt Yahoo Finance, you get free stock quotes${untilParagraph}\\n\\n`,
+                'm',
+            ),
+            '',
+        )
+        .replace(
+            new RegExp(
+                `^Hacker News\\nLinks for the intellectually curious${untilParagraph}\\n\\n`,
+                'm',
+            ),
+            '',
+        )
         .replace(/\n+Comments\s*$/i, '')
         .trim();
     return cleaned;
@@ -174,8 +187,8 @@ export function isSiteNavigationShell(text: string): boolean {
         return false;
     }
 
-    const markdownLinks = text.match(/\[[^\]\n]{1,200}\]\(https?:\/\/[^\s)"]{1,500}\)/g) ?? [];
-    const listLinks = text.match(/^\s*[*-]\s+\[[^\]\n]{1,200}\]\(/gm) ?? [];
+    const markdownLinks = text.match(/\[[^\]\n]{1,200}\]\(https?:\/\/[^)\s"]{1,500}\)/g) ?? [];
+    const listLinks = text.match(/^[ \t]*[*-][ \t]+\[[^\]\n]{1,200}\]\(/gm) ?? [];
     const httpCount = (text.match(/https?:\/\//gi) || []).length;
     const navMarkerHits = SITE_NAV_MARKERS.filter((re) => re.test(text)).length;
 

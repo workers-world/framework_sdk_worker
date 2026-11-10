@@ -47,7 +47,12 @@ function base64UrlEncode(data: ArrayBuffer | string): string {
     for (const b of bytes) {
         binary += String.fromCharCode(b);
     }
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    const encoded = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_');
+    let end = encoded.length;
+    while (end > 0 && encoded[end - 1] === '=') {
+        end -= 1;
+    }
+    return encoded.slice(0, end);
 }
 
 /** 签发 GitHub App JWT（≤10 分钟）。 */
