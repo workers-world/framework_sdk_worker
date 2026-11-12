@@ -45,6 +45,11 @@ export interface CursorAgentCreateInput {
     modelId?: string;
     autoCreatePR?: boolean;
     name?: string;
+    /**
+     * 可选 checkout 起点（分支名或 SHA）。
+     * 省略时 Cursor 使用仓库默认分支；在已有 destin PR 头上修须传 headRef。
+     */
+    startingRef?: string;
 }
 
 export interface CursorAgentRunRef {
@@ -236,11 +241,12 @@ export async function createCursorAgent(
         return { ok: false, error: 'CURSOR_API_KEY not configured' };
     }
 
+    const startingRef = input.startingRef?.trim();
     const body = {
         prompt: { text: input.promptText },
         mode: 'agent',
         model: { id: input.modelId?.trim() || 'auto' },
-        repos: [{ url: input.repoUrl }],
+        repos: [startingRef ? { url: input.repoUrl, startingRef } : { url: input.repoUrl }],
         autoCreatePR: input.autoCreatePR !== false,
         skipReviewerRequest: true,
         name: input.name ?? `agent-${Date.now()}`,

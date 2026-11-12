@@ -70,6 +70,7 @@ export const cursorAgentProvider: AgentProvider = {
             modelId: model.modelId,
             autoCreatePR: input.autoCreatePR,
             name: input.name,
+            startingRef: input.startingRef,
         });
         if (!result.ok || !result.ref) {
             return { ok: false, error: result.error, status: result.status };
