@@ -47,6 +47,8 @@ export interface AgentCreateInput {
     model?: AgentModelRef | string;
     autoCreatePR?: boolean;
     name?: string;
+    /** 可选 checkout 起点（分支名或 SHA）；省略则用仓库默认分支 */
+    startingRef?: string;
 }
 
 export interface AgentCreateResult {

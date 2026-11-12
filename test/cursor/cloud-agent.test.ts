@@ -26,15 +26,13 @@ describe('createCursorAgent', () => {
     });
 
     it('creates agent and returns ref', async () => {
-        vi.stubGlobal(
-            'fetch',
-            mockFetch([
-                {
-                    status: 200,
-                    body: { agent: { id: 'a1' }, run: { id: 'r1', status: 'RUNNING' } },
-                },
-            ]),
-        );
+        const fetchMock = mockFetch([
+            {
+                status: 200,
+                body: { agent: { id: 'a1' }, run: { id: 'r1', status: 'RUNNING' } },
+            },
+        ]);
+        vi.stubGlobal('fetch', fetchMock);
 
         const result = await createCursorAgent({
             apiKey: API_KEY,
@@ -43,6 +41,33 @@ describe('createCursorAgent', () => {
         });
         expect(result.ok).toBe(true);
         expect(result.ref).toEqual({ agentId: 'a1', runId: 'r1' });
+        const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit)?.body));
+        expect(body.repos).toEqual([{ url: 'https://github.com/o/r' }]);
+        expect(body.autoCreatePR).toBe(true);
+    });
+
+    it('passes startingRef and autoCreatePR false when set', async () => {
+        const fetchMock = mockFetch([
+            {
+                status: 200,
+                body: { agent: { id: 'a2' }, run: { id: 'r2', status: 'RUNNING' } },
+            },
+        ]);
+        vi.stubGlobal('fetch', fetchMock);
+
+        const result = await createCursorAgent({
+            apiKey: API_KEY,
+            repoUrl: 'https://github.com/o/r',
+            promptText: 'fix on PR head',
+            autoCreatePR: false,
+            startingRef: 'cursor/feature-abc',
+        });
+        expect(result.ok).toBe(true);
+        const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit)?.body));
+        expect(body.repos).toEqual([
+            { url: 'https://github.com/o/r', startingRef: 'cursor/feature-abc' },
+        ]);
+        expect(body.autoCreatePR).toBe(false);
     });
 
     it('returns ok:false when api key missing', async () => {
