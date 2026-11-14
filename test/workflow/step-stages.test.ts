@@ -172,6 +172,7 @@ describe('stepStages', () => {
         expect(stages[0]?.detail).toBe(
             [
                 '2026-11-14T06:47:01.636Z · step.started: 步骤开始: 00-登记实例-1',
+                '  attempt=1',
                 '2026-11-14T06:47:01.636Z · attempt.started: 第 1 次尝试: 00-登记实例-1',
                 '  attempt=1',
                 '2026-11-14T06:47:01.645Z · attempt.completed: 尝试成功: 00-登记实例-1',

@@ -63,7 +63,7 @@ export function formatWorkflowStepStageDetail(
         lines.push(time ? `${time} · ${suffix}: ${summary}` : `· ${suffix}: ${summary}`);
 
         const attempt = e.data?.attempt;
-        if (attempt !== undefined && suffix.startsWith('attempt.')) {
+        if (attempt !== undefined && (suffix === 'step.started' || suffix.startsWith('attempt.'))) {
             lines.push(`  attempt=${attempt}`);
         }
 
