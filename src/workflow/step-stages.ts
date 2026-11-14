@@ -9,10 +9,14 @@ import { isWorkflowStepError, isWorkflowStepSkipped, workflowStepMessage } from 
 /** 与 Admin SSE 信封对齐的最小字段 */
 export interface WorkflowStepStageEvent {
     type: string;
+    time?: string;
     wwsummary?: string;
+    wwerror?: { code?: string; message?: string } | null;
     data?: {
         stepName?: string;
         output?: unknown;
+        attempt?: number;
+        durationMs?: number;
     };
 }
 
@@ -22,6 +26,8 @@ export interface WorkflowStepStage {
     /** success / skipped / running / failure / pending（对齐 MpgStage.status） */
     status: string;
     message: string | null;
+    /** 该 step 的事件日志（多行；供 UI 折叠展开，对齐 GitHub Actions） */
+    detail: string | null;
 }
 
 type StepUiStatus = 'done' | 'skipped' | 'active' | 'error' | 'pending';
@@ -45,6 +51,64 @@ function isTerminalUi(st: StepUiStatus): boolean {
     return st === 'done' || st === 'skipped' || st === 'error';
 }
 
+const DETAIL_OUTPUT_MAX = 2_000;
+
+function formatDetailOutput(output: unknown): string | null {
+    if (output === undefined) {
+        return null;
+    }
+    if (typeof output === 'string') {
+        const t = output.trim();
+        return t ? t.slice(0, DETAIL_OUTPUT_MAX) : null;
+    }
+    try {
+        const raw = JSON.stringify(output, null, 2);
+        if (!raw || raw === '{}' || raw === 'null') {
+            return null;
+        }
+        return raw.length > DETAIL_OUTPUT_MAX ? `${raw.slice(0, DETAIL_OUTPUT_MAX)}\n…` : raw;
+    } catch {
+        return String(output).slice(0, DETAIL_OUTPUT_MAX);
+    }
+}
+
+function appendStepDetailLine(
+    lines: Map<string, string[]>,
+    stepName: string,
+    e: WorkflowStepStageEvent,
+): void {
+    const bucket = lines.get(stepName) ?? [];
+    if (!lines.has(stepName)) {
+        lines.set(stepName, bucket);
+    }
+    const time = typeof e.time === 'string' && e.time.trim() ? e.time.trim() : null;
+    const wfTail = e.type.match(/\.workflow\.(.+)$/);
+    const typeTail = wfTail?.[1]
+        ? wfTail[1]
+        : e.type.includes('.')
+          ? e.type.split('.').slice(-2).join('.')
+          : e.type;
+    const head = [time, typeTail].filter(Boolean).join(' · ');
+    const summary = e.wwsummary?.trim();
+    bucket.push(summary ? `${head}: ${summary}` : head);
+    if (e.data?.attempt != null) {
+        bucket.push(`  attempt=${e.data.attempt}`);
+    }
+    if (e.data?.durationMs != null) {
+        bucket.push(`  durationMs=${e.data.durationMs}`);
+    }
+    if (e.wwerror?.message) {
+        const code = e.wwerror.code?.trim();
+        bucket.push(`  error=${code ? `${code}: ` : ''}${e.wwerror.message}`);
+    }
+    const out = formatDetailOutput(e.data?.output);
+    if (out) {
+        for (const line of out.split('\n')) {
+            bucket.push(`  ${line}`);
+        }
+    }
+}
+
 export function stepStages(
     events: readonly WorkflowStepStageEvent[],
     currentStepName: string | null,
@@ -52,6 +116,7 @@ export function stepStages(
     const order: string[] = [];
     const status = new Map<string, StepUiStatus>();
     const summary = new Map<string, string>();
+    const detailLines = new Map<string, string[]>();
 
     for (const e of events) {
         const name = e.data?.stepName;
@@ -62,6 +127,7 @@ export function stepStages(
             order.push(name);
             status.set(name, 'pending');
         }
+        appendStepDetailLine(detailLines, name, e);
         if (e.wwsummary) {
             summary.set(name, e.wwsummary);
         }
@@ -115,11 +181,13 @@ export function stepStages(
         if (stepName === currentStepName && !isTerminalUi(st)) {
             st = 'active';
         }
+        const lines = detailLines.get(stepName);
         return {
             id: stepName,
             label: stepName,
             status: toMpgStatus(st),
             message: summary.get(stepName) ?? null,
+            detail: lines && lines.length > 0 ? lines.join('\n') : null,
         };
     });
 }

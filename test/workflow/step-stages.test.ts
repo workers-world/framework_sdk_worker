@@ -129,4 +129,32 @@ describe('stepStages', () => {
         );
         expect(stages.map((s) => s.status)).toEqual(['success', 'success']);
     });
+
+    it('accumulates per-step detail log lines from events', () => {
+        const stages = stepStages(
+            [
+                {
+                    type: `${NS}.step.started`,
+                    time: '2026-11-14T06:00:00.000Z',
+                    wwsummary: '步骤开始：01-排除检查',
+                    data: { stepName: '01-排除检查' },
+                },
+                {
+                    ...completed('01-排除检查', {
+                        status: 'error',
+                        message: '市场目录不可用（skipped）',
+                        payload: { reason: 'svc_missing' },
+                    }),
+                    time: '2026-11-14T06:00:01.000Z',
+                    wwsummary: '步骤完成：01-排除检查',
+                },
+            ],
+            null,
+        );
+        const detail = stages[0]?.detail ?? '';
+        expect(detail).toContain('step.started');
+        expect(detail).toContain('步骤开始：01-排除检查');
+        expect(detail).toContain('市场目录不可用（skipped）');
+        expect(detail).toContain('svc_missing');
+    });
 });
