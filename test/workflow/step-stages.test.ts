@@ -7,10 +7,12 @@ function envelope(
     typeSuffix: string,
     stepName: string,
     output?: Record<string, unknown>,
+    time?: string,
 ): WorkflowStepStageEvent {
     return {
         id: `${typeSuffix}-${stepName}`,
         type: `${NS}.${typeSuffix}`,
+        time,
         wwsummary: stepName,
         data: { stepName, output },
     };
@@ -128,5 +130,88 @@ describe('stepStages', () => {
             null,
         );
         expect(stages.map((s) => s.status)).toEqual(['success', 'success']);
+    });
+
+    it('fills detail with step/attempt event log lines and step.completed JSON', () => {
+        const step = '00-登记实例-1';
+        const output = {
+            status: 'ok',
+            message: '登记实例已存在，复用',
+            payload: { id: 2, created: false },
+        };
+        const events: WorkflowStepStageEvent[] = [
+            {
+                type: `${NS}.step.started`,
+                time: '2026-11-14T06:47:01.636Z',
+                wwsummary: `步骤开始: ${step}`,
+                data: { stepName: step, attempt: 1 },
+            },
+            {
+                type: `${NS}.attempt.started`,
+                time: '2026-11-14T06:47:01.636Z',
+                wwsummary: `第 1 次尝试: ${step}`,
+                data: { stepName: step, attempt: 1 },
+            },
+            {
+                type: `${NS}.attempt.completed`,
+                time: '2026-11-14T06:47:01.645Z',
+                wwsummary: `尝试成功: ${step}`,
+                data: { stepName: step, attempt: 1 },
+            },
+            {
+                type: `${NS}.step.completed`,
+                time: '2026-11-14T06:47:01.645Z',
+                wwsummary: `步骤完成: ${step}`,
+                data: { stepName: step, attempt: 1, output },
+            },
+        ];
+        const stages = stepStages(events, null);
+        expect(stages).toHaveLength(1);
+        expect(stages[0]?.status).toBe('success');
+        expect(stages[0]?.message).toBe(`步骤完成: ${step}`);
+        expect(stages[0]?.detail).toBe(
+            [
+                '2026-11-14T06:47:01.636Z · step.started: 步骤开始: 00-登记实例-1',
+                '  attempt=1',
+                '2026-11-14T06:47:01.636Z · attempt.started: 第 1 次尝试: 00-登记实例-1',
+                '  attempt=1',
+                '2026-11-14T06:47:01.645Z · attempt.completed: 尝试成功: 00-登记实例-1',
+                '  attempt=1',
+                '2026-11-14T06:47:01.645Z · step.completed: 步骤完成: 00-登记实例-1',
+                JSON.stringify(output, null, 2),
+            ].join('\n'),
+        );
+    });
+
+    it('omits detail when step has no qualifying log events', () => {
+        const stages = stepStages(
+            [
+                {
+                    type: `${NS}.workflow.running`,
+                    wwsummary: 'Workflow 运行中',
+                    data: { stepName: 'orphan-metrics' },
+                },
+            ],
+            null,
+        );
+        expect(stages).toHaveLength(1);
+        expect(stages[0]?.detail).toBeUndefined();
+        expect(stages[0]?.message).toBe('Workflow 运行中');
+        expect(stages[0]?.status).toBe('pending');
+    });
+
+    it('leaves message and status unchanged when detail is present', () => {
+        const stages = stepStages(
+            [
+                envelope('step.started', '03-点名缺项', undefined, '2026-01-01T00:00:00.000Z'),
+                completed('03-点名缺项', { status: 'skipped', message: 'Lock 已齐', payload: {} }),
+            ],
+            null,
+        );
+        const step = stages.find((s) => s.id === '03-点名缺项');
+        expect(step?.status).toBe('skipped');
+        expect(step?.message).toBe('Lock 已齐');
+        expect(step?.detail).toContain('step.started');
+        expect(step?.detail).toContain('step.completed');
     });
 });
