@@ -14,6 +14,27 @@ export {
     type WorkerIoError,
 } from './envelope.js';
 export {
+    anyGateBlocksSuccess,
+    type BindEvidenceResult,
+    bindReceiptEvidence,
+    type CreateOfficialReceiptInput,
+    createOfficialReceiptEnvelope,
+    evidenceShaMatches,
+    isOfficialReceiptTerminalStatus,
+    normalizeCommitSha,
+    type OfficialReceiptData,
+    type OfficialReceiptEvidence,
+    type OfficialReceiptFailureClass,
+    type OfficialReceiptGates,
+    type OfficialReceiptKind,
+    type OfficialReceiptStatus,
+    officialReceiptIdempotencyKey,
+    RECEIPT_ERROR_EVIDENCE_SHA_MISMATCH,
+    STREAM_OFFICIAL_RECEIPT,
+    TYPE_RECEIPT_PROGRESS,
+    TYPE_RECEIPT_TERMINAL,
+} from './receipt.js';
+export {
     assertWorkerIoEnvelope,
     decodeWorkerIoEnvelope,
     encodeWorkerIoEnvelope,
