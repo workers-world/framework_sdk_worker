@@ -19,6 +19,7 @@ export default defineConfig({
         'd1/escape-like': 'src/d1/escape-like.ts',
         'd1/tech-meta': 'src/d1/tech-meta.ts',
         'd1/resource-lock': 'src/d1/resource-lock.ts',
+        'config-revision/index': 'src/config-revision/index.ts',
         'notify/client': 'src/notify/client.ts',
         'browser/index': 'src/browser/index.ts',
         'browser/client': 'src/browser/client.ts',

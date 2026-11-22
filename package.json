@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.53",
+  "version": "0.4.54",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -47,6 +47,10 @@
     "./d1/resource-lock": {
       "import": "./dist/d1/resource-lock.js",
       "types": "./dist/d1/resource-lock.d.ts"
+    },
+    "./config-revision": {
+      "import": "./dist/config-revision/index.js",
+      "types": "./dist/config-revision/index.d.ts"
     },
     "./notify": {
       "import": "./dist/notify/client.js",
