@@ -11,6 +11,7 @@ export { githubProviderErrorClassifier } from '../../github/provider-error-class
 export { r2ProviderErrorClassifier } from '../../r2/provider-error-classifier.js';
 export { genericProviderErrorClassifier } from './generic-classifier.js';
 export {
+    GITHUB_RETRY_DELAY_CAP_MS,
     githubRetryDelayMs,
     isGithubRequestRetryable,
     isWholesaleRateLimitError,

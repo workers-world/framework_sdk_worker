@@ -67,6 +67,25 @@ describe('sendNotify extra branches', () => {
             status: 200,
         });
     });
+
+    it('normalizes network errors to {ok:false} instead of throwing', async () => {
+        // 回归：fetch 网络异常曾裸抛，调用方 process_exception
+        const boom = makeFakeFetcher(() => {
+            throw new Error('network down');
+        });
+        await expect(sendNotify(boom, 'tok', { subject: 's', body: 'b' })).resolves.toEqual({
+            ok: false,
+            error: 'network down',
+        });
+
+        const rawThrow = makeFakeFetcher(() => {
+            throw 'net';
+        });
+        await expect(sendNotifyAsync(rawThrow, 'tok', digestItem)).resolves.toEqual({
+            ok: false,
+            error: 'net',
+        });
+    });
 });
 
 describe('sendNotifyAsync extra branches', () => {

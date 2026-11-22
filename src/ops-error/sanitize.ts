@@ -53,6 +53,11 @@ const SENSITIVE_KEY_SUBSTRINGS = [
     'cookie',
     'authorization',
     'bearer',
+    // 私钥/签名密钥/云厂商 AccessKey：复合形态分词切不开（如 githubPrivateKey、accessKeyId）
+    // 误报评估：三个词根语义无歧义，不会命中 monkey/topic 等形近词
+    'privatekey',
+    'signingkey',
+    'accesskey',
 ];
 
 function segmentKey(key: string): string[] {

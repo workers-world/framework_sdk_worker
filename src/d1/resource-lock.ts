@@ -206,7 +206,12 @@ export interface ResourceWaitFifo {
     ): Promise<Array<{ id: number; waitSeq: number | null; raw: Record<string, unknown> }>>;
 }
 
-/** FIFO 等待列表（复用业务表上的 wait_seq + deferred） */
+/**
+ * FIFO 等待列表（复用业务表上的 wait_seq + deferred）。
+ * 取号原子性：wait_seq 由单条 UPDATE 内联子查询计算（SQLite/D1 语句级原子，
+ * 并发写入被写锁串行化），避免旧实现 SELECT MAX + UPDATE 两条语句在并发下
+ * 重号/跳号；不存在严格 FIFO 的并发平局场景（同 key 取号在同一写锁内完成）。
+ */
 export function createResourceWaitFifo(options: ResourceWaitFifoOptions): ResourceWaitFifo {
     const db = options.db;
     const table = assertIdent(options.table, 'table');
@@ -223,16 +228,18 @@ export function createResourceWaitFifo(options: ResourceWaitFifoOptions): Resour
     const pendingStatus = options.pendingStatus ?? 'PENDING';
     const nowFn = options.now ?? shanghaiTechTime;
 
-    const nextSeqSql = `SELECT COALESCE(MAX(${waitSeqColumn}), 0) + 1 AS n FROM ${table} WHERE ${keyColumn} = ?`;
+    // 单条 UPDATE 内联子查询取号：SET 表达式在行更新前求值，含本行旧值，语义与旧两条语句一致
     const enqueueSql = `
     UPDATE ${table} SET
       ${deferredColumn} = 1,
-      ${waitSeqColumn} = ?,
+      ${waitSeqColumn} = (SELECT COALESCE(MAX(${waitSeqColumn}), 0) + 1 FROM ${table} WHERE ${keyColumn} = ?),
       ${updatedAtColumn} = ?,
       tech_version = tech_version + 1,
       tech_update_time = ?,
       tech_trace_id = ?
     WHERE ${idColumn} = ?`;
+    const waitSeqReadBackSql = `
+    SELECT ${waitSeqColumn} AS wait_seq FROM ${table} WHERE ${idColumn} = ?`;
     const clearSql = `
     UPDATE ${table} SET
       ${deferredColumn} = 0,
@@ -263,12 +270,15 @@ export function createResourceWaitFifo(options: ResourceWaitFifoOptions): Resour
 
     return {
         async enqueue(key, id) {
-            const seqRow = await db.prepare(nextSeqSql).bind(key).first<{ n: number }>();
-            const waitSeq = Number(seqRow?.n ?? 1);
             const wall = nowFn();
             const traceId = newTraceId();
-            await db.prepare(enqueueSql).bind(waitSeq, wall, wall, traceId, id).run();
-            return waitSeq;
+            await db.prepare(enqueueSql).bind(key, wall, wall, traceId, id).run();
+            // 读回仅用于向调用方回显序号；FIFO 顺序以库内 wait_seq 为准，读回竞态不影响排序
+            const row = await db
+                .prepare(waitSeqReadBackSql)
+                .bind(id)
+                .first<{ wait_seq: number | null }>();
+            return Number(row?.wait_seq ?? 0);
         },
 
         async clear(id) {

@@ -126,14 +126,21 @@ async function cursorFetch<T>(
     path: string,
     init?: RequestInit,
 ): Promise<{ ok: boolean; status: number; data: T; text: string }> {
-    const resp = await fetch(`${CURSOR_API_BASE}${path}`, {
-        ...init,
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Basic ${btoa(`${apiKey}:`)}`,
-            ...(init?.headers ?? {}),
-        },
-    });
+    let resp: Response;
+    try {
+        resp = await fetch(`${CURSOR_API_BASE}${path}`, {
+            ...init,
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Basic ${btoa(`${apiKey}:`)}`,
+                ...(init?.headers ?? {}),
+            },
+        });
+    } catch (e: unknown) {
+        // 网络瞬断归一为 status 0 失败结果，调用方按 retryable 处理，不再收到裸 Error
+        const msg = e instanceof Error ? e.message : String(e);
+        return { ok: false, status: 0, data: {} as T, text: `network error: ${msg}` };
+    }
     const text = await resp.text();
     let data = {} as T;
     if (text) {
@@ -426,11 +433,25 @@ export function mapCursorSseFrame(frame: {
     }
 }
 
-/** 消费 Cursor run SSE 直至 `done` 或连接结束；410 抛 CursorStreamExpiredError；409 抛 CursorStreamUnavailableError */
+/** streamCursorAgentRun 默认整体超时：SSE 长流兜底，防止上游挂起占满 Worker 墙钟 */
+export const CURSOR_STREAM_DEFAULT_TIMEOUT_MS = 300_000;
+
+export interface CursorStreamOptions {
+    lastEventId?: string;
+    /** 调用方取消/超时 signal；传入后整体超时由调用方负责 */
+    signal?: AbortSignal;
+    /** 整体超时 ms；缺省 {@link CURSOR_STREAM_DEFAULT_TIMEOUT_MS}，传 signal 时忽略 */
+    timeoutMs?: number;
+}
+
+/**
+ * 消费 Cursor run SSE 直至 `done` 或连接结束；410 抛 CursorStreamExpiredError；409 抛 CursorStreamUnavailableError。
+ * 默认带 5 分钟整体超时（AbortSignal.timeout），避免上游挂起；可用 opts.signal / opts.timeoutMs 覆盖。
+ */
 export async function* streamCursorAgentRun(
     apiKey: SecretLike,
     ref: CursorAgentRunRef,
-    opts?: { lastEventId?: string },
+    opts?: CursorStreamOptions,
 ): AsyncGenerator<CursorStreamEvent & { id?: string }> {
     const resolved = await resolveSecret(apiKey);
     if (!resolved) {
@@ -446,9 +467,13 @@ export async function* streamCursorAgentRun(
         headers['Last-Event-ID'] = opts.lastEventId;
     }
 
+    // 默认整体超时兜底；显式 signal 优先（超时责任移交调用方），timeoutMs 次之
+    const signal =
+        opts?.signal ?? AbortSignal.timeout(opts?.timeoutMs ?? CURSOR_STREAM_DEFAULT_TIMEOUT_MS);
+
     const resp = await fetch(
         `${CURSOR_API_BASE}/agents/${encodeURIComponent(ref.agentId)}/runs/${encodeURIComponent(ref.runId)}/stream`,
-        { headers },
+        { headers, signal },
     );
 
     if (resp.status === 410) {
@@ -501,7 +526,7 @@ export async function* streamCursorAgentRun(
 export async function fetchCursorAgentRun(
     apiKey: SecretLike,
     ref: CursorAgentRunRef,
-): Promise<CursorAgentRunResult & { terminal: boolean }> {
+): Promise<CursorAgentRunResult & { terminal: boolean; retryable?: boolean }> {
     const resolved = await resolveSecret(apiKey);
     if (!resolved) {
         return { status: 'ERROR', terminal: true, error: 'CURSOR_API_KEY not configured' };
@@ -511,11 +536,13 @@ export async function fetchCursorAgentRun(
         `/agents/${encodeURIComponent(ref.agentId)}/runs/${encodeURIComponent(ref.runId)}`,
     );
     if (!resp.ok) {
-        return {
-            status: 'ERROR',
-            terminal: true,
-            error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
-        };
+        const error = formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status);
+        if (resp.status === 0 || isCursorRetryableStatus(resp.status)) {
+            // 429/5xx/网络瞬断（status 0）：非终态、可重试，调用方应退避重查而非终止任务
+            return { status: 'UNKNOWN', terminal: false, retryable: true, error };
+        }
+        // 404/400/401/403 等确认性错误：终态失败，轮询方据此终止
+        return { status: 'ERROR', terminal: true, error };
     }
     const status = resp.data.status ?? 'UNKNOWN';
     const prUrl = resp.data.git?.branches?.find((b) => b.prUrl)?.prUrl;
@@ -770,7 +797,8 @@ export async function listCursorAgents(
             ok: false,
             error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
             status: resp.status,
-            retryable: isCursorRetryableStatus(resp.status),
+            // status 0 = 网络瞬断，与 429/5xx 一样可重试
+            retryable: resp.status === 0 || isCursorRetryableStatus(resp.status),
         };
     }
     const items: CursorAgentListItem[] = [];
@@ -809,7 +837,8 @@ export async function archiveCursorAgent(
             ok: false,
             result: 'error',
             status: current.status,
-            retryable: isCursorRetryableStatus(current.status),
+            // status 0 = 网络瞬断，与 429/5xx 一样可重试
+            retryable: current.status === 0 || isCursorRetryableStatus(current.status),
             error: formatCursorApiError(
                 current.data.error,
                 current.text.slice(0, 300),
@@ -832,7 +861,8 @@ export async function archiveCursorAgent(
             ok: false,
             result: 'error',
             status: resp.status,
-            retryable: isCursorRetryableStatus(resp.status),
+            // status 0 = 网络瞬断，与 429/5xx 一样可重试
+            retryable: resp.status === 0 || isCursorRetryableStatus(resp.status),
             error: formatCursorApiError(resp.data.error, resp.text.slice(0, 300), resp.status),
         };
     }

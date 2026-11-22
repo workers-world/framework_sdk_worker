@@ -6,6 +6,7 @@
 
 export * from './provider-error/contract.js';
 export {
+    GITHUB_RETRY_DELAY_CAP_MS,
     githubRetryDelayMs,
     isGithubRequestRetryable,
     isWholesaleRateLimitError,

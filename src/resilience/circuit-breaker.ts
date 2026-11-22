@@ -47,15 +47,21 @@ export function recordCircuitSuccess(name = 'default'): void {
 
 export function recordCircuitFailure(name = 'default'): void {
     const state = getState(name);
-    if (state.open && Date.now() - state.lastFailureTime > RECOVERY_TIMEOUT_MS) {
-        // 半开态探针失败：立即重新熔断，而不是重新累计 3 次
-        state.lastFailureTime = Date.now();
-        console.log(`circuit open name=${name} reason=probe_failed`);
+    if (state.open) {
+        if (Date.now() - state.lastFailureTime > RECOVERY_TIMEOUT_MS) {
+            // 半开态探针失败：立即重新熔断，而不是重新累计 3 次
+            state.lastFailureTime = Date.now();
+            console.log(`circuit open name=${name} reason=probe_failed`);
+            return;
+        }
+        // 熔断窗口内的失败只计数，不推进 lastFailureTime——
+        // 否则恢复窗口被持续滑动，熔断永不转半开
+        state.failures++;
         return;
     }
     state.failures++;
     state.lastFailureTime = Date.now();
-    if (state.failures >= FAILURE_THRESHOLD && !state.open) {
+    if (state.failures >= FAILURE_THRESHOLD) {
         state.open = true;
         console.log(
             `circuit open name=${name} failures=${state.failures} reason=consecutive_failures`,
@@ -167,16 +173,23 @@ export async function recordCircuitFailureKv(
     }
     try {
         const state = await readKvState(kv, name);
-        if (state.open && now - state.lastFailureTime > RECOVERY_TIMEOUT_MS) {
-            // 半开态探针失败：立即重新熔断并重置恢复窗口
-            state.lastFailureTime = now;
-            console.log(`circuit open name=${name} reason=probe_failed backend=kv`);
+        if (state.open) {
+            if (now - state.lastFailureTime > RECOVERY_TIMEOUT_MS) {
+                // 半开态探针失败：立即重新熔断并重置恢复窗口
+                state.lastFailureTime = now;
+                console.log(`circuit open name=${name} reason=probe_failed backend=kv`);
+                await writeKvState(kv, name, state);
+                return;
+            }
+            // 熔断窗口内的失败只计数，不推进 lastFailureTime（语义与内存版一致，
+            // 否则恢复窗口被持续滑动，熔断永不转半开）
+            state.failures += 1;
             await writeKvState(kv, name, state);
             return;
         }
         state.failures += 1;
         state.lastFailureTime = now;
-        if (state.failures >= FAILURE_THRESHOLD && !state.open) {
+        if (state.failures >= FAILURE_THRESHOLD) {
             state.open = true;
             console.log(
                 `circuit open name=${name} failures=${state.failures} reason=consecutive_failures backend=kv`,

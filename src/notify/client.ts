@@ -80,10 +80,9 @@ type NotifyJsonParseResult<T> =
     | { ok: true; data: T }
     | { ok: false; error: string; status: number };
 
-/** 安全解析 notify 响应；空 body 或非 JSON 不向上抛，避免上游 process_exception */
-async function parseNotifyJsonResponse<T extends { error?: string }>(
-    resp: Response,
-): Promise<NotifyJsonParseResult<T>> {
+/** 安全解析 notify 响应；空 body 或非 JSON 不向上抛，避免上游 process_exception */ async function parseNotifyJsonResponse<
+    T extends { error?: string },
+>(resp: Response): Promise<NotifyJsonParseResult<T>> {
     const text = (await resp.text()).trim();
     if (!text) {
         return {
@@ -104,6 +103,11 @@ async function parseNotifyJsonResponse<T extends { error?: string }>(
     }
 }
 
+/** 网络异常/超时归一为可读消息；与 parseNotifyJsonResponse 同契约：不向调用方抛裸异常 */
+function normalizeNotifyFetchError(e: unknown): string {
+    return e instanceof Error ? e.message : String(e);
+}
+
 /**
  * 通过 Service Binding 调用 notify-worker 发邮件。
  * host 填 https://notify 即可，Service Binding 会路由到 notify-worker，不走公网。
@@ -122,15 +126,21 @@ export async function sendNotify(
         return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
     }
 
-    const resp = await notify.fetch('https://notify/v1/send', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${resolved}`,
-        },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(NOTIFY_FETCH_TIMEOUT_MS),
-    });
+    let resp: Response;
+    try {
+        resp = await notify.fetch('https://notify/v1/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${resolved}`,
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(NOTIFY_FETCH_TIMEOUT_MS),
+        });
+    } catch (e: unknown) {
+        // 网络/超时异常归一为 {ok:false, error}，不向上抛
+        return { ok: false, error: normalizeNotifyFetchError(e) };
+    }
 
     const parsed = await parseNotifyJsonResponse<NotifyResult>(resp);
     if (!parsed.ok) {
@@ -173,16 +183,22 @@ export async function sendNotifyAsync(
         return { ok: false, error: 'NOTIFY_AUTH_TOKEN not configured' };
     }
 
-    const resp = await notify.fetch('https://notify/v1/send/async', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${resolved}`,
-            ...(item.source ? { 'X-Notify-Source': item.source } : {}),
-        },
-        body: JSON.stringify(item),
-        signal: AbortSignal.timeout(NOTIFY_FETCH_TIMEOUT_MS),
-    });
+    let resp: Response;
+    try {
+        resp = await notify.fetch('https://notify/v1/send/async', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${resolved}`,
+                ...(item.source ? { 'X-Notify-Source': item.source } : {}),
+            },
+            body: JSON.stringify(item),
+            signal: AbortSignal.timeout(NOTIFY_FETCH_TIMEOUT_MS),
+        });
+    } catch (e: unknown) {
+        // 网络/超时异常归一为 {ok:false, error}，不向上抛
+        return { ok: false, error: normalizeNotifyFetchError(e) };
+    }
 
     const parsed = await parseNotifyJsonResponse<NotifyAsyncResult>(resp);
     if (!parsed.ok) {

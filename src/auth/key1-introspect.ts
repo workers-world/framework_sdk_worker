@@ -22,6 +22,9 @@ function asRecord(v: unknown): Record<string, unknown> | null {
     return null;
 }
 
+/** key1 introspect 属鉴权热路径；不给 Service Binding 调用设超时会拖住整条请求 */
+const KEY1_INTROSPECT_TIMEOUT_MS = 10_000;
+
 /**
  * 经 Service Binding 向 key1 校验 bot opaque key。
  * `authToken` 为 KEY1_AUTH_TOKEN（Worker→key1），`presentedToken` 为客户端 Bearer。
@@ -44,6 +47,7 @@ export async function introspectKey1Token(opts: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ token: opts.presentedToken }),
+            signal: AbortSignal.timeout(KEY1_INTROSPECT_TIMEOUT_MS),
         });
     } catch (e) {
         const message = e instanceof Error ? e.message : String(e);

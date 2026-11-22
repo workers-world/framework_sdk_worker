@@ -88,6 +88,23 @@ describe('circuit-breaker', () => {
         expect(isCircuitOpen('circuit-a')).toBe(true);
         expect(isCircuitOpen('circuit-b')).toBe(false);
     });
+
+    it('does not slide recovery window on in-window failures', () => {
+        // 回归：open 期间失败曾推进 lastFailureTime，恢复窗口被持续滑动、永不转半开
+        const name = 'test-no-window-slide';
+        recordCircuitFailure(name);
+        recordCircuitFailure(name);
+        recordCircuitFailure(name);
+        expect(isCircuitOpen(name)).toBe(true);
+
+        // 窗口内继续失败：lastFailureTime 不动
+        vi.advanceTimersByTime(30_000);
+        recordCircuitFailure(name);
+        recordCircuitFailure(name);
+        // 再过 35s（距最初失败共 65s > 60s）：仍应转半开
+        vi.advanceTimersByTime(35_000);
+        expect(isCircuitOpen(name)).toBe(false);
+    });
 });
 
 describe('circuit-breaker kv', () => {
@@ -158,5 +175,20 @@ describe('circuit-breaker kv', () => {
         await recordCircuitFailureKv(kv, name, 60_001);
         expect(await isCircuitOpenKv(kv, name, 60_001)).toBe(true);
         expect(await isCircuitOpenKv(kv, name, 90_000)).toBe(true);
+    });
+
+    it('does not slide recovery window on in-window failures (kv)', async () => {
+        // 与内存版同语义：open 期间失败只计数，不推进 lastFailureTime
+        const kv = makeFakeKv();
+        const name = 'kv-no-window-slide';
+        await recordCircuitFailureKv(kv, name, 0);
+        await recordCircuitFailureKv(kv, name, 0);
+        await recordCircuitFailureKv(kv, name, 0);
+        expect(await isCircuitOpenKv(kv, name, 0)).toBe(true);
+
+        await recordCircuitFailureKv(kv, name, 30_000);
+        await recordCircuitFailureKv(kv, name, 40_000);
+        // 距最初失败 65s：窗口未被滑动，应转半开
+        expect(await isCircuitOpenKv(kv, name, 65_000)).toBe(false);
     });
 });

@@ -7,7 +7,11 @@
 
 import { Octokit } from '@octokit/core';
 import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
-import { githubRetryDelayMs, isGithubRequestRetryable } from '../resilience/provider-error.js';
+import {
+    GITHUB_RETRY_DELAY_CAP_MS,
+    githubRetryDelayMs,
+    isGithubRequestRetryable,
+} from '../resilience/provider-error.js';
 
 const MAX_GITHUB_RETRIES = 3;
 const IDEMPOTENT_RETRY_METHODS = new Set(['GET', 'HEAD']);
@@ -73,7 +77,13 @@ export function createOctokit(token: string, options?: CreateOctokitOptions): Gi
                 if (!canRetry) {
                     throw error;
                 }
-                await new Promise((r) => setTimeout(r, githubRetryDelayMs(error, attempt)));
+                const delay = githubRetryDelayMs(error, attempt);
+                if (delay > GITHUB_RETRY_DELAY_CAP_MS) {
+                    // 防御分支：githubRetryDelayMs 已封顶，正常不会超过；一旦上游改动导致
+                    // 超上限，放弃 sleep 直接抛出（交给调用方超时），避免 HTTP 路径挂死
+                    throw error;
+                }
+                await new Promise((r) => setTimeout(r, delay));
             }
         }
     });

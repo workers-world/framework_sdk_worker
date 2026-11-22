@@ -46,6 +46,23 @@ function makeMemoryDb() {
                         }
                         return { meta: { changes: 0 } };
                     }
+                    if (sql.includes('wait_seq = (SELECT')) {
+                        // 原子取号 enqueue：内联子查询算 MAX+1（内存库单线程等价于语句级原子）
+                        const key = String(binds[0]);
+                        const id = Number(binds[4]);
+                        let max = 0;
+                        for (const t of tasks.values()) {
+                            if (t.repo === key && t.wait_seq != null) {
+                                max = Math.max(max, Number(t.wait_seq));
+                            }
+                        }
+                        const t = tasks.get(id);
+                        if (t) {
+                            t.dispatch_deferred = 1;
+                            t.wait_seq = max + 1;
+                        }
+                        return { meta: { changes: t ? 1 : 0 } };
+                    }
                     if (sql.includes('wait_seq = ?') && sql.includes('dispatch_deferred = 1')) {
                         const [waitSeq, , , , id] = binds as [
                             number,
@@ -121,6 +138,12 @@ function makeMemoryDb() {
                     return { meta: { changes: 0 } };
                 },
                 async first() {
+                    if (sql.includes('AS wait_seq FROM')) {
+                        // enqueue 读回序号
+                        const id = Number(binds[0]);
+                        const t = tasks.get(id);
+                        return t ? { wait_seq: t.wait_seq } : null;
+                    }
                     if (sql.includes('MAX(wait_seq)')) {
                         const key = String(binds[0]);
                         let max = 0;
