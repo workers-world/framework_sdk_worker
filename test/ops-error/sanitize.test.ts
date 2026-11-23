@@ -40,12 +40,32 @@ describe('sanitizeForLog', () => {
         });
     });
 
+    it('redacts private key / signing key / access key variants', () => {
+        // 回归：GitHub App 私钥、key1 签名密钥、云厂商 AccessKey 曾漏脱敏
+        expect(
+            sanitizeForLog({
+                githubPrivateKey: 'pem',
+                privateKeyPem: 'pem',
+                signingKey: 'sk',
+                accessKeyId: 'AKIA...',
+                GITHUB_PRIVATE_KEY_PLANNING: 'pem',
+            }),
+        ).toEqual({
+            githubPrivateKey: '[redacted]',
+            privateKeyPem: '[redacted]',
+            signingKey: '[redacted]',
+            accessKeyId: '[redacted]',
+            GITHUB_PRIVATE_KEY_PLANNING: '[redacted]',
+        });
+    });
+
     it('does not redact lookalike keys that are not sensitive', () => {
         const out = sanitizeForLog({
             ruleId: 'r1',
             attempts: 3,
             topic: 't',
             total: 10,
+            monkey: 'm',
             context: { ok: true },
         });
         expect(out).toEqual({
@@ -53,6 +73,7 @@ describe('sanitizeForLog', () => {
             attempts: 3,
             topic: 't',
             total: 10,
+            monkey: 'm',
             context: { ok: true },
         });
     });

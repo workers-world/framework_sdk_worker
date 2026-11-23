@@ -123,17 +123,20 @@ describe('reportOpsError', () => {
         expect(payload.html).toContain('<');
     });
 
-    it('catches notify throw', async () => {
+    it('notify network errors are normalized in the client, not thrown to report', async () => {
+        // 回归：sendNotify 曾裸抛网络异常，现在在 client 内归一为 {ok:false}；
+        // reportOpsError 的 throw catch 仅作防御，正常路径不再打 console.error
         const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const notify = makeFakeFetcher(() => {
             throw new Error('down');
         });
-        const result = await reportOpsError(
-            { SVC_NOTIFY: notify, NOTIFY_AUTH_TOKEN: 'tok', OPS_ALERT_TO: 'a@x.com' },
-            { worker: 'w', reason: 'r', error: 'e' },
-        );
-        expect(result).toEqual({ ok: false, error: 'down' });
-        expect(err).toHaveBeenCalled();
+        await expect(
+            reportOpsError(
+                { SVC_NOTIFY: notify, NOTIFY_AUTH_TOKEN: 'tok', OPS_ALERT_TO: 'a@x.com' },
+                { worker: 'w', reason: 'r', error: 'e' },
+            ),
+        ).resolves.toEqual({ ok: false, error: 'down' });
+        expect(err).not.toHaveBeenCalled();
         const notify2 = makeFakeFetcher(() => {
             throw 'raw';
         });
@@ -143,6 +146,7 @@ describe('reportOpsError', () => {
                 { worker: 'w', reason: 'r', error: 'e' },
             ),
         ).resolves.toEqual({ ok: false, error: 'raw' });
+        expect(err).not.toHaveBeenCalled();
         err.mockRestore();
     });
 });

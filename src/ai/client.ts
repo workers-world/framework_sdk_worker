@@ -73,8 +73,14 @@ export interface LlmModelLimits {
     raw?: Record<string, unknown>;
 }
 
+/** 404（模型不在目录）长负缓存；5xx/超时等瞬态只短负缓存，避免门户抖动把 limits 卡满 60s */
+const MODEL_LIMITS_NEG_TTL_MS = 60_000;
+const MODEL_LIMITS_TRANSIENT_NEG_TTL_MS = 5_000;
 const MODEL_LIMITS_CACHE_TTL_MS = 60_000;
-const modelLimitsCache = new Map<string, { at: number; limits: LlmModelLimits | null }>();
+const modelLimitsCache = new Map<
+    string,
+    { at: number; ttl: number; limits: LlmModelLimits | null }
+>();
 
 function finitePositive(value: unknown): number | undefined {
     const n =
@@ -155,7 +161,7 @@ export async function getModelLimits(
         return null;
     }
     const cached = modelLimitsCache.get(id);
-    if (cached && Date.now() - cached.at < MODEL_LIMITS_CACHE_TTL_MS) {
+    if (cached && Date.now() - cached.at < cached.ttl) {
         return cached.limits;
     }
     if (!env.SVC_LLM_GATEWAY) {
@@ -173,12 +179,15 @@ export async function getModelLimits(
             { headers, signal: AbortSignal.timeout(DEFAULT_LLM_CALL_TIMEOUT_MS) },
         );
         if (!resp.ok) {
-            modelLimitsCache.set(id, { at: Date.now(), limits: null });
+            // 负缓存分级：404 确认性（模型未上目录）缓存 60s；5xx/超时等瞬态只缓存 5s
+            const ttl =
+                resp.status === 404 ? MODEL_LIMITS_NEG_TTL_MS : MODEL_LIMITS_TRANSIENT_NEG_TTL_MS;
+            modelLimitsCache.set(id, { at: Date.now(), ttl, limits: null });
             return null;
         }
         const row = (await resp.json().catch(() => ({}))) as Record<string, unknown>;
         const limits = limitsFromPortalRow(row);
-        modelLimitsCache.set(id, { at: Date.now(), limits });
+        modelLimitsCache.set(id, { at: Date.now(), ttl: MODEL_LIMITS_CACHE_TTL_MS, limits });
         return limits;
     } catch {
         return null;

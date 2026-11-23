@@ -5,7 +5,11 @@ import {
     isIntakePayloadEnvelope,
 } from '../../src/intake/payload-envelope.js';
 import { intakePublish, intakePublishFinalize } from '../../src/intake/publish.js';
-import { setActiveInvocationId } from '../../src/observability/worker-invocation-id.js';
+import { intakePublishScope, resolveHopFromPublishScope } from '../../src/intake/publish-scope.js';
+import {
+    getActiveInvocationId,
+    setActiveInvocationId,
+} from '../../src/observability/worker-invocation-id.js';
 
 describe('intakePublishFinalize', () => {
     afterEach(() => {
@@ -78,5 +82,37 @@ describe('intakePublish', () => {
             payload: { index: { requestId?: string } };
         };
         expect(body.payload.index.requestId).toBe('INV-POST');
+    });
+});
+
+describe('intakePublishScope snapshot semantics', () => {
+    afterEach(() => {
+        setActiveInvocationId(undefined);
+    });
+
+    it('snapshots invocationId at entry; later global churn does not leak into scope hop', () => {
+        // 回归：resolveHopFromPublishScope 曾在调用时回退全局 active id，
+        // 并发请求互相覆盖导致 hop 错挂
+        setActiveInvocationId('REQ-A');
+        const inside = intakePublishScope.run({}, () => {
+            // 模拟并发请求覆盖全局 active id
+            setActiveInvocationId('REQ-B');
+            return resolveHopFromPublishScope();
+        });
+        // 快照在入口固化 REQ-A，调用时的全局值 REQ-B 不参与解析
+        expect(inside?.requestId).toBe('REQ-A');
+        expect(inside?.invocationId).toBe('REQ-A');
+        // run 退出恢复 prevActive
+        expect(getActiveInvocationId()).toBe('REQ-A');
+    });
+
+    it('merges explicit hop after snapshot (explicit wins)', () => {
+        setActiveInvocationId('REQ-A');
+        const inside = intakePublishScope.run({ hop: { requestId: 'FROM-SCOPE' } }, () =>
+            resolveHopFromPublishScope({ traceId: 'TR-1' }),
+        );
+        // 快照 = 旧三段合并的前两段（runtime 覆盖 scope.hop），显式参数最后合并
+        expect(inside?.traceId).toBe('TR-1');
+        expect(inside?.requestId).toBe('REQ-A');
     });
 });

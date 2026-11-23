@@ -152,13 +152,18 @@ export function intakePublishPostAsync(
     event: IntakeEvent,
     ctx?: Pick<ExecutionContext, 'waitUntil'>,
 ): void {
-    const promise = intakePublishPost(env, event).then((result) => {
-        if (!result.ok) {
-            console.warn(
-                `[intake] submit failed kind=${event.kind} dedupKey=${event.dedupKey} error=${result.error ?? 'unknown'}`,
-            );
-        }
-    });
+    const promise = intakePublishPost(env, event)
+        .then((result) => {
+            if (!result.ok) {
+                console.warn(
+                    `[intake] submit failed kind=${event.kind} dedupKey=${event.dedupKey} error=${result.error ?? 'unknown'}`,
+                );
+            }
+        })
+        .catch((e: unknown) => {
+            // fire-and-forget 兜底：promise 链自身异常（含动态 import 失败）不变成 unhandled rejection
+            console.warn('[intake] async publish failed', e);
+        });
     if (ctx?.waitUntil) {
         ctx.waitUntil(promise);
         return;
@@ -192,14 +197,19 @@ export function submitIntakeEventAsync(
     event: IntakeEvent,
     ctx?: Pick<ExecutionContext, 'waitUntil'>,
 ): void {
-    const promise = import('./publish.js').then(async ({ intakePublish }) => {
-        const result = await intakePublish(env, event, { ctx });
-        if (!result.ok) {
-            console.warn(
-                `[intake] submit failed kind=${event.kind} dedupKey=${event.dedupKey} error=${result.error ?? 'unknown'}`,
-            );
-        }
-    });
+    const promise = import('./publish.js')
+        .then(async ({ intakePublish }) => {
+            const result = await intakePublish(env, event, { ctx });
+            if (!result.ok) {
+                console.warn(
+                    `[intake] submit failed kind=${event.kind} dedupKey=${event.dedupKey} error=${result.error ?? 'unknown'}`,
+                );
+            }
+        })
+        .catch((e: unknown) => {
+            // fire-and-forget 兜底：动态 import / publish 抛出不变成 unhandled rejection
+            console.warn('[intake] async publish failed', e);
+        });
     if (ctx?.waitUntil) {
         ctx.waitUntil(promise);
         return;

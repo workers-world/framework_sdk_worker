@@ -104,6 +104,66 @@ describe('fetchCursorAgentRun / poll / usage remaining', () => {
             ok: false,
         });
     });
+
+    it('treats 429/5xx/network errors as retryable UNKNOWN instead of terminal ERROR', async () => {
+        // 回归：任何 !resp.ok 一律 ERROR terminal，429/5xx 会误终止轮询
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response(JSON.stringify({ error: 'slow' }), { status: 429 })),
+        );
+        await expect(fetchCursorAgentRun(API_KEY, REF)).resolves.toMatchObject({
+            status: 'UNKNOWN',
+            terminal: false,
+            retryable: true,
+        });
+
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response(JSON.stringify({ error: 'down' }), { status: 503 })),
+        );
+        await expect(fetchCursorAgentRun(API_KEY, REF)).resolves.toMatchObject({
+            status: 'UNKNOWN',
+            terminal: false,
+            retryable: true,
+        });
+
+        // 网络瞬断：cursorFetch 归一为 status 0，不再向调用方裸抛
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => {
+                throw new Error('network down');
+            }),
+        );
+        await expect(fetchCursorAgentRun(API_KEY, REF)).resolves.toMatchObject({
+            status: 'UNKNOWN',
+            terminal: false,
+            retryable: true,
+            error: expect.stringContaining('network down'),
+        });
+        await expect(fetchCursorAgentUsage(API_KEY, 'a1')).resolves.toMatchObject({
+            ok: false,
+            error: expect.stringContaining('network down'),
+        });
+    });
+
+    it('poll keeps retrying through transient errors instead of aborting', async () => {
+        // 网络瞬断（非终态）应继续按 attempt 轮询，最后一次成功
+        let calls = 0;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => {
+                calls += 1;
+                if (calls < 3) {
+                    throw new Error('flaky');
+                }
+                return new Response(JSON.stringify({ status: 'FINISHED' }), { status: 200 });
+            }),
+        );
+        await expect(
+            pollCursorAgentRun(API_KEY, REF, { maxAttempts: 5, intervalMs: 1 }),
+        ).resolves.toMatchObject({ status: 'FINISHED' });
+        expect(calls).toBe(3);
+    });
 });
 
 describe('streamCursorAgentRun remaining', () => {
@@ -162,6 +222,41 @@ describe('streamCursorAgentRun remaining', () => {
             noBody.push(ev);
         }
         expect(noBody[0]).toMatchObject({ type: 'error', code: 'no_body' });
+    });
+
+    it('passes caller signal / default timeout to fetch', async () => {
+        // 默认整体超时：缺省 signal 为 AbortSignal.timeout(300s)
+        const initCalls: RequestInit[] = [];
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (_url: string, init?: RequestInit) => {
+                initCalls.push(init ?? {});
+                return new Response('event: done\ndata: {}\n\n', { status: 200 });
+            }),
+        );
+        for await (const _ev of streamCursorAgentRun(API_KEY, REF)) {
+            void _ev;
+        }
+        const defaultSignal = initCalls[0]?.signal as AbortSignal | undefined;
+        expect(defaultSignal).toBeDefined();
+        expect(defaultSignal?.aborted).toBe(false);
+
+        // 调用方 signal 透传
+        const controller = new AbortController();
+        controller.abort();
+        for await (const _ev of streamCursorAgentRun(API_KEY, REF, {
+            signal: controller.signal,
+        })) {
+            void _ev;
+        }
+        const callerSignal = initCalls[1]?.signal as AbortSignal | undefined;
+        expect(callerSignal?.aborted).toBe(true);
+
+        // timeoutMs 覆盖默认
+        for await (const _ev of streamCursorAgentRun(API_KEY, REF, { timeoutMs: 1_000 })) {
+            void _ev;
+        }
+        expect(initCalls[2]?.signal).toBeDefined();
     });
 });
 

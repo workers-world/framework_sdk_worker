@@ -49,9 +49,13 @@ function buildUrl(base: string, path: string, query?: ApiRequestOptions['query']
 }
 
 export interface HostRouterOptions {
-    /** 放行的方法集合；缺省放行全部（GET/HEAD/POST/PUT/PATCH/DELETE） */
+    /**
+     * 放行的方法集合；缺省仅放行 GET/HEAD/POST（MCP tool call 走 POST，不能砍）。
+     * PUT/PATCH/DELETE 等写方法须显式 opt-in——同一默认值要同时服务只读实例与
+     * tool-call 实例，故默认取交集而不是自称「只读」。
+     */
     allowedMethods?: string[];
-    /** 未放行方法时的提示（默认文案面向只读实例） */
+    /** 未放行方法时的提示（缺省文案会点名默认只放行 GET/HEAD/POST） */
     methodDeniedMessage?: string | ((method: string) => string);
     /** 兜底上游超时 ms */
     defaultTimeoutMs?: number;
@@ -66,11 +70,13 @@ export function createHostRouter(
     entries: McpServiceEntry[],
     opts: HostRouterOptions = {},
 ): (env: unknown, options: ApiRequestOptions) => Promise<unknown> {
-    const allowed = new Set(
-        opts.allowedMethods ?? ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    );
+    const allowed = new Set(opts.allowedMethods ?? ['GET', 'HEAD', 'POST']);
     const defaultTimeoutMs = opts.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const methodDeniedMessage = opts.methodDeniedMessage ?? '不允许该方法';
+    // 默认文案动态生成并点出方法，与默认放行集合保持一致
+    const methodDeniedMessage =
+        opts.methodDeniedMessage ??
+        ((method: string) =>
+            `不允许该方法 ${method}：默认仅放行 GET/HEAD/POST（PUT/PATCH/DELETE 须在 allowedMethods 显式放行）`);
 
     return async (env, options) => {
         const entry = matchEntry(entries, options.path);

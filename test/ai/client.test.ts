@@ -143,4 +143,40 @@ describe('ai/client headers', () => {
             'openai/gpt-5.4',
         ]);
     });
+
+    it('tiers negative cache: 404 long, transient errors short', async () => {
+        // 回归：任何 !resp.ok 一律负缓存 60s，门户 5xx 抖动会把 limits 卡满一分钟
+        vi.useFakeTimers();
+        let calls = 0;
+        let status = 500;
+        const fetcher = {
+            fetch: async () => {
+                calls += 1;
+                return new Response('{}', { status });
+            },
+        } as unknown as Fetcher;
+        const env = { SVC_LLM_GATEWAY: fetcher, LLM_GATEWAY_AUTH_TOKEN: 'tok' };
+
+        // 5xx：短负缓存 5s，窗口内不重查，过后重查
+        await expect(getModelLimits(env, 'm-transient')).resolves.toBeNull();
+        await expect(getModelLimits(env, 'm-transient')).resolves.toBeNull();
+        expect(calls).toBe(1);
+        vi.advanceTimersByTime(6_000);
+        await expect(getModelLimits(env, 'm-transient')).resolves.toBeNull();
+        expect(calls).toBe(2);
+
+        // 404：长负缓存 60s
+        status = 404;
+        await expect(getModelLimits(env, 'm-missing')).resolves.toBeNull();
+        expect(calls).toBe(3);
+        vi.advanceTimersByTime(30_000);
+        await expect(getModelLimits(env, 'm-missing')).resolves.toBeNull();
+        expect(calls).toBe(3);
+        vi.advanceTimersByTime(40_000);
+        await expect(getModelLimits(env, 'm-missing')).resolves.toBeNull();
+        expect(calls).toBe(4);
+
+        vi.useRealTimers();
+        resetModelLimitsCache();
+    });
 });

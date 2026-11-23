@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+    GITHUB_RETRY_DELAY_CAP_MS,
+    githubRetryDelayMs,
+} from '../../src/resilience/provider-error/github-retry.js';
+import {
     classifiableFromUnknown,
     classifyProviderError,
     isGithubRequestRetryable,
@@ -81,5 +85,25 @@ describe('provider-error', () => {
     it('classifiableFromUnknown reads status', () => {
         const c = classifiableFromUnknown({ status: 429, message: 'rate' });
         expect(c.status).toBe(429);
+    });
+
+    it('caps github retry delay (huge Retry-After)', () => {
+        // 回归：Retry-After: 3600 曾让 HTTP 路径 sleep 挂满一小时
+        const huge = {
+            status: 429,
+            response: { headers: { 'retry-after': '3600' } },
+        };
+        expect(githubRetryDelayMs(huge, 0)).toBe(GITHUB_RETRY_DELAY_CAP_MS);
+        // 正常 Retry-After 不受影响
+        const small = {
+            status: 429,
+            response: { headers: { 'retry-after': '3' } },
+        };
+        expect(githubRetryDelayMs(small, 0)).toBe(3000);
+        // 兜底 delay 也被同样封顶
+        expect(githubRetryDelayMs({ status: 429 }, 0)).toBe(GITHUB_RETRY_DELAY_CAP_MS);
+        expect(githubRetryDelayMs({ status: 500 }, 0)).toBeLessThanOrEqual(
+            GITHUB_RETRY_DELAY_CAP_MS,
+        );
     });
 });

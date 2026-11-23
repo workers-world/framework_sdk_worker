@@ -93,6 +93,24 @@ describe('createHostRouter', () => {
         expect(result.error).toBe('method_not_allowed');
     });
 
+    it('defaults to GET/HEAD/POST only; PUT/PATCH/DELETE need explicit opt-in', async () => {
+        // 回归：默认曾全开（PUT/PATCH/DELETE），与 MCP 实例最小权限相矛盾
+        const router = createHostRouter(ENTRIES);
+        for (const method of ['PUT', 'PATCH', 'DELETE'] as const) {
+            const denied = (await router(ENV, { method, path: '/v1/id' })) as {
+                error: string;
+                message: string;
+            };
+            expect(denied.error).toBe('method_not_allowed');
+            expect(denied.message).toContain(method);
+        }
+        // POST（MCP tool call）与 HEAD 仍放行
+        const { fetcher, calls } = fakeFetcher();
+        const okRouter = createHostRouter(ENTRIES);
+        await okRouter({ ...ENV, SVC_COUNTER: fetcher }, { method: 'POST', path: '/v1/id' });
+        expect(calls).toHaveLength(1);
+    });
+
     it('fails explicitly when token is missing instead of sending empty Bearer', async () => {
         const { fetcher, calls } = fakeFetcher();
         const router = createHostRouter(ENTRIES);
@@ -159,6 +177,8 @@ describe('createHostRouter', () => {
                 },
             ],
             {
+                // 该用例覆盖 PUT/PATCH body 形态，显式 opt-in（默认已收紧为 GET/HEAD/POST）
+                allowedMethods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH'],
                 methodDeniedMessage: (method) => `no ${method}`,
             },
         );
