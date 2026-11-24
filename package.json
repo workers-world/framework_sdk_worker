@@ -1,6 +1,6 @@
 {
   "name": "framework_sdk_worker",
-  "version": "0.4.56",
+  "version": "0.4.57",
   "description": "Cloudflare Worker 公共基座 SDK",
   "type": "module",
   "scripts": {
@@ -411,6 +411,10 @@
     "./meta": {
       "import": "./dist/meta/index.js",
       "types": "./dist/meta/index.d.ts"
+    },
+    "./meta/repo-meta": {
+      "import": "./dist/meta/repo-meta.js",
+      "types": "./dist/meta/repo-meta.d.ts"
     },
     "./biome": "./biome-shared.json"
   },

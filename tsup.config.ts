@@ -115,6 +115,7 @@ export default defineConfig({
         'mcp/qa-response-trim': 'src/mcp/qa-response-trim.ts',
         'meta/index': 'src/meta/index.ts',
         'meta/types': 'src/meta/types.ts',
+        'meta/repo-meta': 'src/meta/repo-meta.ts',
     },
     format: ['esm'],
     dts: true,
