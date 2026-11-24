@@ -1,0 +1,4 @@
+{
+  "type": "sdk",
+  "npm": "@workers-world/framework_sdk_worker"
+}
