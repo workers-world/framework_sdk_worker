@@ -26,6 +26,32 @@ describe('meta/repo-meta 契约', () => {
         });
     });
 
+    it('deps 派生字段：合法透传（去空白、保序），非法拒绝', () => {
+        expect(
+            parseRepoMeta('{"type":"worker","deps":["framework_sdk_worker","worker-actions"]}'),
+        ).toEqual({
+            ok: true,
+            meta: { type: 'worker', deps: ['framework_sdk_worker', 'worker-actions'] },
+        });
+        expect(parseRepoMeta('{"type":"worker","deps":[" x "]}')).toEqual({
+            ok: true,
+            meta: { type: 'worker', deps: ['x'] },
+        });
+        for (const bad of [
+            '{"type":"worker","deps":"framework_sdk_worker"}',
+            '{"type":"worker","deps":[1]}',
+            '{"type":"worker","deps":[""]}',
+            '{"type":"worker","deps":["a","a"]}',
+            '{"type":"worker","deps":["has space"]}',
+        ]) {
+            const r = parseRepoMeta(bad);
+            expect(r.ok, `应拒绝: ${bad}`).toBe(false);
+            if (!r.ok) {
+                expect(r.reason).toContain(REPO_META_FILENAME);
+            }
+        }
+    });
+
     it('非法输入逐一拒绝且 reason 带文件名', () => {
         for (const bad of [
             '',
