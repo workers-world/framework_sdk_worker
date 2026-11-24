@@ -4,6 +4,7 @@ import {
     registerGlobalErrorHandler,
     registerHealthRoute,
     registerNotFoundRoute,
+    registerOpenApiRoute,
 } from '../../src/hono/create-app.js';
 
 describe('createWorkerApp', () => {
@@ -21,6 +22,28 @@ describe('createWorkerApp', () => {
         registerHealthRoute(app);
         const resp = await app.request('/health', { headers: { Origin: 'https://example.com' } });
         expect(resp.headers.get('Access-Control-Allow-Origin')).toBeTruthy();
+    });
+});
+
+describe('registerOpenApiRoute', () => {
+    it('serves the given doc at /openapi.json', async () => {
+        const app = createWorkerApp();
+        registerOpenApiRoute(app, {
+            openapi: '3.1.0',
+            info: { title: 'demo', version: '0.1.0' },
+            paths: { '/v1/demo': { get: { operationId: 'demo' } } },
+        });
+        const resp = await app.request('/openapi.json');
+        expect(resp.status).toBe(200);
+        await expect(resp.json()).resolves.toMatchObject({ info: { title: 'demo' } });
+        expect(resp.headers.get('Content-Type')).toContain('application/json');
+    });
+
+    it('accepts a doc with extra fields (index signature)', async () => {
+        const app = createWorkerApp();
+        registerOpenApiRoute(app, { info: { title: 'x' }, 'x-internal': true });
+        const resp = await app.request('/openapi.json');
+        await expect(resp.json()).resolves.toEqual({ info: { title: 'x' }, 'x-internal': true });
     });
 });
 

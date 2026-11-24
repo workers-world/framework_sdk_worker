@@ -1,6 +1,7 @@
 import type { Env } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import type { OpenApiDoc } from '../mcp/types.js';
 
 export interface CreateWorkerAppOptions {
     cors?: boolean;
@@ -39,6 +40,11 @@ export function createWorkerApp(options?: CreateWorkerAppOptions): Hono<Env> {
 
 export function registerHealthRoute(app: RegisterableApp): void {
     app.get('/health', (c) => c.json({ ok: true }));
+}
+
+/** 业务 OpenAPI 文档内容私有，路由骨架统一由 SDK 提供。 */
+export function registerOpenApiRoute(app: RegisterableApp, doc: OpenApiDoc): void {
+    app.get('/openapi.json', (c) => c.json(doc));
 }
 
 export function registerNotFoundRoute(app: RegisterableApp): void {
