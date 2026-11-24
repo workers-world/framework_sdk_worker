@@ -412,6 +412,10 @@
       "import": "./dist/meta/index.js",
       "types": "./dist/meta/index.d.ts"
     },
+    "./meta/repo-meta": {
+      "import": "./dist/meta/repo-meta.js",
+      "types": "./dist/meta/repo-meta.d.ts"
+    },
     "./biome": "./biome-shared.json"
   },
   "peerDependencies": {
