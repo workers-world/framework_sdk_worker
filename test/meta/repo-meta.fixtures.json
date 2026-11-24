@@ -1,0 +1,97 @@
+{
+    "_comment": "repo-meta 契约 fixtures（权威：framework_sdk_worker/meta/repo-meta）。两侧消费：TS parseRepoMeta 测试 + ww/scripts/repo-meta.mjs readRepoMeta 测试（副本在 ww/test/fixtures/repo-meta-fixtures.json，workspace 内互检一致）。schema 演进先改这里。",
+    "valid": [
+        {
+            "name": "最小声明",
+            "raw": "{\"type\":\"worker\"}",
+            "parsed": { "type": "worker" }
+        },
+        {
+            "name": "npm 去空白",
+            "raw": "{\"type\":\"sdk\",\"npm\":\" @workers-world/framework_sdk_worker \"}",
+            "parsed": { "type": "sdk", "npm": "@workers-world/framework_sdk_worker" }
+        },
+        {
+            "name": "deps 合法（去空白保序）",
+            "raw": "{\"type\":\"worker\",\"deps\":[\" framework_sdk_worker \",\"worker-actions\"]}",
+            "parsed": { "type": "worker", "deps": ["framework_sdk_worker", "worker-actions"] }
+        },
+        {
+            "name": "pipes ci=custom",
+            "raw": "{\"type\":\"worker\",\"pipes\":{\"ci\":\"custom\"}}",
+            "parsed": { "type": "worker", "pipes": { "ci": "custom" } }
+        },
+        {
+            "name": "pipes 全量",
+            "raw": "{\"type\":\"worker\",\"pipes\":{\"ci\":\"custom\",\"config\":\"own\"}}",
+            "parsed": { "type": "worker", "pipes": { "ci": "custom", "config": "own" } }
+        },
+        {
+            "name": "pipes 空对象 = 未声明",
+            "raw": "{\"type\":\"worker\",\"pipes\":{}}",
+            "parsed": { "type": "worker" }
+        },
+        {
+            "name": "全字段",
+            "raw": "{\"type\":\"action\",\"npm\":\"@workers-world/worker-actions\",\"deps\":[\"action-notify-email\"],\"pipes\":{\"config\":\"own\"}}",
+            "parsed": {
+                "type": "action",
+                "npm": "@workers-world/worker-actions",
+                "deps": ["action-notify-email"],
+                "pipes": { "config": "own" }
+            }
+        }
+    ],
+    "invalid": [
+        { "name": "非 JSON", "raw": "not-json", "reasonContains": "JSON" },
+        { "name": "顶层数组", "raw": "[]", "reasonContains": "对象" },
+        { "name": "type 缺失", "raw": "{}", "reasonContains": "type" },
+        { "name": "type 非法", "raw": "{\"type\":\"bogus\"}", "reasonContains": "type" },
+        { "name": "npm 空串", "raw": "{\"type\":\"sdk\",\"npm\":\"\"}", "reasonContains": "npm" },
+        {
+            "name": "deps 非数组",
+            "raw": "{\"type\":\"worker\",\"deps\":\"framework_sdk_worker\"}",
+            "reasonContains": "deps"
+        },
+        {
+            "name": "deps 含非字符串",
+            "raw": "{\"type\":\"worker\",\"deps\":[1]}",
+            "reasonContains": "deps"
+        },
+        {
+            "name": "deps 含空串",
+            "raw": "{\"type\":\"worker\",\"deps\":[\"\"]}",
+            "reasonContains": "deps"
+        },
+        {
+            "name": "deps 重复",
+            "raw": "{\"type\":\"worker\",\"deps\":[\"a\",\"a\"]}",
+            "reasonContains": "重复"
+        },
+        {
+            "name": "deps 非法仓名",
+            "raw": "{\"type\":\"worker\",\"deps\":[\"has space\"]}",
+            "reasonContains": "deps"
+        },
+        {
+            "name": "pipes 非对象",
+            "raw": "{\"type\":\"worker\",\"pipes\":\"custom\"}",
+            "reasonContains": "pipes"
+        },
+        {
+            "name": "pipes.ci 值非法",
+            "raw": "{\"type\":\"worker\",\"pipes\":{\"ci\":\"own\"}}",
+            "reasonContains": "pipes.ci"
+        },
+        {
+            "name": "pipes.config 值非法",
+            "raw": "{\"type\":\"worker\",\"pipes\":{\"config\":\"custom\"}}",
+            "reasonContains": "pipes.config"
+        },
+        {
+            "name": "pipes 未知字段",
+            "raw": "{\"type\":\"worker\",\"pipes\":{\"bogus\":1}}",
+            "reasonContains": "pipes"
+        }
+    ]
+}
