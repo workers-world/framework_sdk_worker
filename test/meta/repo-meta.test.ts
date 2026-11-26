@@ -1,5 +1,16 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parseRepoMeta, REPO_META_FILENAME, REPO_META_TYPES } from '../../src/meta/repo-meta.js';
+
+/** 权威 fixtures：ww/scripts/repo-meta.mjs 轻实现跑同一组（副本同步义务见文件头注） */
+const FIXTURES = JSON.parse(
+    readFileSync(
+        join(fileURLToPath(new URL('.', import.meta.url)), 'repo-meta.fixtures.json'),
+        'utf8',
+    ),
+);
 
 describe('meta/repo-meta 契约', () => {
     it('文件名与类型枚举', () => {
@@ -9,63 +20,23 @@ describe('meta/repo-meta 契约', () => {
         expect(REPO_META_TYPES).toContain('action');
     });
 
-    it('合法声明（含/不含 npm，npm 去空白）', () => {
-        expect(parseRepoMeta('{"type":"worker"}')).toEqual({
-            ok: true,
-            meta: { type: 'worker' },
-        });
-        expect(parseRepoMeta('{"type":"sdk","npm":"@workers-world/framework_sdk_worker"}')).toEqual(
-            {
-                ok: true,
-                meta: { type: 'sdk', npm: '@workers-world/framework_sdk_worker' },
-            },
-        );
-        expect(parseRepoMeta('{"type":"action","npm":" @workers-world/worker-actions "}')).toEqual({
-            ok: true,
-            meta: { type: 'action', npm: '@workers-world/worker-actions' },
-        });
-    });
-
-    it('deps 派生字段：合法透传（去空白、保序），非法拒绝', () => {
-        expect(
-            parseRepoMeta('{"type":"worker","deps":["framework_sdk_worker","worker-actions"]}'),
-        ).toEqual({
-            ok: true,
-            meta: { type: 'worker', deps: ['framework_sdk_worker', 'worker-actions'] },
-        });
-        expect(parseRepoMeta('{"type":"worker","deps":[" x "]}')).toEqual({
-            ok: true,
-            meta: { type: 'worker', deps: ['x'] },
-        });
-        for (const bad of [
-            '{"type":"worker","deps":"framework_sdk_worker"}',
-            '{"type":"worker","deps":[1]}',
-            '{"type":"worker","deps":[""]}',
-            '{"type":"worker","deps":["a","a"]}',
-            '{"type":"worker","deps":["has space"]}',
-        ]) {
-            const r = parseRepoMeta(bad);
-            expect(r.ok, `应拒绝: ${bad}`).toBe(false);
-            if (!r.ok) {
-                expect(r.reason).toContain(REPO_META_FILENAME);
+    it('valid fixtures 全过（含 npm 去空白、deps、pipes）', () => {
+        for (const f of FIXTURES.valid) {
+            const r = parseRepoMeta(f.raw);
+            expect(r.ok, `${f.name} 应合法`).toBe(true);
+            if (r.ok) {
+                expect(r.meta, f.name).toEqual(f.parsed);
             }
         }
     });
 
-    it('非法输入逐一拒绝且 reason 带文件名', () => {
-        for (const bad of [
-            '',
-            'not-json',
-            '[]',
-            '{}',
-            '{"type":"bogus"}',
-            '{"npm":"@workers-world/x"}',
-            '{"type":"sdk","npm":""}',
-        ]) {
-            const r = parseRepoMeta(bad);
-            expect(r.ok, `应拒绝: ${bad}`).toBe(false);
+    it('invalid fixtures 全拒且 reason 带文件名与定位线索', () => {
+        for (const f of FIXTURES.invalid) {
+            const r = parseRepoMeta(f.raw);
+            expect(r.ok, `${f.name} 应拒绝`).toBe(false);
             if (!r.ok) {
-                expect(r.reason).toContain(REPO_META_FILENAME);
+                expect(r.reason, f.name).toContain(REPO_META_FILENAME);
+                expect(r.reason, f.name).toContain(f.reasonContains);
             }
         }
     });

@@ -50,6 +50,7 @@ export default defineConfig({
         'github/octokit': 'src/github/octokit.ts',
         'github/client': 'src/github/client.ts',
         'github/repo': 'src/github/repo.ts',
+        'git/dev-track': 'src/git/dev-track.ts',
         'cursor/cloud-agent': 'src/cursor/cloud-agent.ts',
         'agent/index': 'src/agent/index.ts',
         'io/index': 'src/io/index.ts',

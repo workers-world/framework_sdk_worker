@@ -40,6 +40,13 @@ export interface RepoMeta {
      * 人工勿维护；人工只声明 type / npm。
      */
     deps?: string[];
+    /**
+     * 管道参与策略（人工声明，可选；缺席 = 按 type 默认全参与）：
+     * - ci: 'custom' → 退出 CI bundle 管道（worker-actions 模板整文件 sync/fence；.github 自治）
+     * - config: 'own' → 退出 worker 配置管道（biome/npmrc/qodana 模板 sync/fence；自管配置）
+     * deps / bump-sdk 管道不受此影响。
+     */
+    pipes?: { ci?: 'custom'; config?: 'own' };
 }
 
 export type RepoMetaParseResult = { ok: true; meta: RepoMeta } | { ok: false; reason: string };
@@ -100,10 +107,54 @@ export function parseRepoMeta(raw: string): RepoMetaParseResult {
     if (!depsResult.ok) {
         return depsResult;
     }
+    const pipes = parsePipes(parsed.pipes);
+    if (!pipes.ok) {
+        return pipes;
+    }
     const meta: RepoMeta = {
         type: type as RepoMetaType,
         ...(npm === undefined ? {} : { npm: npm.trim() }),
         ...(depsResult.deps === undefined ? {} : { deps: depsResult.deps }),
+        ...(pipes.pipes === undefined ? {} : { pipes: pipes.pipes }),
     };
     return { ok: true, meta };
+}
+
+function parsePipes(
+    value: unknown,
+): { ok: true; pipes?: RepoMeta['pipes'] } | { ok: false; reason: string } {
+    if (value === undefined) {
+        return { ok: true };
+    }
+    if (!isRecord(value)) {
+        return { ok: false, reason: `${REPO_META_FILENAME} pipes 须为对象（{ci?, config?}）` };
+    }
+    const out: NonNullable<RepoMeta['pipes']> = {};
+    for (const key of Object.keys(value)) {
+        if (key !== 'ci' && key !== 'config') {
+            return {
+                ok: false,
+                reason: `${REPO_META_FILENAME} pipes 含未知字段: ${key}（只支持 ci|config）`,
+            };
+        }
+    }
+    if (value.ci !== undefined) {
+        if (value.ci !== 'custom') {
+            return {
+                ok: false,
+                reason: `${REPO_META_FILENAME} pipes.ci 只支持 'custom'（缺席 = 参与标准管道）`,
+            };
+        }
+        out.ci = 'custom';
+    }
+    if (value.config !== undefined) {
+        if (value.config !== 'own') {
+            return {
+                ok: false,
+                reason: `${REPO_META_FILENAME} pipes.config 只支持 'own'（缺席 = 参与标准管道）`,
+            };
+        }
+        out.config = 'own';
+    }
+    return Object.keys(out).length === 0 ? { ok: true } : { ok: true, pipes: out };
 }
