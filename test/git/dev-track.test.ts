@@ -36,7 +36,7 @@ describe('dev-track', () => {
         expect(isPureDevBranch('dev_0_1_2')).toBe(true);
         expect(isPureDevBranch('dev_00_17_00_pgreq251_verify')).toBe(false);
         expect(isPureDevBranch('dev_00_02_00_touch_id')).toBe(false);
-        expect(isPureDevBranch('destin')).toBe(false);
+        expect(isPureDevBranch('staging')).toBe(false);
         expect(isPureDevBranch(null)).toBe(false);
     });
 
@@ -45,17 +45,17 @@ describe('dev-track', () => {
         for (const name of ['dev_00_02_00', 'dev_0_1_2', 'dev_12_34_56']) {
             expect(bash.test(name)).toBe(PURE_DEV_BRANCH_RE.test(name));
         }
-        for (const name of ['dev_00_17_00_pgreq251_verify', 'dev_00_02_00_touch_id', 'destin']) {
+        for (const name of ['dev_00_17_00_pgreq251_verify', 'dev_00_02_00_touch_id', 'staging']) {
             expect(bash.test(name)).toBe(false);
             expect(PURE_DEV_BRANCH_RE.test(name)).toBe(false);
         }
     });
 
-    it('looksLikeDevRef rejects destin alias and master', () => {
+    it('looksLikeDevRef accepts dev_* only; rejects master and bare names', () => {
         expect(looksLikeDevRef('dev_00_08_00')).toBe(true);
         expect(looksLikeDevRef('dev_00_02_00_touch_id')).toBe(true);
-        expect(looksLikeDevRef('destin')).toBe(false);
-        expect(looksLikeDevRef('destin_00_01_00')).toBe(false);
+        expect(looksLikeDevRef('dev')).toBe(false);
+        expect(looksLikeDevRef('staging')).toBe(false);
         expect(looksLikeDevRef('master')).toBe(false);
         expect(looksLikeDevRef('dev_00_01_00_pgreq_x_verify')).toBe(false);
         expect(isDevTrackBase('dev_00_01_00')).toBe(true);
@@ -68,14 +68,14 @@ describe('dev-track', () => {
         expect(isForbiddenPushTarget('cod1/abc', 'dev_00_01_00')).toBe(false);
     });
 
-    it('pickDevRefFromEnv prefers new keys, then legacy; never invents destin', () => {
+    it('pickDevRefFromEnv reads new keys only; never invents a branch', () => {
         expect(pickDevRefFromEnv({ SCH_DEV_DEFAULT: 'dev_00_19_00' })).toBe('dev_00_19_00');
-        expect(pickDevRefFromEnv({ SCH_DESTIN_DEFAULT: 'dev_00_18_00' })).toBe('dev_00_18_00');
+        expect(pickDevRefFromEnv({ SOME_OTHER_DEFAULT: 'dev_00_18_00' })).toBe('');
         expect(pickDevRefFromEnv({})).toBe('');
         expect(
             pickDevRefFromEnv({
                 SCH_DEV_DEFAULT: 'dev_00_20_00',
-                SCH_DESTIN_DEFAULT: 'dev_00_01_00',
+                SOME_OTHER_DEFAULT: 'dev_00_01_00',
             }),
         ).toBe('dev_00_20_00');
     });
