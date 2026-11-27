@@ -68,9 +68,9 @@ describe('dev-track', () => {
         expect(isForbiddenPushTarget('cod1/abc', 'dev_00_01_00')).toBe(false);
     });
 
-    it('pickDevRefFromEnv prefers new keys, then legacy; never invents destin', () => {
+    it('pickDevRefFromEnv reads new keys only; never invents a branch', () => {
         expect(pickDevRefFromEnv({ SCH_DEV_DEFAULT: 'dev_00_19_00' })).toBe('dev_00_19_00');
-        expect(pickDevRefFromEnv({ SCH_DESTIN_DEFAULT: 'dev_00_18_00' })).toBe('dev_00_18_00');
+        expect(pickDevRefFromEnv({ SCH_DESTIN_DEFAULT: 'dev_00_18_00' })).toBe('');
         expect(pickDevRefFromEnv({})).toBe('');
         expect(
             pickDevRefFromEnv({

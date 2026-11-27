@@ -1,7 +1,7 @@
 /**
  * Org development-track (`dev_*`) branch helpers.
  *
- * SSOT for “当前开发轨 / 纯开发轨 Release”判定。禁止再造 `destin` 别名。
+ * SSOT for “当前开发轨 / 纯开发轨 Release”判定。开发轨分支判定 SSOT；勿使用错误别名。
  * 人读文案用 {@link DEV_TRACK_LABEL_ZH}（「开发轨」），代码标识用 `devRef`。
  */
 
@@ -29,7 +29,7 @@ export const DEV_TRACK_LABEL_ZH = '开发轨';
 /** cod1 Outbound / sandbox header: PR base = current development track. */
 export const COD1_DEV_REF_HEADER = 'X-Cod1-Dev-Ref';
 
-/** Env-style keys (consumers may dual-read legacy `*_DESTIN_*` during migrate). */
+/** Env-style keys for current development-track ref. */
 export const DEV_REF_ENV_KEYS = ['SCH_COD1_DEV_REF', 'SCH_DEV_DEFAULT', 'COD_DEV_DEFAULT'] as const;
 
 /**
@@ -94,24 +94,13 @@ export function isForbiddenPushTarget(branch: string, devRef: string): boolean {
 }
 
 /**
- * Pick first non-empty env among {@link DEV_REF_ENV_KEYS} (+ optional legacy destin keys).
- * Never invents a fake branch name like `destin`.
+ * Pick first non-empty env among {@link DEV_REF_ENV_KEYS}.
+ * Never invents a fake branch name.
  */
 export function pickDevRefFromEnv(
     env: Record<string, string | undefined> | { [key: string]: string | undefined },
-    legacyKeys: readonly string[] = [
-        'SCH_COD1_DESTIN_REF',
-        'SCH_DESTIN_DEFAULT',
-        'COD_DESTIN_DEFAULT',
-    ],
 ): string {
     for (const key of DEV_REF_ENV_KEYS) {
-        const v = env[key]?.trim();
-        if (v) {
-            return v;
-        }
-    }
-    for (const key of legacyKeys) {
         const v = env[key]?.trim();
         if (v) {
             return v;
